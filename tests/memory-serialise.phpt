@@ -6,7 +6,7 @@ pdfium
 memory_limit=32M
 --FILE--
 <?php
-require __DIR__ . '/noise.inc';
+require __DIR__ . '/pdf.inc';
 $doc = Pdfium\Document::fromString(noise_pdf(600));
 $big = Pdfium\Document::merge(array_fill(0, 40, $doc));
 foreach ([fn() => $big->toString(), fn() => $big->save(sys_get_temp_dir() . '/pdfium-memory-serialise.pdf')] as $fn) {
