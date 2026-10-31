@@ -167,6 +167,9 @@ void pdfium_page_free_obj(zend_object *obj)
 	pdfium_page *p = pdfium_page_from_obj(obj);
 
 	if (p->page) {
+		if (p->form_loaded) {
+			FORM_OnBeforeClosePage(p->page, p->h->form);
+		}
 		FPDF_ClosePage(p->page);
 	}
 	if (p->h) {

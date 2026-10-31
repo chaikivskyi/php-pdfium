@@ -107,6 +107,16 @@ final class Page
      * @throws FormatException when PDFium cannot load the page's text
      */
     public function text(): string {}
+
+    /**
+     * Renders the page with annotations and form fields drawn, on white.
+     * Each side is max(1, round(points * $dpi / 72)) pixels.
+     *
+     * @throws \ValueError when $dpi is outside 1..2400, a side would exceed 65,500 pixels, or the image
+     *         would exceed 100,000,000 pixels
+     * @throws MemoryException when the bitmap and its encoding would not fit under memory_limit
+     */
+    public function render(int $dpi = 150): Bitmap {}
 }
 
 /**
@@ -135,4 +145,38 @@ final class PageIterator implements \Iterator
 final class Bitmap
 {
     private function __construct() {}
+
+    public function width(): int {}
+
+    public function height(): int {}
+
+    /**
+     * 8-bit RGB PNG.
+     *
+     * @throws Exception when encoding fails
+     */
+    public function toPng(): string {}
+
+    /**
+     * @throws \ValueError when $quality is outside 1..100
+     * @throws Exception when encoding fails
+     */
+    public function toJpeg(int $quality = 85): string {}
+
+    /**
+     * Writes through PHP streams, so open_basedir and stream wrappers apply.
+     *
+     * @throws FileException when $path cannot be written
+     * @throws Exception when encoding fails
+     */
+    public function savePng(string $path): void {}
+
+    /**
+     * Writes through PHP streams, so open_basedir and stream wrappers apply.
+     *
+     * @throws \ValueError when $quality is outside 1..100
+     * @throws FileException when $path cannot be written
+     * @throws Exception when encoding fails
+     */
+    public function saveJpeg(string $path, int $quality = 85): void {}
 }

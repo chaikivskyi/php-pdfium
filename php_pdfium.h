@@ -18,6 +18,7 @@ extern zend_module_entry pdfium_module_entry;
 typedef struct pdfium_doc_handle {
 	FPDF_DOCUMENT doc;
 	FPDF_FORMHANDLE form;
+	bool form_tried;
 	FPDF_FORMFILLINFO form_info;
 	zend_string *buffer;
 	struct pdfium_doc_handle **sources;
@@ -26,9 +27,9 @@ typedef struct pdfium_doc_handle {
 } pdfium_doc_handle;
 
 typedef struct { pdfium_doc_handle *h; zend_object std; } pdfium_document;
-typedef struct { pdfium_doc_handle *h; FPDF_PAGE page; int index; zend_object std; } pdfium_page;
+typedef struct { pdfium_doc_handle *h; FPDF_PAGE page; int index; bool form_loaded; zend_object std; } pdfium_page;
 typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std; } pdfium_page_iterator;
-typedef struct { FPDF_BITMAP bitmap; int width; int height; zend_object std; } pdfium_bitmap;
+typedef struct { FPDF_BITMAP bitmap; zend_object std; } pdfium_bitmap;
 
 extern zend_class_entry *pdfium_ce_document;
 extern zend_class_entry *pdfium_ce_page;
@@ -64,6 +65,7 @@ static inline pdfium_bitmap *pdfium_bitmap_from_obj(zend_object *obj)
 pdfium_doc_handle *pdfium_doc_handle_create(FPDF_DOCUMENT doc, zend_string *buffer);
 void pdfium_doc_handle_addref(pdfium_doc_handle *h);
 void pdfium_doc_handle_release(pdfium_doc_handle *h);
+FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h);
 
 zend_object *pdfium_document_create(pdfium_doc_handle *h);
 

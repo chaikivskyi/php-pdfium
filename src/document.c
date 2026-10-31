@@ -22,6 +22,16 @@ pdfium_doc_handle *pdfium_doc_handle_create(FPDF_DOCUMENT doc, zend_string *buff
 	return h;
 }
 
+FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h)
+{
+	if (!h->form_tried && FPDF_GetFormType(h->doc) != FORMTYPE_NONE) {
+		h->form_tried = true;
+		h->form_info.version = 2;
+		h->form = FPDFDOC_InitFormFillEnvironment(h->doc, &h->form_info);
+	}
+	return h->form;
+}
+
 void pdfium_doc_handle_addref(pdfium_doc_handle *h)
 {
 	h->refs++;
