@@ -181,3 +181,36 @@ ZEND_METHOD(Pdfium_Document, permissions)
 		add_assoc_bool(return_value, flags[i].key, allowed);
 	}
 }
+
+ZEND_METHOD(Pdfium_Document, page)
+{
+	zend_long index;
+	pdfium_doc_handle *h = this_handle(ZEND_THIS);
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_LONG(index)
+	ZEND_PARSE_PARAMETERS_END();
+
+	int page_count = FPDF_GetPageCount(h->doc);
+
+	if (!page_count) {
+		zend_argument_value_error(1, "must be a page index, but the document has no pages");
+		RETURN_THROWS();
+	}
+	if (index < 0 || index >= page_count) {
+		zend_argument_value_error(1, "must be between 0 and %d", page_count - 1);
+		RETURN_THROWS();
+	}
+	zend_object *page = pdfium_page_create(h, (int) index);
+
+	if (!page) {
+		RETURN_THROWS();
+	}
+	RETURN_OBJ(page);
+}
+
+ZEND_METHOD(Pdfium_Document, pages)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+	RETURN_OBJ(pdfium_page_iterator_create(this_handle(ZEND_THIS)));
+}

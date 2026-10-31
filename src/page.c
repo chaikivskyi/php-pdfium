@@ -3,6 +3,8 @@
 #endif
 
 #include "php_pdfium.h"
+#include <fpdf_edit.h>
+#include "zend_exceptions.h"
 
 ZEND_METHOD(Pdfium_Page, __construct)
 {
@@ -14,34 +16,124 @@ ZEND_METHOD(Pdfium_PageIterator, __construct)
 	ZEND_PARSE_PARAMETERS_NONE();
 }
 
-ZEND_METHOD(Pdfium_PageIterator, current)
+static pdfium_page *this_page(zval *self)
+{
+	return pdfium_page_from_obj(Z_OBJ_P(self));
+}
+
+ZEND_METHOD(Pdfium_Page, index)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	zend_throw_error(NULL, "Pdfium\\PageIterator is not implemented");
+	RETURN_LONG(this_page(ZEND_THIS)->index);
+}
+
+ZEND_METHOD(Pdfium_Page, width)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+	RETURN_DOUBLE(FPDF_GetPageWidthF(this_page(ZEND_THIS)->page));
+}
+
+ZEND_METHOD(Pdfium_Page, height)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+	RETURN_DOUBLE(FPDF_GetPageHeightF(this_page(ZEND_THIS)->page));
+}
+
+ZEND_METHOD(Pdfium_Page, rotation)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+	RETURN_LONG(FPDFPage_GetRotation(this_page(ZEND_THIS)->page) * 90);
+}
+
+zend_object *pdfium_page_create(pdfium_doc_handle *h, int index)
+{
+	FPDF_PAGE page = FPDF_LoadPage(h->doc, index);
+	zval zv;
+
+	if (!page) {
+		zend_throw_exception_ex(pdfium_ce_format_exception, 0, "Cannot load page %d", index);
+		return NULL;
+	}
+	object_init_ex(&zv, pdfium_ce_page);
+	pdfium_page *p = pdfium_page_from_obj(Z_OBJ(zv));
+	p->page = page;
+	p->index = index;
+	p->h = h;
+	pdfium_doc_handle_addref(h);
+	return Z_OBJ(zv);
+}
+
+zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h)
+{
+	zval zv;
+
+	object_init_ex(&zv, pdfium_ce_page_iterator);
+	pdfium_page_iterator_from_obj(Z_OBJ(zv))->h = h;
+	pdfium_doc_handle_addref(h);
+	return Z_OBJ(zv);
+}
+
+static pdfium_page_iterator *this_iterator(zval *self)
+{
+	return pdfium_page_iterator_from_obj(Z_OBJ_P(self));
+}
+
+static void iterator_drop_current(pdfium_page_iterator *it)
+{
+	zval_ptr_dtor(&it->current);
+	ZVAL_UNDEF(&it->current);
+}
+
+ZEND_METHOD(Pdfium_PageIterator, current)
+{
+	pdfium_page_iterator *it = this_iterator(ZEND_THIS);
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (it->index >= FPDF_GetPageCount(it->h->doc)) {
+		zend_throw_exception(pdfium_ce_exception, "Iterator is past the last page", 0);
+		RETURN_THROWS();
+	}
+	if (Z_ISUNDEF(it->current)) {
+		zend_object *page = pdfium_page_create(it->h, it->index);
+
+		if (!page) {
+			RETURN_THROWS();
+		}
+		ZVAL_OBJ(&it->current, page);
+	}
+	RETURN_COPY(&it->current);
 }
 
 ZEND_METHOD(Pdfium_PageIterator, key)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	zend_throw_error(NULL, "Pdfium\\PageIterator is not implemented");
+	RETURN_LONG(this_iterator(ZEND_THIS)->index);
 }
 
 ZEND_METHOD(Pdfium_PageIterator, next)
 {
+	pdfium_page_iterator *it = this_iterator(ZEND_THIS);
+
 	ZEND_PARSE_PARAMETERS_NONE();
-	zend_throw_error(NULL, "Pdfium\\PageIterator is not implemented");
+	iterator_drop_current(it);
+	it->index++;
 }
 
 ZEND_METHOD(Pdfium_PageIterator, rewind)
 {
+	pdfium_page_iterator *it = this_iterator(ZEND_THIS);
+
 	ZEND_PARSE_PARAMETERS_NONE();
-	zend_throw_error(NULL, "Pdfium\\PageIterator is not implemented");
+	iterator_drop_current(it);
+	it->index = 0;
 }
 
 ZEND_METHOD(Pdfium_PageIterator, valid)
 {
+	pdfium_page_iterator *it = this_iterator(ZEND_THIS);
+
 	ZEND_PARSE_PARAMETERS_NONE();
-	zend_throw_error(NULL, "Pdfium\\PageIterator is not implemented");
+	RETURN_BOOL(it->index < FPDF_GetPageCount(it->h->doc));
 }
 
 void pdfium_page_free_obj(zend_object *obj)

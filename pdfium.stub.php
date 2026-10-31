@@ -23,7 +23,7 @@ class MemoryException extends Exception {}
  * @strict-properties
  * @not-serializable
  */
-final class Document implements \Countable
+final class Document implements \Countable, \IteratorAggregate
 {
     private function __construct() {}
 
@@ -61,6 +61,24 @@ final class Document implements \Countable
      * @return array<string, bool>
      */
     public function permissions(): array {}
+
+    /**
+     * @throws \ValueError when $index is outside 0..pageCount()-1
+     * @throws FormatException when PDFium cannot load the page
+     */
+    public function page(int $index): Page {}
+
+    /**
+     * Loads each page on demand and holds only the current one; rewind() restarts at 0.
+     */
+    public function pages(): PageIterator {}
+
+    /**
+     * The same as pages(), so foreach ($doc as $index => $page) works.
+     *
+     * @implementation-alias Pdfium\Document::pages
+     */
+    public function getIterator(): PageIterator {}
 }
 
 /**
@@ -70,6 +88,18 @@ final class Document implements \Countable
 final class Page
 {
     private function __construct() {}
+
+    /** The page's 0-based position in its document. */
+    public function index(): int {}
+
+    /** Crop box width in points, after rotation. */
+    public function width(): float {}
+
+    /** Crop box height in points, after rotation. */
+    public function height(): float {}
+
+    /** Page rotation in degrees: 0, 90, 180 or 270. */
+    public function rotation(): int {}
 }
 
 /**

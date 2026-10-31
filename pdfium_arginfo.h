@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: c22279e7de9197122a557d5d472423965983a9b0 */
+ * Stub hash: 13f7f1500be24e17cf8d81d98a4166f2e415b16f */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -24,7 +24,25 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Document_permissions arginfo_class_Pdfium_Document_metadata
 
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_page, 0, 1, Pdfium\\Page, 0)
+	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_pages, 0, 0, Pdfium\\PageIterator, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Document_getIterator arginfo_class_Pdfium_Document_pages
+
 #define arginfo_class_Pdfium_Page___construct arginfo_class_Pdfium_Document___construct
+
+#define arginfo_class_Pdfium_Page_index arginfo_class_Pdfium_Document_pageCount
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Page_width, 0, 0, IS_DOUBLE, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Page_height arginfo_class_Pdfium_Page_width
+
+#define arginfo_class_Pdfium_Page_rotation arginfo_class_Pdfium_Document_pageCount
 
 #define arginfo_class_Pdfium_PageIterator___construct arginfo_class_Pdfium_Document___construct
 
@@ -49,7 +67,13 @@ ZEND_METHOD(Pdfium_Document, fromString);
 ZEND_METHOD(Pdfium_Document, pageCount);
 ZEND_METHOD(Pdfium_Document, metadata);
 ZEND_METHOD(Pdfium_Document, permissions);
+ZEND_METHOD(Pdfium_Document, page);
+ZEND_METHOD(Pdfium_Document, pages);
 ZEND_METHOD(Pdfium_Page, __construct);
+ZEND_METHOD(Pdfium_Page, index);
+ZEND_METHOD(Pdfium_Page, width);
+ZEND_METHOD(Pdfium_Page, height);
+ZEND_METHOD(Pdfium_Page, rotation);
 ZEND_METHOD(Pdfium_PageIterator, __construct);
 ZEND_METHOD(Pdfium_PageIterator, current);
 ZEND_METHOD(Pdfium_PageIterator, key);
@@ -70,11 +94,22 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 #endif
 	ZEND_ME(Pdfium_Document, metadata, arginfo_class_Pdfium_Document_metadata, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, permissions, arginfo_class_Pdfium_Document_permissions, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, page, arginfo_class_Pdfium_Document_page, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, pages, arginfo_class_Pdfium_Document_pages, ZEND_ACC_PUBLIC)
+#if (PHP_VERSION_ID >= 80400)
+	ZEND_RAW_FENTRY("getIterator", zim_Pdfium_Document_pages, arginfo_class_Pdfium_Document_getIterator, ZEND_ACC_PUBLIC, NULL, NULL)
+#else
+	ZEND_RAW_FENTRY("getIterator", zim_Pdfium_Document_pages, arginfo_class_Pdfium_Document_getIterator, ZEND_ACC_PUBLIC)
+#endif
 	ZEND_FE_END
 };
 
 static const zend_function_entry class_Pdfium_Page_methods[] = {
 	ZEND_ME(Pdfium_Page, __construct, arginfo_class_Pdfium_Page___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Pdfium_Page, index, arginfo_class_Pdfium_Page_index, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, width, arginfo_class_Pdfium_Page_width, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, height, arginfo_class_Pdfium_Page_height, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, rotation, arginfo_class_Pdfium_Page_rotation, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -177,7 +212,7 @@ static zend_class_entry *register_class_Pdfium_MemoryException(zend_class_entry 
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Pdfium_Document(zend_class_entry *class_entry_Countable)
+static zend_class_entry *register_class_Pdfium_Document(zend_class_entry *class_entry_Countable, zend_class_entry *class_entry_IteratorAggregate)
 {
 	zend_class_entry ce, *class_entry;
 
@@ -188,7 +223,7 @@ static zend_class_entry *register_class_Pdfium_Document(zend_class_entry *class_
 	class_entry = zend_register_internal_class_ex(&ce, NULL);
 	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE;
 #endif
-	zend_class_implements(class_entry, 1, class_entry_Countable);
+	zend_class_implements(class_entry, 2, class_entry_Countable, class_entry_IteratorAggregate);
 
 	return class_entry;
 }

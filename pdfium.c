@@ -108,17 +108,18 @@ PHP_MINIT_FUNCTION(pdfium)
 	pdfium_ce_unsupported_exception = register_class_Pdfium_UnsupportedException(pdfium_ce_exception);
 	pdfium_ce_memory_exception = register_class_Pdfium_MemoryException(pdfium_ce_exception);
 
+	/* Before Document: its getIterator() return type narrows IteratorAggregate's to PageIterator. */
+	init_handlers(&page_iterator_handlers, XtOffsetOf(pdfium_page_iterator, std), pdfium_page_iterator_free_obj);
+	pdfium_ce_page_iterator = register_class_Pdfium_PageIterator(zend_ce_iterator);
+	pdfium_ce_page_iterator->create_object = page_iterator_create;
+
 	init_handlers(&document_handlers, XtOffsetOf(pdfium_document, std), pdfium_document_free_obj);
-	pdfium_ce_document = register_class_Pdfium_Document(zend_ce_countable);
+	pdfium_ce_document = register_class_Pdfium_Document(zend_ce_countable, zend_ce_aggregate);
 	pdfium_ce_document->create_object = document_create;
 
 	init_handlers(&page_handlers, XtOffsetOf(pdfium_page, std), pdfium_page_free_obj);
 	pdfium_ce_page = register_class_Pdfium_Page();
 	pdfium_ce_page->create_object = page_create;
-
-	init_handlers(&page_iterator_handlers, XtOffsetOf(pdfium_page_iterator, std), pdfium_page_iterator_free_obj);
-	pdfium_ce_page_iterator = register_class_Pdfium_PageIterator(zend_ce_iterator);
-	pdfium_ce_page_iterator->create_object = page_iterator_create;
 
 	init_handlers(&bitmap_handlers, XtOffsetOf(pdfium_bitmap, std), pdfium_bitmap_free_obj);
 	pdfium_ce_bitmap = register_class_Pdfium_Bitmap();

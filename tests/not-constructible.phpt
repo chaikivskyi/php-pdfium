@@ -7,7 +7,8 @@ pdfium
 foreach (['Document', 'Page', 'PageIterator', 'Bitmap'] as $c) {
     $fq = "Pdfium\\$c";
     $r = new ReflectionClass($fq);
-    echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true), "\n";
+    echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true),
+        ' instantiable=', var_export($r->isInstantiable(), true), ' abstract=', var_export($r->isAbstract(), true), "\n";
     foreach ([
         fn() => new $fq(),
         fn() => $r->newInstanceWithoutConstructor(),
@@ -18,19 +19,19 @@ foreach (['Document', 'Page', 'PageIterator', 'Bitmap'] as $c) {
 }
 ?>
 --EXPECT--
-Document final=true cloneable=false
+Document final=true cloneable=false instantiable=false abstract=false
   Error
   ReflectionException
   Exception
-Page final=true cloneable=false
+Page final=true cloneable=false instantiable=false abstract=false
   Error
   ReflectionException
   Exception
-PageIterator final=true cloneable=false
+PageIterator final=true cloneable=false instantiable=false abstract=false
   Error
   ReflectionException
   Exception
-Bitmap final=true cloneable=false
+Bitmap final=true cloneable=false instantiable=false abstract=false
   Error
   ReflectionException
   Exception
