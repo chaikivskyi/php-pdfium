@@ -1,0 +1,2 @@
+# Only frames inside libpdfium: its prebuilt binary is not ASan-instrumented.
+leak:libpdfium

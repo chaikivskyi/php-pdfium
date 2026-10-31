@@ -1,0 +1,14 @@
+{
+  "name": "chaikivskyi/pdfium",
+  "description": "Fast native PDF extension for PHP, built on PDFium",
+  "type": "php-ext",
+  "license": "MIT",
+  "require": { "php": ">=8.2 <8.6" },
+  "php-ext": {
+    "extension-name": "pdfium",
+    "support-zts": false,
+    "configure-options": [
+      { "name": "with-pdfium", "description": "Path to a pdfium-binaries tree (include/ and lib/)", "needs-value": true }
+    ]
+  }
+}

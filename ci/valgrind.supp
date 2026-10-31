@@ -1,0 +1,26 @@
+# Only frames inside libpdfium: the prebuilt binary leaves allocations at shutdown.
+{
+   libpdfium-leak-definite
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible,reachable
+   ...
+   obj:*/libpdfium.*
+}
+{
+   libpdfium-cond
+   Memcheck:Cond
+   ...
+   obj:*/libpdfium.*
+}
+{
+   libpdfium-value8
+   Memcheck:Value8
+   ...
+   obj:*/libpdfium.*
+}
+{
+   libpdfium-addr
+   Memcheck:Addr8
+   ...
+   obj:*/libpdfium.*
+}
