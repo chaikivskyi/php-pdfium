@@ -330,6 +330,9 @@ ZEND_METHOD(Pdfium_Bitmap, savePng)
 		Z_PARAM_PATH(path, path_len)
 	ZEND_PARSE_PARAMETERS_END();
 
+	if (!pdfium_path_given(path_len)) {
+		RETURN_THROWS();
+	}
 	pdfium_write_and_release(encode_png(this_bitmap(ZEND_THIS)), path);
 }
 
@@ -345,7 +348,7 @@ ZEND_METHOD(Pdfium_Bitmap, saveJpeg)
 		Z_PARAM_LONG(quality)
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (!quality_ok(quality, 2)) {
+	if (!pdfium_path_given(path_len) || !quality_ok(quality, 2)) {
 		RETURN_THROWS();
 	}
 	pdfium_write_and_release(encode_jpeg(this_bitmap(ZEND_THIS), (int) quality), path);

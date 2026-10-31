@@ -12,6 +12,7 @@ foreach ([
     'no password'  => fn() => Pdfium\Document::open($f . 'encrypted-user.pdf'),
     'bad password' => fn() => Pdfium\Document::open($f . 'encrypted-user.pdf', password: 'wrong'),
     'empty bytes'  => fn() => Pdfium\Document::fromString(''),
+    'empty path'   => fn() => Pdfium\Document::open(''),
 ] as $name => $fn) {
     try { $fn(); echo "$name: opened\n"; } catch (Throwable $e) { echo "$name: ", get_class($e), "\n"; }
 }
@@ -23,3 +24,4 @@ truncated: Pdfium\FormatException
 no password: Pdfium\PasswordException
 bad password: Pdfium\PasswordException
 empty bytes: ValueError
+empty path: ValueError

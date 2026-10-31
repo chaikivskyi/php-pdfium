@@ -85,6 +85,10 @@ ZEND_METHOD(Pdfium_Document, open)
 		Z_PARAM_PATH_STR_OR_NULL(password)
 	ZEND_PARSE_PARAMETERS_END();
 
+	if (!pdfium_path_given(path_len)) {
+		RETURN_THROWS();
+	}
+
 	zend_string *bytes = pdfium_read_file(path);
 	if (!bytes) {
 		RETURN_THROWS();
@@ -383,5 +387,8 @@ ZEND_METHOD(Pdfium_Document, save)
 		Z_PARAM_BOOL(remove_security)
 	ZEND_PARSE_PARAMETERS_END();
 
+	if (!pdfium_path_given(path_len)) {
+		RETURN_THROWS();
+	}
 	pdfium_write_and_release(serialise(this_handle(ZEND_THIS), remove_security), path);
 }

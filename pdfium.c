@@ -123,6 +123,15 @@ bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len)
 	return true;
 }
 
+bool pdfium_path_given(size_t len)
+{
+	if (!len) {
+		zend_argument_value_error(1, "must not be empty");
+		return false;
+	}
+	return true;
+}
+
 static char *shown_path(const char *path)
 {
 	smart_str out = {0};
