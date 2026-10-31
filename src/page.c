@@ -6,6 +6,7 @@
 #include <fpdf_edit.h>
 #include <fpdf_text.h>
 #include "zend_exceptions.h"
+#include "zend_strtod.h"
 
 ZEND_METHOD(Pdfium_Page, __construct)
 {
@@ -15,6 +16,20 @@ ZEND_METHOD(Pdfium_Page, __construct)
 ZEND_METHOD(Pdfium_PageIterator, __construct)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+static double points(float value)
+{
+	char buf[32];
+
+	for (int digits = 1; digits <= 9; digits++) {
+		double parsed = zend_strtod(zend_gcvt(value, digits, '.', 'e', buf), NULL);
+
+		if ((float) parsed == value) {
+			return parsed;
+		}
+	}
+	return value;
 }
 
 static pdfium_page *this_page(zval *self)
@@ -31,13 +46,13 @@ ZEND_METHOD(Pdfium_Page, index)
 ZEND_METHOD(Pdfium_Page, width)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	RETURN_DOUBLE(FPDF_GetPageWidthF(this_page(ZEND_THIS)->page));
+	RETURN_DOUBLE(points(FPDF_GetPageWidthF(this_page(ZEND_THIS)->page)));
 }
 
 ZEND_METHOD(Pdfium_Page, height)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	RETURN_DOUBLE(FPDF_GetPageHeightF(this_page(ZEND_THIS)->page));
+	RETURN_DOUBLE(points(FPDF_GetPageHeightF(this_page(ZEND_THIS)->page)));
 }
 
 ZEND_METHOD(Pdfium_Page, rotation)

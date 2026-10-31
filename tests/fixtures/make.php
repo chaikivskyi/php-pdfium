@@ -121,6 +121,7 @@ $info = "<< /Title (Fixture Title) /Author $author /CreationDate (D:202610311200
 normalise(textDoc(['Page 1 alpha', 'Page 2 beta', 'Page 3 gamma'], $info), 'text-3pages.pdf');
 normalise(blankPage('/MediaBox [0 0 612 792] /CropBox [0 0 300 400] /Rotate 90'), 'rotated.pdf');
 normalise(blankPage('/MediaBox [0 0 1 1]'), 'tiny.pdf');
+normalise(blankPage('/MediaBox [0 0 595.28 841.89]'), 'a4.pdf');
 normalise(build([
     1 => '<< /Type /Catalog /Pages 2 0 R >>',
     2 => '<< /Type /Pages /Kids [] /Count 0 >>',
