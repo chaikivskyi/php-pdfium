@@ -122,6 +122,7 @@ normalise(textDoc(['Page 1 alpha', 'Page 2 beta', 'Page 3 gamma'], $info), 'text
 normalise(blankPage('/MediaBox [0 0 612 792] /CropBox [0 0 300 400] /Rotate 90'), 'rotated.pdf');
 normalise(blankPage('/MediaBox [0 0 1 1]'), 'tiny.pdf');
 normalise(blankPage('/MediaBox [0 0 595.28 841.89]'), 'a4.pdf');
+normalise(blankPage('/MediaBox [0 0 612 792] /CropBox [0 0 300 400]'), 'cropped.pdf');
 normalise(build([
     1 => '<< /Type /Catalog /Pages 2 0 R >>',
     2 => '<< /Type /Pages /Kids [] /Count 0 >>',
@@ -144,6 +145,13 @@ if (!file_exists("$dir/encrypted-r2.pdf")) {
         . escapeshellarg("$dir/encrypted-r2.pdf"));
 }
 
+// Written raw: qpdf refuses a security handler it does not know.
+file_put_contents("$dir/unsupported-security.pdf", build([
+    1 => '<< /Type /Catalog /Pages 2 0 R >>',
+    2 => '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    3 => '<< /Type /Page /Parent 2 0 R /MediaBox ' . MEDIA . ' >>',
+    4 => '<< /Filter /FooBarSecurity /V 1 /R 2 /P -4 >>',
+], '/Encrypt 4 0 R /ID [<00112233445566778899AABBCCDDEEFF> <00112233445566778899AABBCCDDEEFF>]'));
 file_put_contents("$dir/truncated.pdf", substr(file_get_contents("$dir/text-3pages.pdf"), 0, 200));
 file_put_contents("$dir/not-a-pdf.txt", "this is not a pdf\n");
 

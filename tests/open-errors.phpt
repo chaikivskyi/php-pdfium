@@ -13,6 +13,8 @@ foreach ([
     'bad password' => fn() => Pdfium\Document::open($f . 'encrypted-user.pdf', password: 'wrong'),
     'empty bytes'  => fn() => Pdfium\Document::fromString(''),
     'empty path'   => fn() => Pdfium\Document::open(''),
+    'unsupported security (open)'   => fn() => Pdfium\Document::open($f . 'unsupported-security.pdf'),
+    'unsupported security (string)' => fn() => Pdfium\Document::fromString(file_get_contents($f . 'unsupported-security.pdf')),
 ] as $name => $fn) {
     try { $fn(); echo "$name: opened\n"; } catch (Throwable $e) { echo "$name: ", get_class($e), "\n"; }
 }
@@ -25,3 +27,5 @@ no password: Pdfium\PasswordException
 bad password: Pdfium\PasswordException
 empty bytes: ValueError
 empty path: ValueError
+unsupported security (open): Pdfium\UnsupportedException
+unsupported security (string): Pdfium\UnsupportedException
