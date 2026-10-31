@@ -4,7 +4,6 @@
 
 #include "php_pdfium.h"
 #include "zend_exceptions.h"
-#include "zend_smart_str.h"
 #include <math.h>
 #include <setjmp.h>
 #include <stdio.h>

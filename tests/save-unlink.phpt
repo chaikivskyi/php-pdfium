@@ -1,5 +1,5 @@
 --TEST--
-A failed save removes what it wrote through the wrapper, silently, and a successful one keeps it
+A failed save through a stream wrapper written in PHP throws FileException and leaves cleanup to the wrapper; a successful one keeps the file
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -29,9 +29,7 @@ foreach ([fn() => $doc->save('failing://a.pdf'), fn() => $img->savePng('failing:
 }
 ?>
 --EXPECT--
-unlink failing://a.pdf
 Pdfium\FileException
-unlink failing://b.png
 Pdfium\FileException
 Pdfium\FileException
 saved

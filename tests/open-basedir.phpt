@@ -7,7 +7,9 @@ open_basedir={PWD}/fixtures
 --FILE--
 <?php
 var_dump(Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf')->pageCount());
-try { Pdfium\Document::open('/etc/hostname'); } catch (Pdfium\FileException $e) { echo "FileException\n"; }
+foreach (['/etc/hostname', '/etc', '/nosuch'] as $path) {
+    try { Pdfium\Document::open($path); } catch (Pdfium\FileException $e) { echo strtok($e->getPrevious()->getMessage(), '.'), "\n"; }
+}
 $img = Pdfium\Document::open(__DIR__ . '/fixtures/tiny.pdf')->page(0)->render(dpi: 1);
 foreach (['/tmp/pdfium-basedir.png', 'nosuchwrapper://x.png'] as $path) {
     try { $img->savePng($path); } catch (Pdfium\FileException $e) { echo $e->getMessage(), "\n"; }
@@ -15,6 +17,8 @@ foreach (['/tmp/pdfium-basedir.png', 'nosuchwrapper://x.png'] as $path) {
 ?>
 --EXPECT--
 int(3)
-FileException
+Pdfium\Document::open(): open_basedir restriction in effect
+Pdfium\Document::open(): open_basedir restriction in effect
+Pdfium\Document::open(): open_basedir restriction in effect
 Cannot write /tmp/pdfium-basedir.png
 Cannot write nosuchwrapper://x.png

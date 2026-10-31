@@ -15,6 +15,9 @@ if test "$PHP_PDFIUM" != "no"; then
   PHP_EVAL_INCLINE([$LIBPNG_CFLAGS $LIBJPEG_CFLAGS])
   PHP_EVAL_LIBLINE([$LIBPNG_LIBS $LIBJPEG_LIBS], [PDFIUM_SHARED_LIBADD])
 
+  AC_CHECK_HEADERS([sys/xattr.h])
+  AC_CHECK_FUNCS([posix_fallocate mkostemp])
+
   PHP_SUBST([PDFIUM_SHARED_LIBADD])
   PHP_NEW_EXTENSION([pdfium], [pdfium.c src/utf16.c src/document.c src/page.c src/bitmap.c], [$ext_shared])
   PHP_ADD_BUILD_DIR([$ext_builddir/src])

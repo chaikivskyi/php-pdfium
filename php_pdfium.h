@@ -87,6 +87,9 @@ void pdfium_bitmap_free_obj(zend_object *obj);
 
 void pdfium_throw_last_error(const char *context);
 
+
 void pdfium_write_and_release(zend_string *data, const char *path);
+
+zend_string *pdfium_read_file(const char *path);
 
 #endif

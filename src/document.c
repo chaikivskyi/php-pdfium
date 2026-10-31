@@ -3,7 +3,6 @@
 #endif
 
 #include "php_pdfium.h"
-#include "fopen_wrappers.h"
 #include <fpdf_doc.h>
 #include <fpdf_edit.h>
 #include <fpdf_ppo.h>
@@ -86,17 +85,19 @@ ZEND_METHOD(Pdfium_Document, open)
 		Z_PARAM_PATH_STR_OR_NULL(password)
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (php_check_open_basedir_ex(path, 0)) {
-		zend_throw_exception_ex(pdfium_ce_file_exception, FPDF_ERR_FILE, "Cannot open %s", path);
+	zend_string *bytes = pdfium_read_file(path);
+	if (!bytes) {
 		RETURN_THROWS();
 	}
-
-	FPDF_DOCUMENT doc = FPDF_LoadDocument(path, password ? ZSTR_VAL(password) : NULL);
+	FPDF_DOCUMENT doc = FPDF_LoadMemDocument64(ZSTR_VAL(bytes), ZSTR_LEN(bytes), password ? ZSTR_VAL(password) : NULL);
 	if (!doc) {
+		zend_string_release(bytes);
 		pdfium_throw_last_error("Cannot open document");
 		RETURN_THROWS();
 	}
-	RETURN_OBJ(pdfium_document_create(pdfium_doc_handle_create(doc, NULL)));
+	zend_object *obj = pdfium_document_create(pdfium_doc_handle_create(doc, bytes));
+	zend_string_release(bytes);
+	RETURN_OBJ(obj);
 }
 
 ZEND_METHOD(Pdfium_Document, fromString)
