@@ -64,6 +64,11 @@ ZEND_METHOD(Pdfium_Page, text)
 		FPDFText_ClosePage(tp);
 		RETURN_EMPTY_STRING();
 	}
+	if (!pdfium_memory_fits((size_t) count * 8)) {
+		FPDFText_ClosePage(tp);
+		zend_throw_exception(pdfium_ce_memory_exception, "Page text needs more memory than memory_limit leaves", 0);
+		RETURN_THROWS();
+	}
 	buf = safe_emalloc((size_t) count + 1, sizeof(*buf), 0);
 	got = FPDFText_GetText(tp, 0, count, buf);
 	FPDFText_ClosePage(tp);
