@@ -213,7 +213,7 @@ static boolean jpeg_dest_flush(j_compress_ptr cinfo)
 	jpeg_dest *dest = (jpeg_dest *) cinfo->dest;
 
 	if (!pdfium_buf_append(dest->out, dest->chunk, PDFIUM_JPEG_CHUNK)) {
-		ERREXIT(cinfo, JERR_OUT_OF_MEMORY);
+		ERREXIT(cinfo, JERR_FILE_WRITE);
 	}
 	jpeg_dest_init(cinfo);
 	return TRUE;
@@ -224,7 +224,7 @@ static void jpeg_dest_term(j_compress_ptr cinfo)
 	jpeg_dest *dest = (jpeg_dest *) cinfo->dest;
 
 	if (!pdfium_buf_append(dest->out, dest->chunk, PDFIUM_JPEG_CHUNK - dest->pub.free_in_buffer)) {
-		ERREXIT(cinfo, JERR_OUT_OF_MEMORY);
+		ERREXIT(cinfo, JERR_FILE_WRITE);
 	}
 }
 
