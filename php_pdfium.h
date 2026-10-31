@@ -2,6 +2,7 @@
 #define PHP_PDFIUM_H
 
 #include "php.h"
+#include "zend_smart_str.h"
 
 #ifdef ZTS
 #error "pdfium supports NTS PHP only: PDFium is not thread-safe"
@@ -28,6 +29,8 @@ typedef struct { pdfium_doc_handle *h; zend_object std; } pdfium_document;
 typedef struct { pdfium_doc_handle *h; FPDF_PAGE page; int index; bool form_loaded; zend_object std; } pdfium_page;
 typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std; } pdfium_page_iterator;
 typedef struct { FPDF_BITMAP bitmap; zend_object std; } pdfium_bitmap;
+
+typedef struct { smart_str s; bool oom; } pdfium_buf;
 
 extern zend_class_entry *pdfium_ce_document;
 extern zend_class_entry *pdfium_ce_page;
@@ -70,6 +73,10 @@ zend_object *pdfium_document_create(pdfium_doc_handle *h);
 zend_object *pdfium_page_create(pdfium_doc_handle *h, int index);
 
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h);
+
+bool pdfium_memory_fits(size_t bytes);
+
+bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);
 
 zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count);
 

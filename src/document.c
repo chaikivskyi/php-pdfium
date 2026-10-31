@@ -9,7 +9,6 @@
 #include <fpdf_ppo.h>
 #include <fpdf_save.h>
 #include "zend_exceptions.h"
-#include "zend_smart_str.h"
 
 ZEND_METHOD(Pdfium_Document, __construct)
 {
@@ -149,6 +148,11 @@ ZEND_METHOD(Pdfium_Document, metadata)
 
 		if (bytes <= 2) {
 			continue;
+		}
+		if (!pdfium_memory_fits((size_t) bytes / 2 * 5)) {
+			zend_throw_exception_ex(pdfium_ce_memory_exception, 0,
+				"The %s entry needs more memory than memory_limit leaves", entries[i].tag);
+			RETURN_THROWS();
 		}
 		unsigned short *buf = emalloc(bytes);
 		size_t units = 0;
@@ -328,25 +332,26 @@ ZEND_METHOD(Pdfium_Document, merge)
 
 typedef struct {
 	FPDF_FILEWRITE fw;
-	smart_str out;
+	pdfium_buf out;
 } string_writer;
 
 static int string_writer_write(FPDF_FILEWRITE *self, const void *data, unsigned long size)
 {
-	smart_str_appendl(&((string_writer *) self)->out, data, size);
-	return 1;
+	return pdfium_buf_append(&((string_writer *) self)->out, data, size);
 }
 
 static zend_string *serialise(pdfium_doc_handle *h, bool remove_security)
 {
 	string_writer w = {.fw = {.version = 1, .WriteBlock = string_writer_write}};
 
-	if (!FPDF_SaveAsCopy(h->doc, &w.fw, FPDF_NO_INCREMENTAL | (remove_security ? FPDF_REMOVE_SECURITY : 0))) {
-		smart_str_free(&w.out);
-		zend_throw_exception(pdfium_ce_exception, "Cannot serialise the document", 0);
+	if (!FPDF_SaveAsCopy(h->doc, &w.fw, FPDF_NO_INCREMENTAL | (remove_security ? FPDF_REMOVE_SECURITY : 0))
+		|| w.out.oom) {
+		smart_str_free(&w.out.s);
+		zend_throw_exception(w.out.oom ? pdfium_ce_memory_exception : pdfium_ce_exception, w.out.oom
+			? "Serialising the document needs more memory than memory_limit leaves" : "Cannot serialise the document", 0);
 		return NULL;
 	}
-	return smart_str_extract(&w.out);
+	return smart_str_extract(&w.out.s);
 }
 
 ZEND_METHOD(Pdfium_Document, toString)

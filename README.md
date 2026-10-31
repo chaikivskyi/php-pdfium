@@ -160,7 +160,7 @@ Limits:
   `\ValueError`. These limits are not configurable.
 - If `memory_limit` is set and its headroom is below roughly 7 bytes per pixel (the bitmap plus the
   encoder's buffers), `render()` throws `MemoryException` instead of risking a fatal error. The bitmap
-  itself is allocated outside the Zend allocator.
+  is allocated by PHP and counts against `memory_limit` for as long as the `Bitmap` lives.
 - JPEG quality must be between 1 and 100, otherwise `\ValueError`.
 
 ## NTS only

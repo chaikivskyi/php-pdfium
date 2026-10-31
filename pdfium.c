@@ -58,6 +58,23 @@ void pdfium_throw_last_error(const char *context)
 	zend_throw_exception_ex(ce, (zend_long) err, "%s: %s", context, reason);
 }
 
+bool pdfium_memory_fits(size_t bytes)
+{
+	return PG(memory_limit) == -1 || zend_memory_usage(true) + bytes + ZEND_MM_CHUNK_SIZE <= (size_t) PG(memory_limit);
+}
+
+bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len)
+{
+	size_t used = smart_str_get_len(&b->s);
+
+	if (b->oom || (used + len >= b->s.a && !pdfium_memory_fits(used + len))) {
+		b->oom = true;
+		return false;
+	}
+	smart_str_appendl(&b->s, data, len);
+	return true;
+}
+
 static bool scheme_absent_or_registered(const char *path)
 {
 	HashTable *wrappers = php_stream_get_url_stream_wrappers_hash();

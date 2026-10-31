@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <png.h>
 #include <jpeglib.h>
+#include <jerror.h>
 
 #define PDFIUM_MAX_PIXELS 100000000
 #define PDFIUM_JPEG_CHUNK 16384
@@ -58,15 +59,16 @@ ZEND_METHOD(Pdfium_Page, render)
 			PDFIUM_MAX_PIXELS);
 		RETURN_THROWS();
 	}
-	int64_t needed = (int64_t) w * h * 7;
-	if (PG(memory_limit) != -1 && needed > (int64_t) PG(memory_limit) - (int64_t) zend_memory_usage(0)) {
+	if (!pdfium_memory_fits((size_t) w * h * 7)) {
 		zend_throw_exception_ex(pdfium_ce_memory_exception, 0,
 			"Rendering %dx%d pixels needs more memory than memory_limit leaves", w, h);
 		RETURN_THROWS();
 	}
 
-	FPDF_BITMAP bitmap = FPDFBitmap_Create(w, h, 0);
+	void *pixels = safe_emalloc((size_t) w * 4, h, 0);
+	FPDF_BITMAP bitmap = FPDFBitmap_CreateEx(w, h, FPDFBitmap_BGRx, pixels, w * 4);
 	if (!bitmap) {
+		efree(pixels);
 		zend_throw_exception_ex(pdfium_ce_memory_exception, 0, "Cannot allocate a %dx%d bitmap", w, h);
 		RETURN_THROWS();
 	}
@@ -124,14 +126,16 @@ static void png_on_warning(png_structp png, png_const_charp msg)
 
 static void png_on_write(png_structp png, png_bytep data, size_t len)
 {
-	smart_str_appendl((smart_str *) png_get_io_ptr(png), (const char *) data, len);
+	if (!pdfium_buf_append(png_get_io_ptr(png), data, len)) {
+		png_error(png, "memory_limit reached");
+	}
 }
 
 static void png_on_flush(png_structp png)
 {
 }
 
-static bool png_write(png_structp png, png_infop info, const pdfium_bitmap *img, smart_str *out, unsigned char *row)
+static bool png_write(png_structp png, png_infop info, const pdfium_bitmap *img, pdfium_buf *out, unsigned char *row)
 {
 	if (setjmp(png_jmpbuf(png))) {
 		return false;
@@ -153,7 +157,7 @@ static zend_string *encode_png(const pdfium_bitmap *img)
 	char message[PDFIUM_PNG_MSG] = "out of memory";
 	png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, message, png_on_error, png_on_warning);
 	png_infop info = png ? png_create_info_struct(png) : NULL;
-	smart_str out = {0};
+	pdfium_buf out = {0};
 	bool ok = false;
 
 	if (info) {
@@ -161,14 +165,16 @@ static zend_string *encode_png(const pdfium_bitmap *img)
 
 		ok = png_write(png, info, img, &out, row);
 		efree(row);
+	} else {
+		out.oom = true;
 	}
 	png_destroy_write_struct(&png, &info);
 	if (!ok) {
-		smart_str_free(&out);
-		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot encode PNG: %s", message);
+		smart_str_free(&out.s);
+		zend_throw_exception_ex(out.oom ? pdfium_ce_memory_exception : pdfium_ce_exception, 0, "Cannot encode PNG: %s", message);
 		return NULL;
 	}
-	return smart_str_extract(&out);
+	return smart_str_extract(&out.s);
 }
 
 typedef struct {
@@ -179,7 +185,7 @@ typedef struct {
 
 typedef struct {
 	struct jpeg_destination_mgr pub;
-	smart_str *out;
+	pdfium_buf *out;
 	JOCTET chunk[PDFIUM_JPEG_CHUNK];
 } jpeg_dest;
 
@@ -207,7 +213,9 @@ static boolean jpeg_dest_flush(j_compress_ptr cinfo)
 {
 	jpeg_dest *dest = (jpeg_dest *) cinfo->dest;
 
-	smart_str_appendl(dest->out, (const char *) dest->chunk, PDFIUM_JPEG_CHUNK);
+	if (!pdfium_buf_append(dest->out, dest->chunk, PDFIUM_JPEG_CHUNK)) {
+		ERREXIT(cinfo, JERR_OUT_OF_MEMORY);
+	}
 	jpeg_dest_init(cinfo);
 	return TRUE;
 }
@@ -216,7 +224,9 @@ static void jpeg_dest_term(j_compress_ptr cinfo)
 {
 	jpeg_dest *dest = (jpeg_dest *) cinfo->dest;
 
-	smart_str_appendl(dest->out, (const char *) dest->chunk, PDFIUM_JPEG_CHUNK - dest->pub.free_in_buffer);
+	if (!pdfium_buf_append(dest->out, dest->chunk, PDFIUM_JPEG_CHUNK - dest->pub.free_in_buffer)) {
+		ERREXIT(cinfo, JERR_OUT_OF_MEMORY);
+	}
 }
 
 static bool jpeg_write(j_compress_ptr cinfo, jpeg_err *err, jpeg_dest *dest, const pdfium_bitmap *img,
@@ -247,7 +257,7 @@ static zend_string *encode_jpeg(const pdfium_bitmap *img, int quality)
 	struct jpeg_compress_struct cinfo;
 	jpeg_err err;
 	jpeg_dest *dest = emalloc(sizeof(*dest));
-	smart_str out = {0};
+	pdfium_buf out = {0};
 	unsigned char *row = safe_emalloc(FPDFBitmap_GetWidth(img->bitmap), 3, 0);
 	bool ok;
 
@@ -265,11 +275,12 @@ static zend_string *encode_jpeg(const pdfium_bitmap *img, int quality)
 	efree(row);
 	efree(dest);
 	if (!ok) {
-		smart_str_free(&out);
-		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot encode JPEG: %s", err.message);
+		smart_str_free(&out.s);
+		zend_throw_exception_ex(out.oom ? pdfium_ce_memory_exception : pdfium_ce_exception, 0, "Cannot encode JPEG: %s",
+			out.oom ? "memory_limit reached" : err.message);
 		return NULL;
 	}
-	return smart_str_extract(&out);
+	return smart_str_extract(&out.s);
 }
 
 static bool quality_ok(zend_long quality, uint32_t arg)
@@ -346,7 +357,10 @@ void pdfium_bitmap_free_obj(zend_object *obj)
 	pdfium_bitmap *img = pdfium_bitmap_from_obj(obj);
 
 	if (img->bitmap) {
+		void *pixels = FPDFBitmap_GetBuffer(img->bitmap);
+
 		FPDFBitmap_Destroy(img->bitmap);
+		efree(pixels);
 	}
 	zend_object_std_dtor(obj);
 }

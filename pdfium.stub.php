@@ -151,7 +151,8 @@ final class Page
      *
      * @throws \ValueError when $dpi is outside 1..2400, a side would exceed 65,500 pixels, or the image
      *         would exceed 100,000,000 pixels
-     * @throws MemoryException when the bitmap and its encoding would not fit under memory_limit
+     * @throws MemoryException when the bitmap and its encoding would not fit under memory_limit; the
+     *         bitmap counts against memory_limit for as long as the Bitmap lives
      */
     public function render(int $dpi = 150): Bitmap {}
 }
