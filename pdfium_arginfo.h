@@ -1,8 +1,28 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: a23be728c45f1958b661e0a875dccda6d35fd74b */
+ * Stub hash: c22279e7de9197122a557d5d472423965983a9b0 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_open, 0, 1, Pdfium\\Document, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, password, IS_STRING, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_fromString, 0, 1, Pdfium\\Document, 0)
+	ZEND_ARG_TYPE_INFO(0, bytes, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, password, IS_STRING, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_pageCount, 0, 0, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Document_count arginfo_class_Pdfium_Document_pageCount
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_metadata, 0, 0, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Document_permissions arginfo_class_Pdfium_Document_metadata
 
 #define arginfo_class_Pdfium_Page___construct arginfo_class_Pdfium_Document___construct
 
@@ -11,8 +31,7 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_PageIterator_current, 0, 0, Pdfium\\Page, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_PageIterator_key, 0, 0, IS_LONG, 0)
-ZEND_END_ARG_INFO()
+#define arginfo_class_Pdfium_PageIterator_key arginfo_class_Pdfium_Document_pageCount
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_PageIterator_next, 0, 0, IS_VOID, 0)
 ZEND_END_ARG_INFO()
@@ -25,6 +44,11 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_Pdfium_Bitmap___construct arginfo_class_Pdfium_Document___construct
 
 ZEND_METHOD(Pdfium_Document, __construct);
+ZEND_METHOD(Pdfium_Document, open);
+ZEND_METHOD(Pdfium_Document, fromString);
+ZEND_METHOD(Pdfium_Document, pageCount);
+ZEND_METHOD(Pdfium_Document, metadata);
+ZEND_METHOD(Pdfium_Document, permissions);
 ZEND_METHOD(Pdfium_Page, __construct);
 ZEND_METHOD(Pdfium_PageIterator, __construct);
 ZEND_METHOD(Pdfium_PageIterator, current);
@@ -36,6 +60,16 @@ ZEND_METHOD(Pdfium_Bitmap, __construct);
 
 static const zend_function_entry class_Pdfium_Document_methods[] = {
 	ZEND_ME(Pdfium_Document, __construct, arginfo_class_Pdfium_Document___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Pdfium_Document, open, arginfo_class_Pdfium_Document_open, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Pdfium_Document, fromString, arginfo_class_Pdfium_Document_fromString, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Pdfium_Document, pageCount, arginfo_class_Pdfium_Document_pageCount, ZEND_ACC_PUBLIC)
+#if (PHP_VERSION_ID >= 80400)
+	ZEND_RAW_FENTRY("count", zim_Pdfium_Document_pageCount, arginfo_class_Pdfium_Document_count, ZEND_ACC_PUBLIC, NULL, NULL)
+#else
+	ZEND_RAW_FENTRY("count", zim_Pdfium_Document_pageCount, arginfo_class_Pdfium_Document_count, ZEND_ACC_PUBLIC)
+#endif
+	ZEND_ME(Pdfium_Document, metadata, arginfo_class_Pdfium_Document_metadata, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, permissions, arginfo_class_Pdfium_Document_permissions, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -143,7 +177,7 @@ static zend_class_entry *register_class_Pdfium_MemoryException(zend_class_entry 
 	return class_entry;
 }
 
-static zend_class_entry *register_class_Pdfium_Document(void)
+static zend_class_entry *register_class_Pdfium_Document(zend_class_entry *class_entry_Countable)
 {
 	zend_class_entry ce, *class_entry;
 
@@ -154,6 +188,7 @@ static zend_class_entry *register_class_Pdfium_Document(void)
 	class_entry = zend_register_internal_class_ex(&ce, NULL);
 	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE;
 #endif
+	zend_class_implements(class_entry, 1, class_entry_Countable);
 
 	return class_entry;
 }

@@ -65,6 +65,10 @@ pdfium_doc_handle *pdfium_doc_handle_create(FPDF_DOCUMENT doc, zend_string *buff
 void pdfium_doc_handle_addref(pdfium_doc_handle *h);
 void pdfium_doc_handle_release(pdfium_doc_handle *h);
 
+zend_object *pdfium_document_create(pdfium_doc_handle *h);
+
+zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count);
+
 void pdfium_document_free_obj(zend_object *obj);
 void pdfium_page_free_obj(zend_object *obj);
 void pdfium_page_iterator_free_obj(zend_object *obj);

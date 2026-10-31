@@ -109,7 +109,7 @@ PHP_MINIT_FUNCTION(pdfium)
 	pdfium_ce_memory_exception = register_class_Pdfium_MemoryException(pdfium_ce_exception);
 
 	init_handlers(&document_handlers, XtOffsetOf(pdfium_document, std), pdfium_document_free_obj);
-	pdfium_ce_document = register_class_Pdfium_Document();
+	pdfium_ce_document = register_class_Pdfium_Document(zend_ce_countable);
 	pdfium_ce_document->create_object = document_create;
 
 	init_handlers(&page_handlers, XtOffsetOf(pdfium_page, std), pdfium_page_free_obj);
