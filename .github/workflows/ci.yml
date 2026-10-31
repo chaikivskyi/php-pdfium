@@ -117,5 +117,8 @@ jobs:
         run: scripts/fetch-pdfium.sh
       - name: Build and test under Valgrind
         run: |
-          USE_ZEND_ALLOC=0 VALGRIND_OPTS="--suppressions=$PWD/ci/valgrind.supp" \
-          scripts/test.sh -m tests
+          # run-tests passes no --leak-check of its own. The tracked allocator frees the Zend heap at request
+          # end, as the real one does, so what is left is native memory: PDFium's, libpng's and libjpeg's.
+          USE_ZEND_ALLOC=0 USE_TRACKED_ALLOC=1 \
+          VALGRIND_OPTS="--leak-check=full --suppressions=$PWD/ci/valgrind.supp" \
+          scripts/test.sh -m -d report_memleaks=0 tests
