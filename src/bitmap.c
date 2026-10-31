@@ -313,6 +313,7 @@ static void write_and_release(zend_string *data, const char *path)
 		stream = php_stream_open_wrapper(path, "wb", 0, NULL);
 	}
 	if (stream) {
+		stream->flags |= PHP_STREAM_FLAG_SUPPRESS_ERRORS;
 		bool written = php_stream_write(stream, ZSTR_VAL(data), ZSTR_LEN(data)) == (ssize_t) ZSTR_LEN(data);
 
 		if (php_stream_close(stream) == 0 && written) {
