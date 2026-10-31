@@ -72,7 +72,7 @@ Run the tests with `scripts/test.sh` (or `php run-tests.php -n -d extension=$PWD
 ```php
 use Pdfium\Document;
 
-$doc = Document::open('/path/file.pdf', password: null);
+$doc = Document::open('/path/file.pdf', password: null);   // a local path, not a stream wrapper
 $doc = Document::fromString($bytes, password: null);
 
 $doc->pageCount();   // int; no page is parsed to answer it
@@ -82,7 +82,7 @@ $doc->permissions(); // array<string, bool>: reported, never enforced
 
 foreach ($doc as $page) {              // lazy: one page loaded at a time; same as $doc->pages()
     $page->index();                    // 0-based
-    $page->width();                    // float, points, crop box after rotation
+    $page->width();                    // float, points, crop box after rotation: 595.28 for A4
     $page->height();
     $page->rotation();                 // 0, 90, 180 or 270
     $text = $page->text();             // UTF-8
@@ -104,6 +104,10 @@ $bytes = $doc->toString();
 $doc->save('/tmp/open.pdf', removeSecurity: true);
 ```
 
+`open()` reads the whole file through PHP streams, so stream wrappers (`phar://`, `s3://` and the like)
+and `open_basedir` apply. The document keeps the bytes in PHP memory, counted against `memory_limit`,
+and never touches the file again, so you can save over it while the document is open.
+
 Page indexes are 0-based everywhere. There is no `close()`: a document is freed when the last
 reference to it, including those held by its `Page` objects, goes away. `unset($doc)` is the idiom.
 A `Page` keeps its `Document` alive, and a document from `fromString()` keeps the string alive.
@@ -114,19 +118,23 @@ A `Page` keeps its `Document` alive, and a document from `fromString()` keeps th
 
 ## Exceptions
 
-Every failure throws. Nothing returns `false` and nothing raises a warning.
+Every failure throws. Nothing returns `false` and nothing shows or logs a warning or a notice. When
+`open()`, `save()`, `savePng()` or `saveJpeg()` fails, the PHP warning that says why (for example `No
+such file or directory`) becomes the `FileException`'s previous exception. For local files no error
+handler is called. Through stream wrappers, the call behaves like `@fopen()`: warnings are neither shown
+nor logged (fatal errors still are), and your error handler, if you set one, still sees them.
 
 | Class | When |
 |---|---|
 | `Pdfium\Exception` | Base class; extends `\RuntimeException`. Also thrown when PDFium cannot import, serialise or encode. |
-| `Pdfium\FileException` | The file cannot be read or written, or `open_basedir` forbids it. |
+| `Pdfium\FileException` | The file cannot be read or written, the path is `MAXPATHLEN` or longer, or `open_basedir` forbids it. |
 | `Pdfium\FormatException` | Not a PDF, or corrupt beyond what PDFium recovers. |
 | `Pdfium\PasswordException` | A password is required, or the one given is wrong. |
 | `Pdfium\UnsupportedException` | A security handler or feature PDFium does not support. |
-| `Pdfium\MemoryException` | A render would not fit under `memory_limit`. |
+| `Pdfium\MemoryException` | A render, a page's text, a PNG or JPEG encoding, or a serialised document would not fit under `memory_limit`. |
 
 A bad argument throws `\ValueError` (index out of range, empty list, DPI or quality out of range, empty
-bytes) or `\TypeError` (a non-int index, a non-`Document` in a merge list).
+bytes or path) or `\TypeError` (a non-int index, a non-`Document` in a merge list).
 
 ## Behaviour that follows PDFium
 
@@ -136,10 +144,11 @@ Where PDFium has a default, the extension exposes it and adds no policy of its o
   method refuses to work because of them.
 - **`save()` and `toString()` keep the source document's encryption** unless you pass
   `removeSecurity: true`, which writes an unencrypted copy.
-- **Split and merge output is unencrypted and carries no metadata, no viewer preferences, no
-  bookmarks and no working form fields.** `extractPages()` and `merge()` use PDFium's page import.
-  Pages and their content carry over; PDFium has no API to set metadata or to add encryption, and
-  merged form fields render but no longer work.
+- **Split and merge output keeps only the pages.** `extractPages()` and `merge()` copy pages and their
+  content into a new, unencrypted document without bookmarks, viewer preferences or the sources'
+  metadata: `metadata()` reports only `creator` and `producer` "PDFium" and the `creationDate` of the
+  split or merge. Form fields still draw but can no longer be filled in. PDFium has no API to set
+  metadata, add encryption or create bookmarks; viewer preferences are not copied.
 - **A failed `save()` removes the partial file.**
 - `save()`, `savePng()` and `saveJpeg()` write through PHP streams, so `open_basedir` and stream
   wrappers apply.
@@ -162,6 +171,8 @@ Limits:
   encoder's buffers), `render()` throws `MemoryException` instead of risking a fatal error. The bitmap
   is allocated by PHP and counts against `memory_limit` for as long as the `Bitmap` lives.
 - JPEG quality must be between 1 and 100, otherwise `\ValueError`.
+- Encoding to PNG or JPEG stops with `MemoryException` before its output would reach `memory_limit`,
+  as do `toString()`, `save()` and `text()`. None of them ends in a fatal error.
 
 ## NTS only
 
