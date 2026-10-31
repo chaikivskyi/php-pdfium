@@ -28,3 +28,4 @@ tests/*.out
 tests/*.php
 tests/*.sh
 tests/*.mem
+docs/_build/
