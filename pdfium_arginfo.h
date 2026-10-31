@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 13f7f1500be24e17cf8d81d98a4166f2e415b16f */
+ * Stub hash: 54384aa9540c738c834ed55e5d1a2dff708c9b7d */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -44,6 +44,9 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Page_rotation arginfo_class_Pdfium_Document_pageCount
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Page_text, 0, 0, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 #define arginfo_class_Pdfium_PageIterator___construct arginfo_class_Pdfium_Document___construct
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_PageIterator_current, 0, 0, Pdfium\\Page, 0)
@@ -74,6 +77,7 @@ ZEND_METHOD(Pdfium_Page, index);
 ZEND_METHOD(Pdfium_Page, width);
 ZEND_METHOD(Pdfium_Page, height);
 ZEND_METHOD(Pdfium_Page, rotation);
+ZEND_METHOD(Pdfium_Page, text);
 ZEND_METHOD(Pdfium_PageIterator, __construct);
 ZEND_METHOD(Pdfium_PageIterator, current);
 ZEND_METHOD(Pdfium_PageIterator, key);
@@ -110,6 +114,7 @@ static const zend_function_entry class_Pdfium_Page_methods[] = {
 	ZEND_ME(Pdfium_Page, width, arginfo_class_Pdfium_Page_width, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, height, arginfo_class_Pdfium_Page_height, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, rotation, arginfo_class_Pdfium_Page_rotation, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, text, arginfo_class_Pdfium_Page_text, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 

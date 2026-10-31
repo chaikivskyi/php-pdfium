@@ -4,6 +4,7 @@
 
 #include "php_pdfium.h"
 #include <fpdf_edit.h>
+#include <fpdf_text.h>
 #include "zend_exceptions.h"
 
 ZEND_METHOD(Pdfium_Page, __construct)
@@ -43,6 +44,31 @@ ZEND_METHOD(Pdfium_Page, rotation)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
 	RETURN_LONG(FPDFPage_GetRotation(this_page(ZEND_THIS)->page) * 90);
+}
+
+ZEND_METHOD(Pdfium_Page, text)
+{
+	FPDF_PAGE page = this_page(ZEND_THIS)->page;
+	FPDF_TEXTPAGE tp;
+	unsigned short *buf;
+	int count, got;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	tp = FPDFText_LoadPage(page);
+	if (!tp) {
+		zend_throw_exception(pdfium_ce_format_exception, "Cannot load page text", 0);
+		RETURN_THROWS();
+	}
+	count = FPDFText_CountChars(tp);
+	if (count <= 0) {
+		FPDFText_ClosePage(tp);
+		RETURN_EMPTY_STRING();
+	}
+	buf = safe_emalloc((size_t) count + 1, sizeof(*buf), 0);
+	got = FPDFText_GetText(tp, 0, count, buf);
+	FPDFText_ClosePage(tp);
+	RETVAL_STR(pdfium_utf16le_to_utf8(buf, got > 0 ? (size_t) got - 1 : 0));
+	efree(buf);
 }
 
 zend_object *pdfium_page_create(pdfium_doc_handle *h, int index)

@@ -100,6 +100,13 @@ final class Page
 
     /** Page rotation in degrees: 0, 90, 180 or 270. */
     public function rotation(): int {}
+
+    /**
+     * The whole page as UTF-8, with PDFium's line breaks kept as they are.
+     *
+     * @throws FormatException when PDFium cannot load the page's text
+     */
+    public function text(): string {}
 }
 
 /**

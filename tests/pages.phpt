@@ -14,11 +14,16 @@ $it = $doc->pages();
 foreach ($it as $p) {}
 foreach ($it as $p) echo $p->index(), ' ';
 echo "\n";
+$it = $doc->pages();
+foreach ($it as $i => $p) { if ($i === 1) break; }
+foreach ($it as $p) echo $p->index(), ' ';
+echo "\n";
 foreach (Pdfium\Document::open(__DIR__ . '/fixtures/empty.pdf')->pages() as $p) echo "never";
 echo "done\n";
 ?>
 --EXPECT--
 0:0 1:1 2:2 
 0 0 1 2 
+0 1 2 
 0 1 2 
 done
