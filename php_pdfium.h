@@ -1,0 +1,68 @@
+#ifndef PHP_PDFIUM_H
+#define PHP_PDFIUM_H
+
+#ifdef ZTS
+#error "pdfium supports NTS PHP only: PDFium is not thread-safe"
+#endif
+
+#include "php.h"
+#include <fpdfview.h>
+#include <fpdf_formfill.h>
+
+#define PHP_PDFIUM_VERSION "0.1.0-dev"
+
+extern zend_module_entry pdfium_module_entry;
+#define phpext_pdfium_ptr &pdfium_module_entry
+
+typedef struct {
+	FPDF_DOCUMENT doc;
+	FPDF_FORMHANDLE form;
+	FPDF_FORMFILLINFO form_info;
+	zend_string *buffer;
+	zval sources;
+	zend_object std;
+} pdfium_document;
+
+typedef struct { zend_object *doc; FPDF_PAGE page; int index; zend_object std; } pdfium_page;
+typedef struct { zend_object *doc; int index; zval current; zend_object std; } pdfium_page_iterator;
+typedef struct { FPDF_BITMAP bitmap; int width; int height; zend_object std; } pdfium_bitmap;
+
+extern zend_class_entry *pdfium_ce_document;
+extern zend_class_entry *pdfium_ce_page;
+extern zend_class_entry *pdfium_ce_page_iterator;
+extern zend_class_entry *pdfium_ce_bitmap;
+extern zend_class_entry *pdfium_ce_exception;
+extern zend_class_entry *pdfium_ce_file_exception;
+extern zend_class_entry *pdfium_ce_format_exception;
+extern zend_class_entry *pdfium_ce_password_exception;
+extern zend_class_entry *pdfium_ce_unsupported_exception;
+extern zend_class_entry *pdfium_ce_memory_exception;
+
+static inline pdfium_document *pdfium_document_from_obj(zend_object *obj)
+{
+	return (pdfium_document *)((char *)obj - XtOffsetOf(pdfium_document, std));
+}
+
+static inline pdfium_page *pdfium_page_from_obj(zend_object *obj)
+{
+	return (pdfium_page *)((char *)obj - XtOffsetOf(pdfium_page, std));
+}
+
+static inline pdfium_page_iterator *pdfium_page_iterator_from_obj(zend_object *obj)
+{
+	return (pdfium_page_iterator *)((char *)obj - XtOffsetOf(pdfium_page_iterator, std));
+}
+
+static inline pdfium_bitmap *pdfium_bitmap_from_obj(zend_object *obj)
+{
+	return (pdfium_bitmap *)((char *)obj - XtOffsetOf(pdfium_bitmap, std));
+}
+
+void pdfium_document_free_obj(zend_object *obj);
+void pdfium_page_free_obj(zend_object *obj);
+void pdfium_page_iterator_free_obj(zend_object *obj);
+void pdfium_bitmap_free_obj(zend_object *obj);
+
+void pdfium_throw_last_error(const char *context);
+
+#endif

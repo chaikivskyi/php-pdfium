@@ -18,6 +18,7 @@
 /modules/
 /run-tests.php
 *.lo
+*.dep
 *.la
 .libs/
 tests/*.diff
