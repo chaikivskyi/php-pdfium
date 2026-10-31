@@ -79,6 +79,43 @@ final class Document implements \Countable, \IteratorAggregate
      * @implementation-alias Pdfium\Document::pages
      */
     public function getIterator(): PageIterator {}
+
+    /**
+     * A new document with the pages at these int indexes, in this order, duplicates kept. It carries
+     * no metadata and no encryption, and keeps this document alive for as long as it lives.
+     *
+     * @throws \ValueError when $indexes is empty or an index is outside 0..pageCount()-1
+     * @throws \TypeError when an element is not an int
+     * @throws Exception when PDFium cannot import the pages
+     */
+    public function extractPages(array $indexes): Document {}
+
+    /**
+     * A new document with every page of each Document in turn, duplicates kept. It carries no
+     * metadata, no viewer preferences and no encryption, and keeps the given documents alive for as
+     * long as it lives.
+     *
+     * @throws \ValueError when $documents is empty
+     * @throws \TypeError when an element is not a Document
+     * @throws Exception when PDFium cannot import the pages
+     */
+    public static function merge(array $documents): Document {}
+
+    /**
+     * Writes the bytes toString() returns through PHP streams, so open_basedir and stream
+     * wrappers apply. A file left partly written by a failed write is removed.
+     *
+     * @throws FileException when $path cannot be written
+     * @throws Exception when PDFium cannot serialise the document
+     */
+    public function save(string $path, bool $removeSecurity = false): void {}
+
+    /**
+     * A full, non-incremental copy. Encryption is kept unless $removeSecurity is true.
+     *
+     * @throws Exception when PDFium cannot serialise the document
+     */
+    public function toString(bool $removeSecurity = false): string {}
 }
 
 /**

@@ -1,5 +1,5 @@
 --TEST--
-Document::page() rejects indexes outside the page range, also when there are no pages
+Document::page() and extractPages() reject indexes outside the page range, also when there are no pages
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -10,8 +10,10 @@ foreach ([-1, 3] as $i) {
 }
 $empty = Pdfium\Document::open(__DIR__ . '/fixtures/empty.pdf');
 try { $empty->page(0); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
+try { $empty->extractPages([0]); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 ?>
 --EXPECT--
 Pdfium\Document::page(): Argument #1 ($index) must be between 0 and 2
 Pdfium\Document::page(): Argument #1 ($index) must be between 0 and 2
 Pdfium\Document::page(): Argument #1 ($index) must be a page index, but the document has no pages
+Pdfium\Document::extractPages(): Argument #1 ($indexes) must contain only page indexes, but the document has no pages

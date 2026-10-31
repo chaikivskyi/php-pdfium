@@ -3,10 +3,8 @@
 #endif
 
 #include "php_pdfium.h"
-#include "fopen_wrappers.h"
 #include "zend_exceptions.h"
 #include "zend_smart_str.h"
-#include <ctype.h>
 #include <math.h>
 #include <setjmp.h>
 #include <stdio.h>
@@ -283,48 +281,6 @@ static bool quality_ok(zend_long quality, uint32_t arg)
 	return true;
 }
 
-static bool scheme_absent_or_registered(const char *path)
-{
-	HashTable *wrappers = php_stream_get_url_stream_wrappers_hash();
-	size_t n = 0;
-
-	while (isalnum((unsigned char) path[n]) || path[n] == '+' || path[n] == '-' || path[n] == '.') {
-		n++;
-	}
-	if (n < 2 || path[n] != ':' || (strncmp(path + n + 1, "//", 2) != 0 && !(n == 4 && !memcmp(path, "data:", 5)))) {
-		return true;
-	}
-	return zend_hash_str_find_ptr(wrappers, path, n) || zend_hash_str_find_ptr_lc(wrappers, path, n);
-}
-
-static void write_and_release(zend_string *data, const char *path)
-{
-	const char *local_path;
-	php_stream_wrapper *wrapper = NULL;
-	php_stream *stream = NULL;
-
-	if (!data) {
-		return;
-	}
-	if (scheme_absent_or_registered(path)) {
-		wrapper = php_stream_locate_url_wrapper(path, &local_path, 0);
-	}
-	if (wrapper && (wrapper != &php_plain_files_wrapper || php_check_open_basedir_ex(local_path, 0) == 0)) {
-		stream = php_stream_open_wrapper(path, "wb", 0, NULL);
-	}
-	if (stream) {
-		stream->flags |= PHP_STREAM_FLAG_SUPPRESS_ERRORS;
-		bool written = php_stream_write(stream, ZSTR_VAL(data), ZSTR_LEN(data)) == (ssize_t) ZSTR_LEN(data);
-
-		if (php_stream_close(stream) == 0 && written) {
-			zend_string_release(data);
-			return;
-		}
-	}
-	zend_string_release(data);
-	zend_throw_exception_ex(pdfium_ce_file_exception, 0, "Cannot write %s", path);
-}
-
 ZEND_METHOD(Pdfium_Bitmap, toPng)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
@@ -364,7 +320,7 @@ ZEND_METHOD(Pdfium_Bitmap, savePng)
 		Z_PARAM_PATH(path, path_len)
 	ZEND_PARSE_PARAMETERS_END();
 
-	write_and_release(encode_png(this_bitmap(ZEND_THIS)), path);
+	pdfium_write_and_release(encode_png(this_bitmap(ZEND_THIS)), path);
 }
 
 ZEND_METHOD(Pdfium_Bitmap, saveJpeg)
@@ -382,7 +338,7 @@ ZEND_METHOD(Pdfium_Bitmap, saveJpeg)
 	if (!quality_ok(quality, 2)) {
 		RETURN_THROWS();
 	}
-	write_and_release(encode_jpeg(this_bitmap(ZEND_THIS), (int) quality), path);
+	pdfium_write_and_release(encode_jpeg(this_bitmap(ZEND_THIS), (int) quality), path);
 }
 
 void pdfium_bitmap_free_obj(zend_object *obj)

@@ -5,7 +5,11 @@
 #include "php_pdfium.h"
 #include "fopen_wrappers.h"
 #include <fpdf_doc.h>
+#include <fpdf_edit.h>
+#include <fpdf_ppo.h>
+#include <fpdf_save.h>
 #include "zend_exceptions.h"
+#include "zend_smart_str.h"
 
 ZEND_METHOD(Pdfium_Document, __construct)
 {
@@ -24,7 +28,7 @@ pdfium_doc_handle *pdfium_doc_handle_create(FPDF_DOCUMENT doc, zend_string *buff
 
 FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h)
 {
-	if (!h->form_tried && FPDF_GetFormType(h->doc) != FORMTYPE_NONE) {
+	if (!h->form_tried) {
 		h->form_tried = true;
 		h->form_info.version = 2;
 		h->form = FPDFDOC_InitFormFillEnvironment(h->doc, &h->form_info);
@@ -45,16 +49,10 @@ void pdfium_doc_handle_release(pdfium_doc_handle *h)
 	if (h->form) {
 		FPDFDOC_ExitFormFillEnvironment(h->form);
 	}
-	if (h->doc) {
-		FPDF_CloseDocument(h->doc);
-	}
+	FPDF_CloseDocument(h->doc);
 	if (h->buffer) {
 		zend_string_release(h->buffer);
 	}
-	for (uint32_t i = 0; i < h->nsources; i++) {
-		pdfium_doc_handle_release(h->sources[i]);
-	}
-	efree(h->sources);
 	efree(h);
 }
 
@@ -223,4 +221,161 @@ ZEND_METHOD(Pdfium_Document, pages)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
 	RETURN_OBJ(pdfium_page_iterator_create(this_handle(ZEND_THIS)));
+}
+
+static zend_object *assemble(pdfium_doc_handle **sources, uint32_t nsources, const int *indexes, unsigned long count)
+{
+	FPDF_DOCUMENT doc = FPDF_CreateNewDocument();
+
+	if (!doc) {
+		zend_throw_exception(pdfium_ce_memory_exception, "Cannot create a new document", 0);
+		return NULL;
+	}
+	pdfium_doc_handle *h = pdfium_doc_handle_create(doc, NULL);
+
+	for (uint32_t i = 0; i < nsources; i++) {
+		if (!FPDF_ImportPagesByIndex(h->doc, sources[i]->doc, indexes, count, FPDF_GetPageCount(h->doc))) {
+			pdfium_doc_handle_release(h);
+			zend_throw_exception(pdfium_ce_exception, "Cannot import pages", 0);
+			return NULL;
+		}
+	}
+	return pdfium_document_create(h);
+}
+
+static bool indexes_from(HashTable *ht, int page_count, int *out)
+{
+	zval *zv;
+
+	ZEND_HASH_FOREACH_VAL(ht, zv) {
+		ZVAL_DEREF(zv);
+		if (Z_TYPE_P(zv) != IS_LONG) {
+			zend_argument_type_error(1, "must contain only int, %s given", zend_zval_type_name(zv));
+			return false;
+		}
+		if (!page_count) {
+			zend_argument_value_error(1, "must contain only page indexes, but the document has no pages");
+			return false;
+		}
+		if (Z_LVAL_P(zv) < 0 || Z_LVAL_P(zv) >= page_count) {
+			zend_argument_value_error(1, "must contain only indexes between 0 and %d", page_count - 1);
+			return false;
+		}
+		*out++ = (int) Z_LVAL_P(zv);
+	} ZEND_HASH_FOREACH_END();
+	return true;
+}
+
+ZEND_METHOD(Pdfium_Document, extractPages)
+{
+	HashTable *ht;
+	pdfium_doc_handle *h = this_handle(ZEND_THIS);
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_ARRAY_HT(ht)
+	ZEND_PARSE_PARAMETERS_END();
+
+	uint32_t n = zend_hash_num_elements(ht);
+	if (!n) {
+		zend_argument_value_error(1, "must not be empty");
+		RETURN_THROWS();
+	}
+	int *indexes = safe_emalloc(n, sizeof(int), 0);
+	if (!indexes_from(ht, FPDF_GetPageCount(h->doc), indexes)) {
+		efree(indexes);
+		RETURN_THROWS();
+	}
+	zend_object *doc = assemble(&h, 1, indexes, n);
+	efree(indexes);
+	if (!doc) {
+		RETURN_THROWS();
+	}
+	RETURN_OBJ(doc);
+}
+
+ZEND_METHOD(Pdfium_Document, merge)
+{
+	HashTable *ht;
+	zval *zv;
+	uint32_t n = 0;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_ARRAY_HT(ht)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!zend_hash_num_elements(ht)) {
+		zend_argument_value_error(1, "must not be empty");
+		RETURN_THROWS();
+	}
+	pdfium_doc_handle **sources = safe_emalloc(zend_hash_num_elements(ht), sizeof(*sources), 0);
+	ZEND_HASH_FOREACH_VAL(ht, zv) {
+		ZVAL_DEREF(zv);
+		if (Z_TYPE_P(zv) != IS_OBJECT || Z_OBJCE_P(zv) != pdfium_ce_document) {
+			zend_argument_type_error(1, "must contain only Pdfium\\Document, %s given", zend_zval_type_name(zv));
+			efree(sources);
+			RETURN_THROWS();
+		}
+		sources[n++] = this_handle(zv);
+	} ZEND_HASH_FOREACH_END();
+
+	zend_object *doc = assemble(sources, n, NULL, 0);
+	efree(sources);
+	if (!doc) {
+		RETURN_THROWS();
+	}
+	RETURN_OBJ(doc);
+}
+
+typedef struct {
+	FPDF_FILEWRITE fw;
+	smart_str out;
+} string_writer;
+
+static int string_writer_write(FPDF_FILEWRITE *self, const void *data, unsigned long size)
+{
+	smart_str_appendl(&((string_writer *) self)->out, data, size);
+	return 1;
+}
+
+static zend_string *serialise(pdfium_doc_handle *h, bool remove_security)
+{
+	string_writer w = {.fw = {.version = 1, .WriteBlock = string_writer_write}};
+
+	if (!FPDF_SaveAsCopy(h->doc, &w.fw, FPDF_NO_INCREMENTAL | (remove_security ? FPDF_REMOVE_SECURITY : 0))) {
+		smart_str_free(&w.out);
+		zend_throw_exception(pdfium_ce_exception, "Cannot serialise the document", 0);
+		return NULL;
+	}
+	return smart_str_extract(&w.out);
+}
+
+ZEND_METHOD(Pdfium_Document, toString)
+{
+	bool remove_security = false;
+
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(remove_security)
+	ZEND_PARSE_PARAMETERS_END();
+
+	zend_string *bytes = serialise(this_handle(ZEND_THIS), remove_security);
+	if (!bytes) {
+		RETURN_THROWS();
+	}
+	RETURN_STR(bytes);
+}
+
+ZEND_METHOD(Pdfium_Document, save)
+{
+	char *path;
+	size_t path_len;
+	bool remove_security = false;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_PATH(path, path_len)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(remove_security)
+	ZEND_PARSE_PARAMETERS_END();
+
+	pdfium_write_and_release(serialise(this_handle(ZEND_THIS), remove_security), path);
 }

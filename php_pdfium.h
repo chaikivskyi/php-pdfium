@@ -21,8 +21,6 @@ typedef struct pdfium_doc_handle {
 	bool form_tried;
 	FPDF_FORMFILLINFO form_info;
 	zend_string *buffer;
-	struct pdfium_doc_handle **sources;
-	uint32_t nsources;
 	uint32_t refs;
 } pdfium_doc_handle;
 
@@ -81,5 +79,7 @@ void pdfium_page_iterator_free_obj(zend_object *obj);
 void pdfium_bitmap_free_obj(zend_object *obj);
 
 void pdfium_throw_last_error(const char *context);
+
+void pdfium_write_and_release(zend_string *data, const char *path);
 
 #endif

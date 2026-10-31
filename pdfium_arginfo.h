@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 1586b4a1f00d798249c36568dd480875a6003075 */
+ * Stub hash: 7f72a155a4e58862f9fd79d6607c8bddbe9e937d */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -32,6 +32,23 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_pages, 0, 0
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Document_getIterator arginfo_class_Pdfium_Document_pages
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_extractPages, 0, 1, Pdfium\\Document, 0)
+	ZEND_ARG_TYPE_INFO(0, indexes, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_merge, 0, 1, Pdfium\\Document, 0)
+	ZEND_ARG_TYPE_INFO(0, documents, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_save, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, path, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, removeSecurity, _IS_BOOL, 0, "false")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_toString, 0, 0, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, removeSecurity, _IS_BOOL, 0, "false")
+ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Page___construct arginfo_class_Pdfium_Document___construct
 
@@ -95,6 +112,10 @@ ZEND_METHOD(Pdfium_Document, metadata);
 ZEND_METHOD(Pdfium_Document, permissions);
 ZEND_METHOD(Pdfium_Document, page);
 ZEND_METHOD(Pdfium_Document, pages);
+ZEND_METHOD(Pdfium_Document, extractPages);
+ZEND_METHOD(Pdfium_Document, merge);
+ZEND_METHOD(Pdfium_Document, save);
+ZEND_METHOD(Pdfium_Document, toString);
 ZEND_METHOD(Pdfium_Page, __construct);
 ZEND_METHOD(Pdfium_Page, index);
 ZEND_METHOD(Pdfium_Page, width);
@@ -135,6 +156,10 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 #else
 	ZEND_RAW_FENTRY("getIterator", zim_Pdfium_Document_pages, arginfo_class_Pdfium_Document_getIterator, ZEND_ACC_PUBLIC)
 #endif
+	ZEND_ME(Pdfium_Document, extractPages, arginfo_class_Pdfium_Document_extractPages, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, merge, arginfo_class_Pdfium_Document_merge, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	ZEND_ME(Pdfium_Document, save, arginfo_class_Pdfium_Document_save, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, toString, arginfo_class_Pdfium_Document_toString, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 

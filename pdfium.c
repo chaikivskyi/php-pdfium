@@ -5,9 +5,11 @@
 #include "php_pdfium.h"
 #include "ext/spl/spl_exceptions.h"
 #include "ext/standard/info.h"
+#include "fopen_wrappers.h"
 #include "zend_exceptions.h"
 #include "zend_interfaces.h"
 #include "pdfium_arginfo.h"
+#include <ctype.h>
 
 zend_class_entry *pdfium_ce_document;
 zend_class_entry *pdfium_ce_page;
@@ -54,6 +56,66 @@ void pdfium_throw_last_error(const char *context)
 			break;
 	}
 	zend_throw_exception_ex(ce, (zend_long) err, "%s: %s", context, reason);
+}
+
+static bool scheme_absent_or_registered(const char *path)
+{
+	HashTable *wrappers = php_stream_get_url_stream_wrappers_hash();
+	size_t n = 0;
+
+	while (isalnum((unsigned char) path[n]) || path[n] == '+' || path[n] == '-' || path[n] == '.') {
+		n++;
+	}
+	if (n < 2 || path[n] != ':' || (strncmp(path + n + 1, "//", 2) != 0 && !(n == 4 && !memcmp(path, "data:", 5)))) {
+		return true;
+	}
+	return zend_hash_str_find_ptr(wrappers, path, n) || zend_hash_str_find_ptr_lc(wrappers, path, n);
+}
+
+static bool removable_on_failure(php_stream_wrapper *wrapper, php_stream *stream)
+{
+	php_stream_statbuf ssb;
+
+	if (!wrapper->wops->unlink) {
+		return false;
+	}
+	return wrapper != &php_plain_files_wrapper || (php_stream_stat(stream, &ssb) == 0 && S_ISREG(ssb.sb.st_mode));
+}
+
+void pdfium_write_and_release(zend_string *data, const char *path)
+{
+	const char *local_path;
+	php_stream_wrapper *wrapper = NULL;
+	php_stream *stream = NULL;
+
+	if (!data) {
+		return;
+	}
+	if (scheme_absent_or_registered(path)) {
+		wrapper = php_stream_locate_url_wrapper(path, &local_path, 0);
+	}
+	if (wrapper && (wrapper != &php_plain_files_wrapper || php_check_open_basedir_ex(local_path, 0) == 0)) {
+		stream = php_stream_open_wrapper(path, "wb", 0, NULL);
+	}
+	if (stream) {
+		stream->flags |= PHP_STREAM_FLAG_SUPPRESS_ERRORS;
+		bool removable = removable_on_failure(wrapper, stream);
+		bool written = php_stream_write(stream, ZSTR_VAL(data), ZSTR_LEN(data)) == (ssize_t) ZSTR_LEN(data);
+
+		if (php_stream_close(stream) == 0 && written) {
+			zend_string_release(data);
+			return;
+		}
+		if (removable) {
+			int error_reporting = EG(error_reporting);
+
+			EG(error_reporting) = 0;
+			wrapper->wops->unlink(wrapper, path, 0, NULL);
+			EG(error_reporting) = error_reporting;
+		}
+	}
+	zend_string_release(data);
+	zend_throw_exception_ex(pdfium_ce_file_exception, 0, "Cannot write %s", path);
 }
 
 static zend_object *object_create(zend_class_entry *ce, size_t size, const zend_object_handlers *handlers)
