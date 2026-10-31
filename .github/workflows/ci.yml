@@ -75,38 +75,27 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: none
-          tools: none
-        env:
-          phpts: nts
       - name: Install libpng and libjpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libpng-dev libjpeg-dev pkg-config
+      - name: Build PHP with AddressSanitizer
+        run: ci/php-asan.sh "$RUNNER_TEMP/php"
       - name: Fetch PDFium
         run: scripts/fetch-pdfium.sh
       - name: Build with AddressSanitizer
         run: |
-          phpize
-          ./configure --with-pdfium="$PWD/src/libpdfium" \
+          "$RUNNER_TEMP/php/bin/phpize"
+          ./configure --with-php-config="$RUNNER_TEMP/php/bin/php-config" --with-pdfium="$PWD/src/libpdfium" \
             CFLAGS='-fsanitize=address -fno-omit-frame-pointer -g' LDFLAGS=-fsanitize=address
           make
       - name: Test
         run: |
-          # PHP dlopens extensions with RTLD_DEEPBIND, which the ASan runtime aborts on; the shim
-          # (itself linked against libasan, so the runtime loads with it) strips the flag.
-          gcc -shared -fPIC -fsanitize=address -o "$RUNNER_TEMP/nodeepbind.so" ci/nodeepbind.c
-          TEST_PHP_EXECUTABLE="$(command -v php)"
-          export TEST_PHP_EXECUTABLE
-          PHP_INI_SCAN_DIR='' \
-          LD_PRELOAD="$RUNNER_TEMP/nodeepbind.so" \
+          TEST_PHP_EXECUTABLE="$RUNNER_TEMP/php/bin/php" \
           USE_ZEND_ALLOC=0 \
-          ASAN_OPTIONS=detect_leaks=1:verify_asan_link_order=0 \
+          ASAN_OPTIONS=detect_leaks=1 \
           LSAN_OPTIONS="suppressions=$PWD/ci/lsan.supp" \
-          php run-tests.php -q --show-diff -n -d extension="$PWD/modules/pdfium.so" tests
+          scripts/test.sh
 
   valgrind:
     name: valgrind (PHP 8.4)

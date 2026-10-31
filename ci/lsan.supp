@@ -1,2 +1,2 @@
-# Only frames inside libpdfium: its prebuilt binary is not ASan-instrumented.
-leak:libpdfium
+# PDFium's one-time initialisation only: a leak under any per-document or per-page call still reports.
+leak:FPDF_InitLibraryWithConfig
