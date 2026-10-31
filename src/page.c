@@ -51,8 +51,8 @@ void pdfium_page_free_obj(zend_object *obj)
 	if (p->page) {
 		FPDF_ClosePage(p->page);
 	}
-	if (p->doc) {
-		OBJ_RELEASE(p->doc);
+	if (p->h) {
+		pdfium_doc_handle_release(p->h);
 	}
 	zend_object_std_dtor(obj);
 }
@@ -62,8 +62,8 @@ void pdfium_page_iterator_free_obj(zend_object *obj)
 	pdfium_page_iterator *it = pdfium_page_iterator_from_obj(obj);
 
 	zval_ptr_dtor(&it->current);
-	if (it->doc) {
-		OBJ_RELEASE(it->doc);
+	if (it->h) {
+		pdfium_doc_handle_release(it->h);
 	}
 	zend_object_std_dtor(obj);
 }

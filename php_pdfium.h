@@ -1,11 +1,12 @@
 #ifndef PHP_PDFIUM_H
 #define PHP_PDFIUM_H
 
+#include "php.h"
+
 #ifdef ZTS
 #error "pdfium supports NTS PHP only: PDFium is not thread-safe"
 #endif
 
-#include "php.h"
 #include <fpdfview.h>
 #include <fpdf_formfill.h>
 
@@ -14,17 +15,19 @@
 extern zend_module_entry pdfium_module_entry;
 #define phpext_pdfium_ptr &pdfium_module_entry
 
-typedef struct {
+typedef struct pdfium_doc_handle {
 	FPDF_DOCUMENT doc;
 	FPDF_FORMHANDLE form;
 	FPDF_FORMFILLINFO form_info;
 	zend_string *buffer;
-	zval sources;
-	zend_object std;
-} pdfium_document;
+	struct pdfium_doc_handle **sources;
+	uint32_t nsources;
+	uint32_t refs;
+} pdfium_doc_handle;
 
-typedef struct { zend_object *doc; FPDF_PAGE page; int index; zend_object std; } pdfium_page;
-typedef struct { zend_object *doc; int index; zval current; zend_object std; } pdfium_page_iterator;
+typedef struct { pdfium_doc_handle *h; zend_object std; } pdfium_document;
+typedef struct { pdfium_doc_handle *h; FPDF_PAGE page; int index; zend_object std; } pdfium_page;
+typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std; } pdfium_page_iterator;
 typedef struct { FPDF_BITMAP bitmap; int width; int height; zend_object std; } pdfium_bitmap;
 
 extern zend_class_entry *pdfium_ce_document;
@@ -57,6 +60,10 @@ static inline pdfium_bitmap *pdfium_bitmap_from_obj(zend_object *obj)
 {
 	return (pdfium_bitmap *)((char *)obj - XtOffsetOf(pdfium_bitmap, std));
 }
+
+pdfium_doc_handle *pdfium_doc_handle_create(FPDF_DOCUMENT doc, zend_string *buffer);
+void pdfium_doc_handle_addref(pdfium_doc_handle *h);
+void pdfium_doc_handle_release(pdfium_doc_handle *h);
 
 void pdfium_document_free_obj(zend_object *obj);
 void pdfium_page_free_obj(zend_object *obj);
