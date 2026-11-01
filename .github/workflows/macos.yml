@@ -1,0 +1,43 @@
+name: macOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  MAKEFLAGS: -j2
+  EXTRA_CFLAGS: -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Werror
+
+jobs:
+  test-macos:
+    name: test (macos-14, PHP ${{ matrix.php }})
+    runs-on: macos-14
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: none
+          tools: none
+        env:
+          phpts: nts
+      - name: Install libpng and libjpeg
+        run: |
+          brew install libpng jpeg-turbo pkg-config
+          echo "PKG_CONFIG_PATH=$(brew --prefix jpeg-turbo)/lib/pkgconfig:$(brew --prefix libpng)/lib/pkgconfig" >> "$GITHUB_ENV"
+      - name: Fetch PDFium
+        run: scripts/fetch-pdfium.sh
+      - name: Build and test
+        run: scripts/test.sh
+      - name: Check the library resolves at run time
+        if: ${{ !cancelled() }}
+        run: |
+          otool -L modules/pdfium.so
+          otool -l modules/pdfium.so | grep -A2 LC_RPATH
+          otool -L modules/pdfium.so | grep libpdfium | grep -E '@rpath/|'"$PWD"'/src/libpdfium'

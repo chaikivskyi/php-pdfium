@@ -4,7 +4,8 @@ Platforms
 Supported
 ---------
 
-CI builds and tests the extension on these platforms with PHP 8.2, 8.3, 8.4 and 8.5 (NTS):
+CI builds and tests the extension on these platforms with PHP 8.2, 8.3, 8.4 and 8.5 (NTS). macOS runs
+on demand only (the ``macOS`` workflow); the others run on every push and pull request.
 
 .. list-table::
    :header-rows: 1
