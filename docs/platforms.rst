@@ -12,10 +12,10 @@ CI builds and tests the extension on these platforms with PHP 8.2, 8.3, 8.4 and 
    * - System
      - CPU
      - PDFium build
-   * - Ubuntu 24.04 (glibc)
+   * - Debian 12 (glibc)
      - x86_64
      - ``pdfium-linux-x64.tgz``
-   * - Ubuntu 24.04 (glibc)
+   * - Debian 12 (glibc)
      - arm64
      - ``pdfium-linux-arm64.tgz``
    * - Alpine (musl)
@@ -28,7 +28,7 @@ CI builds and tests the extension on these platforms with PHP 8.2, 8.3, 8.4 and 
      - arm64
      - ``pdfium-mac-arm64.tgz``
 
-ZTS PHP is supported on Linux x86_64 (glibc) only, where CI tests it on Ubuntu 24.04.
+ZTS PHP is supported on Linux x86_64 (glibc) only, where CI tests it on Debian 12.
 
 ``scripts/fetch-pdfium.sh`` picks the right build automatically and checks it against
 ``pdfium.sha256``.

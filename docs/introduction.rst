@@ -215,7 +215,8 @@ PHP's ``build/gen_stub.php``.
 
 CI builds with ``-Wall -Wextra -Werror``, checks that ``pdfium_arginfo.h`` matches the stub, and
 runs the tests on every supported platform and PHP version, and also under Valgrind,
-AddressSanitizer and UndefinedBehaviorSanitizer.
+AddressSanitizer and UndefinedBehaviorSanitizer. The Linux jobs run in prebuilt images from
+``ci/docker/``, which the ``CI images`` workflow publishes to ``ghcr.io``.
 
 Build these docs:
 

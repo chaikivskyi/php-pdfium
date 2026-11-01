@@ -1,0 +1,80 @@
+name: CI images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ci/docker/**
+      - ci/php-asan.sh
+      - .github/workflows/images.yml
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  php:
+    name: ${{ matrix.php }}-${{ matrix.variant }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4', '8.5']
+        variant: [nts, zts, alpine]
+        include:
+          - variant: nts
+            base: cli-bookworm
+            platforms: linux/amd64,linux/arm64
+          - variant: zts
+            base: zts-bookworm
+            platforms: linux/amd64
+            parallel: 1.2.15
+          - variant: alpine
+            base: cli-alpine
+            platforms: linux/amd64,linux/arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ci/docker/php.Dockerfile
+          platforms: ${{ matrix.platforms }}
+          build-args: |
+            BASE=php:${{ matrix.php }}-${{ matrix.base }}
+            PARALLEL_VERSION=${{ matrix.parallel }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-${{ matrix.variant }}
+
+  asan:
+    name: asan-${{ matrix.variant }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [nts, zts]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ci/docker/asan.Dockerfile
+          build-args: |
+            ZTS=${{ matrix.variant == 'zts' && 'zts' || '' }}
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/pdfium-ci:asan-${{ matrix.variant }}
