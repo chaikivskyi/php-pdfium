@@ -19,6 +19,8 @@ class UnsupportedException extends Exception {}
 
 class MemoryException extends Exception {}
 
+class BusyException extends Exception {}
+
 /**
  * @strict-properties
  * @not-serializable
@@ -38,6 +40,7 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws FormatException when the file is not a PDF or is corrupted
      * @throws PasswordException when the password is missing or wrong
      * @throws UnsupportedException when the document uses a security handler PDFium does not support
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public static function open(string $path, ?string $password = null): Document {}
 
@@ -48,18 +51,29 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws FormatException when the bytes are not a PDF or are corrupted
      * @throws PasswordException when the password is missing or wrong
      * @throws UnsupportedException when the document uses a security handler PDFium does not support
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public static function fromString(string $bytes, ?string $password = null): Document {}
 
+    /**
+     * The number of pages.
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
     public function pageCount(): int {}
 
-    /** @implementation-alias Pdfium\Document::pageCount */
+    /**
+     * @implementation-alias Pdfium\Document::pageCount
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
     public function count(): int {}
 
     /**
      * Only non-empty entries are present; dates stay in raw PDF form ("D:...").
      *
      * @return array<string, string>
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function metadata(): array {}
 
@@ -67,12 +81,14 @@ final class Document implements \Countable, \IteratorAggregate
      * Reports the document's permission flags; they are never enforced.
      *
      * @return array<string, bool>
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function permissions(): array {}
 
     /**
      * @throws \ValueError when $index is outside 0..pageCount()-1
      * @throws FormatException when PDFium cannot load the page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function page(int $index): Page {}
 
@@ -97,6 +113,7 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when $indexes is empty or an index is outside 0..pageCount()-1
      * @throws \TypeError when an element is not an int
      * @throws Exception when PDFium cannot import the pages
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function extractPages(array $indexes): Document {}
 
@@ -109,6 +126,7 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when $documents is empty
      * @throws \TypeError when an element is not a Document
      * @throws Exception when PDFium cannot import the pages
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public static function merge(array $documents): Document {}
 
@@ -121,6 +139,7 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
      * @throws MemoryException when the serialised document would not fit under memory_limit
      * @throws Exception when PDFium cannot serialise the document
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function save(string $path, bool $removeSecurity = false): void {}
 
@@ -129,6 +148,7 @@ final class Document implements \Countable, \IteratorAggregate
      *
      * @throws MemoryException when the serialised document would not fit under memory_limit
      * @throws Exception when PDFium cannot serialise the document
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function toString(bool $removeSecurity = false): string {}
 }
@@ -144,13 +164,25 @@ final class Page
     /** The page's 0-based position in its document. */
     public function index(): int {}
 
-    /** Crop box width in points, after rotation, as the shortest decimal PDFium's float holds (595.28). */
+    /**
+     * Crop box width in points, after rotation, as the shortest decimal PDFium's float holds (595.28).
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
     public function width(): float {}
 
-    /** Crop box height in points, after rotation, as the shortest decimal PDFium's float holds (841.89). */
+    /**
+     * Crop box height in points, after rotation, as the shortest decimal PDFium's float holds (841.89).
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
     public function height(): float {}
 
-    /** Page rotation in degrees: 0, 90, 180 or 270. */
+    /**
+     * Page rotation in degrees: 0, 90, 180 or 270.
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
     public function rotation(): int {}
 
     /**
@@ -158,6 +190,7 @@ final class Page
      *
      * @throws FormatException when PDFium cannot load the page's text
      * @throws MemoryException when the text would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function text(): string {}
 
@@ -170,6 +203,7 @@ final class Page
      *         would exceed 100,000,000 pixels
      * @throws MemoryException when the bitmap and its encoding would not fit under memory_limit; the
      *         bitmap counts against memory_limit for as long as the Bitmap lives
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function render(int $dpi = 150): Bitmap {}
 }
@@ -182,6 +216,13 @@ final class PageIterator implements \Iterator
 {
     private function __construct() {}
 
+    /**
+     * The page at the current position, loaded on the first call.
+     *
+     * @throws Exception when the iterator is past the last page
+     * @throws FormatException when PDFium cannot load the page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
     public function current(): Page {}
 
     public function key(): int {}
@@ -190,6 +231,11 @@ final class PageIterator implements \Iterator
 
     public function rewind(): void {}
 
+    /**
+     * Whether the iterator is on a page.
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
     public function valid(): bool {}
 }
 

@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: db8bc1b9ab881e1ec271274e1cd8fe63f25519d4 */
+ * Stub hash: fc285ebe4e7202ee011b1b5a5c150b48f6e814b5 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -270,6 +270,20 @@ static zend_class_entry *register_class_Pdfium_MemoryException(zend_class_entry 
 	zend_class_entry ce, *class_entry;
 
 	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "MemoryException", NULL);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, class_entry_Pdfium_Exception, 0);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, class_entry_Pdfium_Exception);
+#endif
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_BusyException(zend_class_entry *class_entry_Pdfium_Exception)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "BusyException", NULL);
 #if (PHP_VERSION_ID >= 80400)
 	class_entry = zend_register_internal_class_with_flags(&ce, class_entry_Pdfium_Exception, 0);
 #else

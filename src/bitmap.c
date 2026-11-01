@@ -45,20 +45,26 @@ ZEND_METHOD(Pdfium_Page, render)
 		zend_argument_value_error(1, "must be between 1 and 2400");
 		RETURN_THROWS();
 	}
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
 	int w = pixels_for(FPDF_GetPageWidthF(p->page), dpi);
 	int h = pixels_for(FPDF_GetPageHeightF(p->page), dpi);
 
 	if (w > JPEG_MAX_DIMENSION || h > JPEG_MAX_DIMENSION) {
+		pdfium_leave();
 		zend_argument_value_error(1, "would render %dx%d pixels, above the %d-pixel limit per side", w, h,
 			(int) JPEG_MAX_DIMENSION);
 		RETURN_THROWS();
 	}
 	if ((double) w * h > PDFIUM_MAX_PIXELS) {
+		pdfium_leave();
 		zend_argument_value_error(1, "would render %dx%d pixels, above the %d-pixel ceiling", w, h,
 			PDFIUM_MAX_PIXELS);
 		RETURN_THROWS();
 	}
 	if (!pdfium_memory_fits((size_t) w * h * 7)) {
+		pdfium_leave();
 		zend_throw_exception_ex(pdfium_ce_memory_exception, 0,
 			"Rendering %dx%d pixels needs more memory than memory_limit leaves", w, h);
 		RETURN_THROWS();
@@ -67,6 +73,7 @@ ZEND_METHOD(Pdfium_Page, render)
 	void *pixels = safe_emalloc((size_t) w * 4, h, 0);
 	FPDF_BITMAP bitmap = FPDFBitmap_CreateEx(w, h, FPDFBitmap_BGRx, pixels, w * 4);
 	if (!bitmap) {
+		pdfium_leave();
 		efree(pixels);
 		zend_throw_exception_ex(pdfium_ce_memory_exception, 0, "Cannot allocate a %dx%d bitmap", w, h);
 		RETURN_THROWS();
@@ -81,6 +88,7 @@ ZEND_METHOD(Pdfium_Page, render)
 	if (form) {
 		FPDF_FFLDraw(form, bitmap, p->page, 0, 0, w, h, 0, FPDF_ANNOT);
 	}
+	pdfium_leave();
 
 	object_init_ex(return_value, pdfium_ce_bitmap);
 	pdfium_bitmap *img = this_bitmap(return_value);
@@ -361,7 +369,9 @@ void pdfium_bitmap_free_obj(zend_object *obj)
 	pdfium_bitmap *img = pdfium_bitmap_from_obj(obj);
 
 	if (img->bitmap) {
+		pdfium_enter_wait();
 		FPDFBitmap_Destroy(img->bitmap);
+		pdfium_leave();
 		efree(img->pixels);
 	}
 	zend_object_std_dtor(obj);

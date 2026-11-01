@@ -46,19 +46,34 @@ ZEND_METHOD(Pdfium_Page, index)
 ZEND_METHOD(Pdfium_Page, width)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	RETURN_DOUBLE(points(FPDF_GetPageWidthF(this_page(ZEND_THIS)->page)));
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	float width = FPDF_GetPageWidthF(this_page(ZEND_THIS)->page);
+	pdfium_leave();
+	RETURN_DOUBLE(points(width));
 }
 
 ZEND_METHOD(Pdfium_Page, height)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	RETURN_DOUBLE(points(FPDF_GetPageHeightF(this_page(ZEND_THIS)->page)));
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	float height = FPDF_GetPageHeightF(this_page(ZEND_THIS)->page);
+	pdfium_leave();
+	RETURN_DOUBLE(points(height));
 }
 
 ZEND_METHOD(Pdfium_Page, rotation)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	RETURN_LONG(FPDFPage_GetRotation(this_page(ZEND_THIS)->page) * 90);
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	int rotation = FPDFPage_GetRotation(this_page(ZEND_THIS)->page);
+	pdfium_leave();
+	RETURN_LONG(rotation * 90);
 }
 
 ZEND_METHOD(Pdfium_Page, text)
@@ -69,24 +84,31 @@ ZEND_METHOD(Pdfium_Page, text)
 	int count, got;
 
 	ZEND_PARSE_PARAMETERS_NONE();
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
 	tp = FPDFText_LoadPage(page);
 	if (!tp) {
+		pdfium_leave();
 		zend_throw_exception(pdfium_ce_format_exception, "Cannot load page text", 0);
 		RETURN_THROWS();
 	}
 	count = FPDFText_CountChars(tp);
 	if (count <= 0) {
 		FPDFText_ClosePage(tp);
+		pdfium_leave();
 		RETURN_EMPTY_STRING();
 	}
 	if (!pdfium_memory_fits((size_t) count * 8)) {
 		FPDFText_ClosePage(tp);
+		pdfium_leave();
 		zend_throw_exception(pdfium_ce_memory_exception, "Page text needs more memory than memory_limit leaves", 0);
 		RETURN_THROWS();
 	}
 	buf = safe_emalloc((size_t) count + 1, sizeof(*buf), 0);
 	got = FPDFText_GetText(tp, 0, count, buf);
 	FPDFText_ClosePage(tp);
+	pdfium_leave();
 	RETVAL_STR(pdfium_utf16le_to_utf8(buf, got > 0 ? (size_t) got - 1 : 0));
 	efree(buf);
 }
@@ -97,7 +119,6 @@ zend_object *pdfium_page_create(pdfium_doc_handle *h, int index)
 	zval zv;
 
 	if (!page) {
-		zend_throw_exception_ex(pdfium_ce_format_exception, 0, "Cannot load page %d", index);
 		return NULL;
 	}
 	object_init_ex(&zv, pdfium_ce_page);
@@ -107,6 +128,11 @@ zend_object *pdfium_page_create(pdfium_doc_handle *h, int index)
 	p->h = h;
 	pdfium_doc_handle_addref(h);
 	return Z_OBJ(zv);
+}
+
+void pdfium_throw_page_load_error(int index)
+{
+	zend_throw_exception_ex(pdfium_ce_format_exception, 0, "Cannot load page %d", index);
 }
 
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h)
@@ -135,18 +161,25 @@ ZEND_METHOD(Pdfium_PageIterator, current)
 	pdfium_page_iterator *it = this_iterator(ZEND_THIS);
 
 	ZEND_PARSE_PARAMETERS_NONE();
+	if (!Z_ISUNDEF(it->current)) {
+		RETURN_COPY(&it->current);
+	}
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
 	if (it->index >= FPDF_GetPageCount(it->h->doc)) {
+		pdfium_leave();
 		zend_throw_exception(pdfium_ce_exception, "Iterator is past the last page", 0);
 		RETURN_THROWS();
 	}
-	if (Z_ISUNDEF(it->current)) {
-		zend_object *page = pdfium_page_create(it->h, it->index);
+	zend_object *page = pdfium_page_create(it->h, it->index);
 
-		if (!page) {
-			RETURN_THROWS();
-		}
-		ZVAL_OBJ(&it->current, page);
+	pdfium_leave();
+	if (!page) {
+		pdfium_throw_page_load_error(it->index);
+		RETURN_THROWS();
 	}
+	ZVAL_OBJ(&it->current, page);
 	RETURN_COPY(&it->current);
 }
 
@@ -179,7 +212,12 @@ ZEND_METHOD(Pdfium_PageIterator, valid)
 	pdfium_page_iterator *it = this_iterator(ZEND_THIS);
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	RETURN_BOOL(it->index < FPDF_GetPageCount(it->h->doc));
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	bool valid = it->index < FPDF_GetPageCount(it->h->doc);
+	pdfium_leave();
+	RETURN_BOOL(valid);
 }
 
 void pdfium_page_free_obj(zend_object *obj)
@@ -187,10 +225,12 @@ void pdfium_page_free_obj(zend_object *obj)
 	pdfium_page *p = pdfium_page_from_obj(obj);
 
 	if (p->page) {
+		pdfium_enter_wait();
 		if (p->form_loaded) {
 			FORM_OnBeforeClosePage(p->page, p->h->form);
 		}
 		FPDF_ClosePage(p->page);
+		pdfium_leave();
 	}
 	if (p->h) {
 		pdfium_doc_handle_release(p->h);

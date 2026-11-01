@@ -42,6 +42,19 @@ extern zend_class_entry *pdfium_ce_format_exception;
 extern zend_class_entry *pdfium_ce_password_exception;
 extern zend_class_entry *pdfium_ce_unsupported_exception;
 extern zend_class_entry *pdfium_ce_memory_exception;
+extern zend_class_entry *pdfium_ce_busy_exception;
+
+#ifdef ZTS
+bool pdfium_enter(void);
+void pdfium_enter_wait(void);
+void pdfium_leave(void);
+void pdfium_guard_reset(void);
+#else
+static inline bool pdfium_enter(void) { return true; }
+static inline void pdfium_enter_wait(void) {}
+static inline void pdfium_leave(void) {}
+static inline void pdfium_guard_reset(void) {}
+#endif
 
 static inline pdfium_document *pdfium_document_from_obj(zend_object *obj)
 {
@@ -71,6 +84,7 @@ FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h);
 zend_object *pdfium_document_create(pdfium_doc_handle *h);
 
 zend_object *pdfium_page_create(pdfium_doc_handle *h, int index);
+void pdfium_throw_page_load_error(int index);
 
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h);
 

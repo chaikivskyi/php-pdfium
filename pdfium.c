@@ -45,6 +45,7 @@ zend_class_entry *pdfium_ce_format_exception;
 zend_class_entry *pdfium_ce_password_exception;
 zend_class_entry *pdfium_ce_unsupported_exception;
 zend_class_entry *pdfium_ce_memory_exception;
+zend_class_entry *pdfium_ce_busy_exception;
 
 static zend_object_handlers document_handlers;
 static zend_object_handlers page_handlers;
@@ -653,6 +654,7 @@ PHP_MINIT_FUNCTION(pdfium)
 	pdfium_ce_password_exception = register_class_Pdfium_PasswordException(pdfium_ce_exception);
 	pdfium_ce_unsupported_exception = register_class_Pdfium_UnsupportedException(pdfium_ce_exception);
 	pdfium_ce_memory_exception = register_class_Pdfium_MemoryException(pdfium_ce_exception);
+	pdfium_ce_busy_exception = register_class_Pdfium_BusyException(pdfium_ce_exception);
 
 	/* Before Document: its getIterator() return type narrows IteratorAggregate's to PageIterator. */
 	init_handlers(&page_iterator_handlers, XtOffsetOf(pdfium_page_iterator, std), pdfium_page_iterator_free_obj);
@@ -686,9 +688,17 @@ PHP_RINIT_FUNCTION(pdfium)
 	ZEND_TSRMLS_CACHE_UPDATE();
 	return SUCCESS;
 }
+
+PHP_RSHUTDOWN_FUNCTION(pdfium)
+{
+	pdfium_guard_reset();
+	return SUCCESS;
+}
 #define PDFIUM_RINIT PHP_RINIT(pdfium)
+#define PDFIUM_RSHUTDOWN PHP_RSHUTDOWN(pdfium)
 #else
 #define PDFIUM_RINIT NULL
+#define PDFIUM_RSHUTDOWN NULL
 #endif
 
 PHP_MINFO_FUNCTION(pdfium)
@@ -714,7 +724,7 @@ zend_module_entry pdfium_module_entry = {
 	PHP_MINIT(pdfium),
 	PHP_MSHUTDOWN(pdfium),
 	PDFIUM_RINIT,
-	NULL,
+	PDFIUM_RSHUTDOWN,
 	PHP_MINFO(pdfium),
 	PHP_PDFIUM_VERSION,
 	STANDARD_MODULE_PROPERTIES
