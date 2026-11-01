@@ -4,7 +4,7 @@ A failed save keeps the reason it could not open the file as the previous except
 pdfium
 --FILE--
 <?php
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/tiny.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $img = $doc->page(0)->render(dpi: 1);
 $path = __DIR__ . '/no-such-dir/out';
 foreach ([fn() => $img->savePng($path), fn() => $img->saveJpeg($path), fn() => $doc->save($path)] as $fn) {

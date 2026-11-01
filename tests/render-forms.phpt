@@ -5,8 +5,8 @@ pdfium
 --FILE--
 <?php
 $f = __DIR__ . '/fixtures/';
-$filled = Pdfium\Document::open($f . 'form.pdf')->page(0)->render(dpi: 72)->toPng();
-$empty  = Pdfium\Document::open($f . 'form-empty.pdf')->page(0)->render(dpi: 72)->toPng();
+$filled = Pdfium\Document::fromFile($f . 'form.pdf')->page(0)->render(dpi: 72)->toPng();
+$empty  = Pdfium\Document::fromFile($f . 'form-empty.pdf')->page(0)->render(dpi: 72)->toPng();
 var_dump($filled !== $empty);
 ?>
 --EXPECT--

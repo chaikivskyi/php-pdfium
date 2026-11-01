@@ -4,9 +4,9 @@ pdfium loads and registers its exception hierarchy
 pdfium
 --FILE--
 <?php
-var_dump(is_subclass_of(Pdfium\Exception::class, RuntimeException::class));
+var_dump(is_subclass_of(Pdfium\PdfiumException::class, RuntimeException::class));
 foreach (['File', 'Format', 'Password', 'Unsupported', 'Memory', 'Busy'] as $c) {
-    var_dump(is_subclass_of("Pdfium\\{$c}Exception", Pdfium\Exception::class));
+    var_dump(is_subclass_of("Pdfium\\{$c}Exception", Pdfium\PdfiumException::class));
 }
 ?>
 --EXPECT--

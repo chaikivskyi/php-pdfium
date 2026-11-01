@@ -32,7 +32,7 @@ function stress_workload(string $dir, int $seed): array
     $names = ['text-3pages.pdf', 'rotated.pdf', 'unicode.pdf', 'form.pdf', 'a4.pdf'];
     $dpi = 72 + 24 * ($seed % 4);
     $open = static function (string $bytes, string $path, bool $fromString): Pdfium\Document {
-        return with_retry(fn () => $fromString ? Pdfium\Document::fromString($bytes) : Pdfium\Document::open($path));
+        return with_retry(fn () => $fromString ? Pdfium\Document::fromString($bytes) : Pdfium\Document::fromFile($path));
     };
     $results = [];
     $tmp = sys_get_temp_dir() . '/pdfium-stress-' . getmypid() . '-' . $seed . '.pdf';

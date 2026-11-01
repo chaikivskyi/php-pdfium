@@ -20,7 +20,7 @@ class Dies extends Fatal {
 }
 stream_wrapper_register('fine', Fatal::class);
 stream_wrapper_register('dies', Dies::class);
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/tiny.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 @trigger_error('before', E_USER_NOTICE);
 $doc->save('fine://x.pdf');
 echo error_get_last()['message'], "\n";

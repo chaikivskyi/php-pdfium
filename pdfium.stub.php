@@ -7,19 +7,19 @@
 
 namespace Pdfium;
 
-class Exception extends \RuntimeException {}
+class PdfiumException extends \RuntimeException {}
 
-class FileException extends Exception {}
+class FileException extends PdfiumException {}
 
-class FormatException extends Exception {}
+class FormatException extends PdfiumException {}
 
-class PasswordException extends Exception {}
+class PasswordException extends PdfiumException {}
 
-class UnsupportedException extends Exception {}
+class UnsupportedException extends PdfiumException {}
 
-class MemoryException extends Exception {}
+class MemoryException extends PdfiumException {}
 
-class BusyException extends Exception {}
+class BusyException extends PdfiumException {}
 
 /**
  * @strict-properties
@@ -42,7 +42,7 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws UnsupportedException when the document uses a security handler PDFium does not support
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public static function open(string $path, ?string $password = null): Document {}
+    public static function fromFile(string $path, ?string $password = null): Document {}
 
     /**
      * The document keeps $bytes alive for its whole life.
@@ -70,20 +70,18 @@ final class Document implements \Countable, \IteratorAggregate
     public function count(): int {}
 
     /**
-     * Only non-empty entries are present; dates stay in raw PDF form ("D:...").
+     * The document information entries; empty or missing ones are null.
      *
-     * @return array<string, string>
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public function metadata(): array {}
+    public function metadata(): Metadata {}
 
     /**
-     * Reports the document's permission flags; they are never enforced.
+     * The document's permission flags; they are reported, never enforced.
      *
-     * @return array<string, bool>
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public function permissions(): array {}
+    public function permissions(): Permissions {}
 
     /**
      * @throws \ValueError when $index is outside 0..pageCount()-1
@@ -105,30 +103,38 @@ final class Document implements \Countable, \IteratorAggregate
     public function getIterator(): PageIterator {}
 
     /**
-     * A new document with the pages at these int indexes, in this order, duplicates kept. It is
-     * unencrypted, has no bookmarks, viewer preferences or metadata beyond the creator, producer and
-     * creation date PDFium sets, and its form fields can no longer be filled in. It does not keep this
-     * document alive.
+     * A new document with the pages at these int indexes, in this order, duplicates kept, and this
+     * document's viewer preferences. It is unencrypted, has no bookmarks or metadata beyond the
+     * creator, producer and creation date PDFium sets, and its form fields can no longer be filled in.
+     * It does not keep this document alive.
      *
+     * @param int[] $indexes
+     * @param bool $removeSecurity must be true to extract from an encrypted document, because
+     *        PDFium cannot encrypt the result
      * @throws \ValueError when $indexes is empty or an index is outside 0..pageCount()-1
      * @throws \TypeError when an element is not an int
-     * @throws Exception when PDFium cannot import the pages
+     * @throws UnsupportedException when this document is encrypted and $removeSecurity is false
+     * @throws PdfiumException when PDFium cannot import the pages
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public function extractPages(array $indexes): Document {}
+    public function extractPages(array $indexes, bool $removeSecurity = false): Document {}
 
     /**
-     * A new document with every page of each Document in turn, duplicates kept. It is unencrypted,
-     * has no bookmarks, viewer preferences or metadata beyond the creator, producer and creation date
-     * PDFium sets, and its form fields can no longer be filled in. It does not keep the given documents
-     * alive.
+     * A new document with every page of each Document in turn, duplicates kept, and the first one's
+     * viewer preferences. It is unencrypted, has no bookmarks or metadata beyond the creator, producer
+     * and creation date PDFium sets, and its form fields can no longer be filled in. It does not keep
+     * the given documents alive.
      *
+     * @param Document[] $documents
+     * @param bool $removeSecurity must be true to merge an encrypted document, because PDFium cannot
+     *        encrypt the result
      * @throws \ValueError when $documents is empty
      * @throws \TypeError when an element is not a Document
-     * @throws Exception when PDFium cannot import the pages
+     * @throws UnsupportedException when a document is encrypted and $removeSecurity is false
+     * @throws PdfiumException when PDFium cannot import the pages
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public static function merge(array $documents): Document {}
+    public static function merge(array $documents, bool $removeSecurity = false): Document {}
 
     /**
      * Writes the bytes toString() returns through PHP streams, so open_basedir and stream
@@ -138,7 +144,7 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when $path is empty
      * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
      * @throws MemoryException when the serialised document would not fit under memory_limit
-     * @throws Exception when PDFium cannot serialise the document
+     * @throws PdfiumException when PDFium cannot serialise the document
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function save(string $path, bool $removeSecurity = false): void {}
@@ -147,10 +153,40 @@ final class Document implements \Countable, \IteratorAggregate
      * A full, non-incremental copy. Encryption is kept unless $removeSecurity is true.
      *
      * @throws MemoryException when the serialised document would not fit under memory_limit
-     * @throws Exception when PDFium cannot serialise the document
+     * @throws PdfiumException when PDFium cannot serialise the document
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function toString(bool $removeSecurity = false): string {}
+}
+
+/** The document information dictionary, as UTF-8. Dates stay in raw PDF form ("D:..."). */
+final readonly class Metadata
+{
+    public ?string $title;
+    public ?string $author;
+    public ?string $subject;
+    public ?string $keywords;
+    public ?string $creator;
+    public ?string $producer;
+    public ?string $creationDate;
+    public ?string $modDate;
+
+    private function __construct() {}
+}
+
+/** The document's permission flags. They are reported, never enforced. */
+final readonly class Permissions
+{
+    public bool $print;
+    public bool $modify;
+    public bool $copy;
+    public bool $annotate;
+    public bool $fillForms;
+    public bool $extractForAccessibility;
+    public bool $assemble;
+    public bool $printHighQuality;
+
+    private function __construct() {}
 }
 
 /**
@@ -219,7 +255,7 @@ final class PageIterator implements \Iterator
     /**
      * The page at the current position, loaded on the first call.
      *
-     * @throws Exception when the iterator is past the last page
+     * @throws PdfiumException when the iterator is past the last page
      * @throws FormatException when PDFium cannot load the page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -255,14 +291,14 @@ final class Bitmap
      * 8-bit RGB PNG.
      *
      * @throws MemoryException when the PNG would not fit under memory_limit
-     * @throws Exception when encoding fails
+     * @throws PdfiumException when encoding fails
      */
     public function toPng(): string {}
 
     /**
      * @throws \ValueError when $quality is outside 1..100
      * @throws MemoryException when the JPEG would not fit under memory_limit
-     * @throws Exception when encoding fails
+     * @throws PdfiumException when encoding fails
      */
     public function toJpeg(int $quality = 85): string {}
 
@@ -272,7 +308,7 @@ final class Bitmap
      * @throws \ValueError when $path is empty
      * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
      * @throws MemoryException when the PNG would not fit under memory_limit
-     * @throws Exception when encoding fails
+     * @throws PdfiumException when encoding fails
      */
     public function savePng(string $path): void {}
 
@@ -282,7 +318,7 @@ final class Bitmap
      * @throws \ValueError when $path is empty or $quality is outside 1..100
      * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
      * @throws MemoryException when the JPEG would not fit under memory_limit
-     * @throws Exception when encoding fails
+     * @throws PdfiumException when encoding fails
      */
     public function saveJpeg(string $path, int $quality = 85): void {}
 }

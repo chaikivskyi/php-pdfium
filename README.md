@@ -75,13 +75,13 @@ too.
 ```php
 use Pdfium\Document;
 
-$doc = Document::open('/path/file.pdf', password: null);   // a local path, not a stream wrapper
+$doc = Document::fromFile('/path/file.pdf', password: null);   // a path or stream URL
 $doc = Document::fromString($bytes, password: null);
 
 $doc->pageCount();   // int; no page is parsed to answer it
 count($doc);         // the same, via Countable
-$doc->metadata();    // array<string, string>: non-empty entries only, dates in raw "D:..." form
-$doc->permissions(); // array<string, bool>: reported, never enforced
+$doc->metadata()->title;     // ?string: null when empty or missing; dates stay in raw "D:..." form
+$doc->permissions()->print;  // bool: reported, never enforced
 
 foreach ($doc as $page) {              // lazy: one page loaded at a time; same as $doc->pages()
     $page->index();                    // 0-based
@@ -103,11 +103,12 @@ $page = $doc->page(4);                 // random access, 0-based
 
 $doc->extractPages([0, 1, 4])->save('/tmp/subset.pdf');   // a new Document
 Document::merge([$docA, $docB])->save('/tmp/all.pdf');
+$doc->extractPages([0], removeSecurity: true);             // required when $doc is encrypted
 $bytes = $doc->toString();
 $doc->save('/tmp/open.pdf', removeSecurity: true);
 ```
 
-`open()` reads the whole file through PHP streams, so stream wrappers (`phar://`, `s3://` and the like)
+`fromFile()` reads the whole file through PHP streams, so stream wrappers (`phar://`, `s3://` and the like)
 and `open_basedir` apply. The document keeps the bytes in PHP memory, counted against `memory_limit`,
 and never touches the file again, so you can save over it while the document is open.
 
@@ -122,14 +123,14 @@ A `Page` keeps its `Document` alive, and a document from `fromString()` keeps th
 ## Exceptions
 
 Every failure throws. Nothing returns `false` and nothing shows or logs a warning or a notice. When
-`open()`, `save()`, `savePng()` or `saveJpeg()` fails, the PHP warning that says why (for example `No
+`fromFile()`, `save()`, `savePng()` or `saveJpeg()` fails, the PHP warning that says why (for example `No
 such file or directory`) becomes the `FileException`'s previous exception. For local files no error
 handler is called. Through stream wrappers, the call behaves like `@fopen()`: warnings are neither shown
 nor logged (fatal errors still are), and your error handler, if you set one, still sees them.
 
 | Class | When |
 |---|---|
-| `Pdfium\Exception` | Base class; extends `\RuntimeException`. Also thrown when PDFium cannot import, serialise or encode. |
+| `Pdfium\PdfiumException` | Base class; extends `\RuntimeException`. Also thrown when PDFium cannot import, serialise or encode. |
 | `Pdfium\FileException` | The file cannot be read or written, the path is `MAXPATHLEN` or longer, or `open_basedir` forbids it. |
 | `Pdfium\FormatException` | Not a PDF, or corrupt beyond what PDFium recovers. |
 | `Pdfium\PasswordException` | A password is required, or the one given is wrong. |
@@ -146,13 +147,16 @@ Where PDFium has a default, the extension exposes it and adds no policy of its o
 
 - **Permissions are reported, never enforced.** `permissions()` returns the document's flags. No
   method refuses to work because of them.
-- **`save()` and `toString()` keep the source document's encryption** unless you pass
-  `removeSecurity: true`, which writes an unencrypted copy.
-- **Split and merge output keeps only the pages.** `extractPages()` and `merge()` copy pages and their
-  content into a new, unencrypted document without bookmarks, viewer preferences or the sources'
-  metadata: `metadata()` reports only `creator` and `producer` "PDFium" and the `creationDate` of the
-  split or merge. Form fields still draw but can no longer be filled in. PDFium has no API to set
-  metadata, add encryption or create bookmarks; viewer preferences are not copied.
+- **Removing encryption is always explicit.** `save()` and `toString()` keep the source document's
+  encryption unless you pass `removeSecurity: true`. PDFium cannot encrypt a new document, so
+  `extractPages()` and `merge()` throw `UnsupportedException` for an encrypted source unless you pass
+  `removeSecurity: true`, and then return an unencrypted one.
+- **Split and merge output keeps the pages and the viewer preferences.** `extractPages()` keeps its
+  document's viewer preferences and `merge()` the first document's, so a right-to-left document still
+  reads right to left. The result has no bookmarks and none of the sources' metadata: `metadata()`
+  reports only `creator` and `producer` "PDFium" and the `creationDate` of the split or merge. Form
+  fields still draw but can no longer be filled in. PDFium has no API to set metadata, add encryption
+  or create bookmarks.
 - **A failed `save()` removes the partial file.**
 - `save()`, `savePng()` and `saveJpeg()` write through PHP streams, so `open_basedir` and stream
   wrappers apply.
@@ -181,7 +185,7 @@ Limits:
 ## Threads
 
 On ZTS PHP only one thread per process can use PDFium at a time. A call made while another thread is
-using it throws `Pdfium\BusyException` and does nothing, so it is safe to retry. `Document::open()` has
+using it throws `Pdfium\BusyException` and does nothing, so it is safe to retry. `Document::fromFile()` has
 already read the file by then, so read a stream you cannot read twice into a string and use
 `fromString()`. To render in parallel, use several processes. See `docs/behaviour.rst`.
 

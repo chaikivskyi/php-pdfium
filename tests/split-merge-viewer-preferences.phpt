@@ -1,5 +1,5 @@
 --TEST--
-extractPages() and merge() copy no viewer preferences, like PDFium's page import
+extractPages() keeps its document's viewer preferences and merge() the first document's
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -12,16 +12,19 @@ $doc = Pdfium\Document::fromString(build_pdf([
 ]));
 function viewer_keys(Pdfium\Document $doc): string
 {
-    preg_match_all('~/(ViewerPreferences|PageLayout|PageMode|HideToolbar|Direction)\b~', $doc->toString(), $m);
-    $keys = array_unique($m[1]);
-    sort($keys);
+    $pdf = $doc->toString();
+    $keys = array_filter(['Direction', 'HideToolbar', 'PageLayout', 'PageMode', 'ViewerPreferences'],
+        fn (string $key): bool => str_contains($pdf, "/$key"));
     return $keys ? implode(' ', $keys) : 'none';
 }
 echo 'source: ', viewer_keys($doc), "\n";
+$plain = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 echo 'extractPages: ', viewer_keys($doc->extractPages([0])), "\n";
-echo 'merge: ', viewer_keys(Pdfium\Document::merge([$doc])), "\n";
+echo 'merge, first has them: ', viewer_keys(Pdfium\Document::merge([$doc, $plain])), "\n";
+echo 'merge, first has none: ', viewer_keys(Pdfium\Document::merge([$plain, $doc])), "\n";
 ?>
 --EXPECT--
 source: Direction HideToolbar PageLayout PageMode ViewerPreferences
-extractPages: none
-merge: none
+extractPages: Direction HideToolbar ViewerPreferences
+merge, first has them: Direction HideToolbar ViewerPreferences
+merge, first has none: none

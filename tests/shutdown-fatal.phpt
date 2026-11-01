@@ -4,7 +4,7 @@ Pages and iterators alive during a fatal error do not crash
 pdfium
 --FILE--
 <?php
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf');
 $it = $doc->pages();
 $it->rewind();
 $it->current();

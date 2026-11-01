@@ -85,14 +85,15 @@ Open a document
 
    use Pdfium\Document;
 
-   $doc = Document::open('/path/file.pdf');
-   $doc = Document::open('/path/secret.pdf', password: 'secret');
+   $doc = Document::fromFile('/path/file.pdf');
+   $doc = Document::fromFile('/path/secret.pdf', password: 'secret');
 
    // From a string, for example a file from S3 or a phar archive:
    $doc = Document::fromString(file_get_contents('s3://bucket/report.pdf'));
 
-``open()`` reads through PHP streams as well, so ``Document::open('s3://bucket/report.pdf')`` works
-too. Either way the whole file is held in PHP memory.
+``fromFile()`` reads through PHP streams as well, so
+``Document::fromFile('s3://bucket/report.pdf')`` works too. Either way the whole file is held in PHP
+memory.
 
 Read document information
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -102,8 +103,8 @@ Read document information
    $doc->pageCount();     // 3
    count($doc);           // 3
 
-   $doc->metadata();      // ['title' => 'Report', 'author' => 'Jane', ...]
-   $doc->permissions();   // ['print' => true, 'copy' => false, ...]
+   $doc->metadata()->title;        // 'Report', or null if the document has no title
+   $doc->permissions()->copy;      // false
 
 Work with pages
 ~~~~~~~~~~~~~~~
@@ -150,6 +151,9 @@ Split, merge and save
    // All pages of A, then all pages of B:
    Document::merge([$docA, $docB])->save('/tmp/all.pdf');
 
+   // An encrypted source must opt in, because the result cannot be encrypted:
+   $doc->extractPages([0], removeSecurity: true);
+
    // As a string:
    $bytes = $doc->toString();
 
@@ -167,7 +171,7 @@ document alive:
 
 .. code-block:: php
 
-   $page = Document::open('/path/file.pdf')->page(0);
+   $page = Document::fromFile('/path/file.pdf')->page(0);
    echo $page->text();   // works: the page keeps the document open
    unset($page);         // now the document is freed
 
@@ -180,10 +184,10 @@ Handle errors
    use Pdfium\PasswordException;
 
    try {
-       $doc = Document::open($path);
+       $doc = Document::fromFile($path);
    } catch (PasswordException) {
-       $doc = Document::open($path, password: askForPassword());
-   } catch (Pdfium\Exception $e) {
+       $doc = Document::fromFile($path, password: askForPassword());
+   } catch (Pdfium\PdfiumException $e) {
        error_log($e->getMessage());   // "Cannot open document: not a PDF or corrupted"
        throw $e;
    }

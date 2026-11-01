@@ -14,8 +14,8 @@ if ($root) die('skip running as root');
 <?php
 $dir = sys_get_temp_dir() . '/pdfium-fallbacks-' . getmypid();
 mkdir($dir);
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf');
-$count = fn($p) => Pdfium\Document::open($p)->pageCount();
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf');
+$count = fn($p) => Pdfium\Document::fromFile($p)->pageCount();
 
 copy(__DIR__ . '/fixtures/tiny.pdf', "$dir/a.pdf");
 link("$dir/a.pdf", "$dir/b.pdf");

@@ -1,10 +1,10 @@
 --TEST--
-Document, Page, PageIterator and Bitmap cannot be created except through the API
+Document, Page, PageIterator and Bitmap cannot be created except through the API; the read-only Metadata and Permissions values cannot be created with new but can be cloned and serialized
 --EXTENSIONS--
 pdfium
 --FILE--
 <?php
-foreach (['Document', 'Page', 'PageIterator', 'Bitmap'] as $c) {
+foreach (['Document', 'Page', 'PageIterator', 'Bitmap', 'Metadata', 'Permissions'] as $c) {
     $fq = "Pdfium\\$c";
     $r = new ReflectionClass($fq);
     echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true),
@@ -35,3 +35,11 @@ Bitmap final=true cloneable=false instantiable=false abstract=false
   Error
   ReflectionException
   Exception
+Metadata final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
+Permissions final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created

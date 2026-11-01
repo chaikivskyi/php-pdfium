@@ -4,7 +4,7 @@ save() to a read-only data: stream throws FileException without a notice
 pdfium
 --FILE--
 <?php
-try { Pdfium\Document::open(__DIR__ . "/fixtures/tiny.pdf")->save("data:,x"); } catch (Throwable $e) { echo get_class($e), "\n"; }
+try { Pdfium\Document::fromFile(__DIR__ . "/fixtures/tiny.pdf")->save("data:,x"); } catch (Throwable $e) { echo get_class($e), "\n"; }
 ?>
 --EXPECT--
 Pdfium\FileException

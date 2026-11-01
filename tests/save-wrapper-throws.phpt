@@ -26,7 +26,7 @@ class ExistingObject extends ThrowingWrites {
 }
 stream_wrapper_register('short', ShortThenThrowingUnlink::class);
 stream_wrapper_register('existing', ExistingObject::class);
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/tiny.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 foreach ([fn() => $doc->save('throwing://a.pdf'), fn() => $doc->page(0)->render(dpi: 1)->savePng('throwing://b.png'), fn() => $doc->save('throwing2://c.pdf'), fn() => $doc->save('short://d.pdf'), fn() => $doc->save('existing://e.pdf')] as $fn) {
     try { $fn(); } catch (Pdfium\FileException $e) {
         echo get_class($e), ': ', $e->getMessage();

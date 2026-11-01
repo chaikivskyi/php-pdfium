@@ -5,12 +5,12 @@ pdfium
 --FILE--
 <?php
 $f = __DIR__ . '/fixtures/';
-$a = Pdfium\Document::open($f . 'tiny.pdf');
-$b = Pdfium\Document::open($f . 'text-3pages.pdf');
+$a = Pdfium\Document::fromFile($f . 'tiny.pdf');
+$b = Pdfium\Document::fromFile($f . 'text-3pages.pdf');
 $pa = $a->page(0);
 $ia = $pa->render(dpi: 10);
 $pairs = [
-    [$a, $b], [$a, Pdfium\Document::open($f . 'tiny.pdf')], [$pa, $b->page(2)], [$a->pages(), $b->pages()],
+    [$a, $b], [$a, Pdfium\Document::fromFile($f . 'tiny.pdf')], [$pa, $b->page(2)], [$a->pages(), $b->pages()],
     [$ia, $b->page(0)->render(dpi: 10)],
 ];
 foreach ($pairs as [$x, $y]) {

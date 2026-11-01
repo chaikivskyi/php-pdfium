@@ -12,14 +12,14 @@ $target = sys_get_temp_dir() . '/pdfium-threads-busy-' . getmypid() . '.pdf';
 @unlink($stop);
 @unlink($target);
 
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf');
 $bitmap = $doc->page(0)->render(dpi: 72);
 $it = $doc->pages();
 $page = $it->current();
 
 $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
 $future = $runtime->run(static function (string $fixture, string $stop): int {
-    $page = with_retry(fn () => Pdfium\Document::open($fixture)->page(0));
+    $page = with_retry(fn () => Pdfium\Document::fromFile($fixture)->page(0));
     $renders = 0;
     $end = microtime(true) + 10;
     while (!file_exists($stop) && microtime(true) < $end) {

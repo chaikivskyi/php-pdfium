@@ -4,7 +4,7 @@ Document::pages() iterates lazily, restarts on rewind and handles empty document
 pdfium
 --FILE--
 <?php
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf');
 foreach ($doc->pages() as $i => $page) echo $i, ':', $page->index(), ' ';
 echo "\n";
 foreach ($doc->pages() as $page) { echo $page->index(), ' '; break; }
@@ -18,7 +18,7 @@ $it = $doc->pages();
 foreach ($it as $i => $p) { if ($i === 1) break; }
 foreach ($it as $p) echo $p->index(), ' ';
 echo "\n";
-foreach (Pdfium\Document::open(__DIR__ . '/fixtures/empty.pdf')->pages() as $p) echo "never";
+foreach (Pdfium\Document::fromFile(__DIR__ . '/fixtures/empty.pdf')->pages() as $p) echo "never";
 echo "done\n";
 ?>
 --EXPECT--

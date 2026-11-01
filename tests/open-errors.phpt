@@ -6,14 +6,14 @@ pdfium
 <?php
 $f = __DIR__ . '/fixtures/';
 foreach ([
-    'missing'      => fn() => Pdfium\Document::open($f . 'nope.pdf'),
-    'not a pdf'    => fn() => Pdfium\Document::open($f . 'not-a-pdf.txt'),
+    'missing'      => fn() => Pdfium\Document::fromFile($f . 'nope.pdf'),
+    'not a pdf'    => fn() => Pdfium\Document::fromFile($f . 'not-a-pdf.txt'),
     'truncated'    => fn() => Pdfium\Document::fromString(file_get_contents($f . 'truncated.pdf')),
-    'no password'  => fn() => Pdfium\Document::open($f . 'encrypted-user.pdf'),
-    'bad password' => fn() => Pdfium\Document::open($f . 'encrypted-user.pdf', password: 'wrong'),
+    'no password'  => fn() => Pdfium\Document::fromFile($f . 'encrypted-user.pdf'),
+    'bad password' => fn() => Pdfium\Document::fromFile($f . 'encrypted-user.pdf', password: 'wrong'),
     'empty bytes'  => fn() => Pdfium\Document::fromString(''),
-    'empty path'   => fn() => Pdfium\Document::open(''),
-    'unsupported security (open)'   => fn() => Pdfium\Document::open($f . 'unsupported-security.pdf'),
+    'empty path'   => fn() => Pdfium\Document::fromFile(''),
+    'unsupported security (open)'   => fn() => Pdfium\Document::fromFile($f . 'unsupported-security.pdf'),
     'unsupported security (string)' => fn() => Pdfium\Document::fromString(file_get_contents($f . 'unsupported-security.pdf')),
 ] as $name => $fn) {
     try { $fn(); echo "$name: opened\n"; } catch (Throwable $e) { echo "$name: ", get_class($e), "\n"; }

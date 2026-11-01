@@ -1,19 +1,27 @@
 --TEST--
-metadata returns the non-empty Info entries as UTF-8
+metadata() returns the Info entries as UTF-8, with null for empty or missing ones
 --EXTENSIONS--
 pdfium
 --FILE--
 <?php
-$m = Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf')->metadata();
-ksort($m);
-var_dump($m);
+var_dump(Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf')->metadata());
 ?>
---EXPECT--
-array(3) {
-  ["author"]=>
-  string(16) "Ünïcode Author"
-  ["creationDate"]=>
-  string(17) "D:20261031120000Z"
+--EXPECTF--
+object(Pdfium\Metadata)#%d (8) {
   ["title"]=>
   string(13) "Fixture Title"
+  ["author"]=>
+  string(16) "Ünïcode Author"
+  ["subject"]=>
+  NULL
+  ["keywords"]=>
+  NULL
+  ["creator"]=>
+  NULL
+  ["producer"]=>
+  NULL
+  ["creationDate"]=>
+  string(17) "D:20261031120000Z"
+  ["modDate"]=>
+  NULL
 }

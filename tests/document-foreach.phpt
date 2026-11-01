@@ -4,13 +4,13 @@ A Document is iterable with foreach, the same as Document::pages()
 pdfium
 --FILE--
 <?php
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf');
 $seen = [];
 foreach ($doc as $i => $page) $seen[] = "$i:" . $page->index();
 echo implode(' ', $seen), "\n";
 var_dump($doc instanceof IteratorAggregate, $doc->getIterator() instanceof Pdfium\PageIterator);
 var_dump(array_keys(iterator_to_array($doc)));
-foreach (Pdfium\Document::open(__DIR__ . '/fixtures/empty.pdf') as $p) echo "never";
+foreach (Pdfium\Document::fromFile(__DIR__ . '/fixtures/empty.pdf') as $p) echo "never";
 echo "done\n";
 ?>
 --EXPECT--

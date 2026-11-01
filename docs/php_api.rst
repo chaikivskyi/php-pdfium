@@ -5,9 +5,11 @@ PHP API
 
 All classes are in the ``Pdfium`` namespace. The exact signatures are in ``pdfium.stub.php``.
 
-You cannot create these classes with ``new``, clone them or serialize them. Get a
-:php:class:`Document` from :php:meth:`Document::open` or :php:meth:`Document::fromString`, and
-everything else from the document.
+You cannot create these classes with ``new``. Get a :php:class:`Document` from
+:php:meth:`Document::fromFile` or :php:meth:`Document::fromString`, and everything else from the
+document. :php:class:`Document`, :php:class:`Page`, :php:class:`PageIterator` and :php:class:`Bitmap`
+cannot be cloned or serialized either; :php:class:`Metadata` and :php:class:`Permissions` are plain
+read-only values that can.
 
 
 Document
@@ -20,7 +22,7 @@ Document
 
    .. rubric:: Opening
 
-   .. php:staticmethod:: open(string $path, ?string $password = null) -> Document
+   .. php:staticmethod:: fromFile(string $path, ?string $password = null) -> Document
 
       Reads a PDF file through PHP streams, so stream wrappers such as ``phar://`` or ``s3://`` work
       and ``open_basedir`` is respected. The whole file is kept in PHP memory; the file itself is
@@ -67,28 +69,19 @@ Document
       :rtype: int
       :throws BusyException: ZTS only: another thread is using PDFium.
 
-   .. php:method:: metadata() -> array
+   .. php:method:: metadata() -> Metadata
 
-      The document's title, author and so on, as UTF-8 strings. Empty or missing entries are left
-      out. Dates are returned as they are stored in the PDF, for example ``D:20261031120000Z``.
+      The document's title, author and so on. See :php:class:`Metadata`.
 
-      Possible keys: ``title``, ``author``, ``subject``, ``keywords``, ``creator``, ``producer``,
-      ``creationDate``, ``modDate``.
-
-      :returns: ``array<string, string>``
-      :rtype: array
+      :rtype: Metadata
       :throws BusyException: ZTS only: another thread is using PDFium.
 
-   .. php:method:: permissions() -> array
+   .. php:method:: permissions() -> Permissions
 
-      The document's permission flags. They are only reported, not enforced.
+      The document's permission flags. They are only reported, not enforced. See
+      :php:class:`Permissions`.
 
-      Always has these eight keys: ``print``, ``modify``, ``copy``, ``annotate``, ``fillForms``,
-      ``extractForAccessibility``, ``assemble``, ``printHighQuality``. For an unencrypted document,
-      all of them are ``true``.
-
-      :returns: ``array<string, bool>``
-      :rtype: array
+      :rtype: Permissions
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Pages
@@ -117,34 +110,41 @@ Document
 
    .. rubric:: Splitting, merging and saving
 
-   .. php:method:: extractPages(array $indexes) -> Document
+   .. php:method:: extractPages(array $indexes, bool $removeSecurity = false) -> Document
 
       A new document with the given pages, in the given order. A page can appear more than once.
+      It keeps this document's viewer preferences.
 
-      The new document is unencrypted and has no bookmarks, viewer preferences or metadata beyond
-      what PDFium writes. Form fields still draw but can no longer be filled in. See
-      :ref:`pdfium-defaults`.
+      The new document is unencrypted and has no bookmarks or metadata beyond what PDFium writes.
+      Form fields still draw but can no longer be filled in. See :ref:`pdfium-defaults`.
 
       :param array $indexes: A non-empty list of page numbers (``int[]``).
+      :param bool $removeSecurity: Must be ``true`` if this document is encrypted, because PDFium
+         cannot encrypt the result.
       :rtype: Document
       :throws \\ValueError: The list is empty, or an index is out of range.
       :throws \\TypeError: An element is not an ``int``.
-      :throws Exception: PDFium cannot copy the pages.
+      :throws UnsupportedException: This document is encrypted and ``$removeSecurity`` is ``false``.
+      :throws PdfiumException: PDFium cannot copy the pages.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
-   .. php:staticmethod:: merge(array $documents) -> Document
+   .. php:staticmethod:: merge(array $documents, bool $removeSecurity = false) -> Document
 
-      A new document with all pages of each document, one after another.
+      A new document with all pages of each document, one after another. It uses the first
+      document's viewer preferences.
 
-      Like :php:meth:`extractPages`, the result is unencrypted and has no bookmarks, viewer
-      preferences or metadata beyond what PDFium writes, and its form fields can no longer be filled
-      in.
+      Like :php:meth:`extractPages`, the result is unencrypted and has no bookmarks or metadata beyond
+      what PDFium writes, and its form fields can no longer be filled in.
 
       :param array $documents: A non-empty list of ``Document`` objects.
+      :param bool $removeSecurity: Must be ``true`` if any document is encrypted, because PDFium
+         cannot encrypt the result. Without it, the exception names the index of the first encrypted
+         document.
       :rtype: Document
       :throws \\ValueError: The list is empty.
       :throws \\TypeError: An element is not a ``Document``.
-      :throws Exception: PDFium cannot copy the pages.
+      :throws UnsupportedException: A document is encrypted and ``$removeSecurity`` is ``false``.
+      :throws PdfiumException: PDFium cannot copy the pages.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: toString(bool $removeSecurity = false) -> string
@@ -155,7 +155,7 @@ Document
          encrypted document stays encrypted.
       :rtype: string
       :throws MemoryException: The result would not fit under ``memory_limit``.
-      :throws Exception: PDFium cannot write the document.
+      :throws PdfiumException: PDFium cannot write the document.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: save(string $path, bool $removeSecurity = false) -> void
@@ -170,8 +170,91 @@ Document
       :throws \\ValueError: The path is empty.
       :throws FileException: The file cannot be written.
       :throws MemoryException: The result would not fit under ``memory_limit``.
-      :throws Exception: PDFium cannot write the document.
+      :throws PdfiumException: PDFium cannot write the document.
       :throws BusyException: ZTS only: another thread is using PDFium.
+
+
+Metadata
+--------
+
+.. php:class:: Metadata
+
+   The document information returned by :php:meth:`Document::metadata`: a final, read-only value.
+   Each property is a UTF-8 string, or ``null`` when the entry is empty or missing. Dates are
+   returned as they are stored in the PDF, for example ``D:20261031120000Z``.
+
+   .. php:attr:: title
+
+      ``?string``
+
+   .. php:attr:: author
+
+      ``?string``
+
+   .. php:attr:: subject
+
+      ``?string``
+
+   .. php:attr:: keywords
+
+      ``?string``
+
+   .. php:attr:: creator
+
+      ``?string``
+
+   .. php:attr:: producer
+
+      ``?string``
+
+   .. php:attr:: creationDate
+
+      ``?string``
+
+   .. php:attr:: modDate
+
+      ``?string``
+
+
+Permissions
+-----------
+
+.. php:class:: Permissions
+
+   The permission flags returned by :php:meth:`Document::permissions`: a final, read-only value.
+   They are only reported, never enforced. For an unencrypted document, all of them are ``true``.
+
+   .. php:attr:: print
+
+      ``bool``
+
+   .. php:attr:: modify
+
+      ``bool``
+
+   .. php:attr:: copy
+
+      ``bool``
+
+   .. php:attr:: annotate
+
+      ``bool``
+
+   .. php:attr:: fillForms
+
+      ``bool``
+
+   .. php:attr:: extractForAccessibility
+
+      ``bool``
+
+   .. php:attr:: assemble
+
+      ``bool``
+
+   .. php:attr:: printHighQuality
+
+      ``bool``
 
 
 Page
@@ -244,7 +327,7 @@ PageIterator
    .. php:method:: current() -> Page
 
       :rtype: Page
-      :throws Exception: The iterator is past the last page.
+      :throws PdfiumException: The iterator is past the last page.
       :throws FormatException: PDFium cannot load the page.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -296,7 +379,7 @@ Bitmap
 
       :rtype: string
       :throws MemoryException: The PNG would not fit under ``memory_limit``.
-      :throws Exception: Encoding fails.
+      :throws PdfiumException: Encoding fails.
 
    .. php:method:: toJpeg(int $quality = 85) -> string
 
@@ -306,7 +389,7 @@ Bitmap
       :rtype: string
       :throws \\ValueError: The quality is out of range.
       :throws MemoryException: The JPEG would not fit under ``memory_limit``.
-      :throws Exception: Encoding fails.
+      :throws PdfiumException: Encoding fails.
 
    .. php:method:: savePng(string $path) -> void
 
@@ -316,7 +399,7 @@ Bitmap
       :throws \\ValueError: The path is empty.
       :throws FileException: The file cannot be written.
       :throws MemoryException: The PNG would not fit under ``memory_limit``.
-      :throws Exception: Encoding fails.
+      :throws PdfiumException: Encoding fails.
 
    .. php:method:: saveJpeg(string $path, int $quality = 85) -> void
 
@@ -327,7 +410,7 @@ Bitmap
       :throws \\ValueError: The path is empty, or the quality is out of range.
       :throws FileException: The file cannot be written.
       :throws MemoryException: The JPEG would not fit under ``memory_limit``.
-      :throws Exception: Encoding fails.
+      :throws PdfiumException: Encoding fails.
 
 
 .. _exceptions:
@@ -340,7 +423,7 @@ Every error throws an exception. No method returns ``false`` or raises a warning
 Bad arguments throw PHP's own ``\ValueError`` or ``\TypeError``. Everything else throws one of
 these:
 
-.. php:exception:: Exception
+.. php:exception:: PdfiumException
 
    Base class for all exceptions below. Extends ``\RuntimeException``.
 
@@ -366,7 +449,8 @@ these:
 
 .. php:exception:: UnsupportedException
 
-   The document uses an encryption PDFium does not support.
+   The document uses an encryption PDFium does not support, or :php:meth:`Document::extractPages` or
+   :php:meth:`Document::merge` was given an encrypted document without ``removeSecurity: true``.
 
 .. php:exception:: MemoryException
 
@@ -376,7 +460,7 @@ these:
 .. php:exception:: BusyException
 
    ZTS PHP only. Another thread is using PDFium, and nothing was done. It is safe to retry, except
-   that :php:meth:`Document::open` has already read the file. See :ref:`threads`.
+   that :php:meth:`Document::fromFile` has already read the file. See :ref:`threads`.
 
    Every :php:class:`Document`, :php:class:`Page` and :php:class:`PageIterator` method can throw it,
    including ``current()`` and ``valid()`` in the middle of a ``foreach``, except
@@ -384,17 +468,4 @@ these:
    :php:meth:`PageIterator::key`, :php:meth:`PageIterator::next` and :php:meth:`PageIterator::rewind`.
    :php:class:`Bitmap` methods never throw it.
 
-When a document fails to open, ``$e->getCode()`` holds PDFium's error code:
-
-=====  =======================  ==========================
-Code   Meaning                  Exception
-=====  =======================  ==========================
-1      Unknown error            :php:exc:`Exception`
-2      File error               :php:exc:`FileException`
-3      Format error             :php:exc:`FormatException`
-4      Password error           :php:exc:`PasswordException`
-5      Unsupported encryption   :php:exc:`UnsupportedException`
-6      Page error               :php:exc:`FormatException`
-=====  =======================  ==========================
-
-Other exceptions have code 0.
+The exception class says what went wrong; ``$e->getCode()`` is always 0.

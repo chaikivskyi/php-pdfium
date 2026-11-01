@@ -35,19 +35,22 @@ The extension follows PDFium and adds no rules of its own.
    ``permissions()`` tells you what the document allows, but nothing stops you. For example, you can
    read the text of a document that forbids copying.
 
-**Encrypted documents stay encrypted when saved.**
+**Removing encryption is always explicit.**
    ``save()`` and ``toString()`` keep the encryption. Pass ``removeSecurity: true`` to save without
-   it.
+   it. PDFium cannot encrypt a new document, so ``extractPages()`` and ``merge()`` throw
+   :php:exc:`Pdfium\\UnsupportedException` for an encrypted source, whether it was opened with a user
+   password or only has an owner password, unless you pass ``removeSecurity: true``. Then the result
+   is an ordinary unencrypted document.
 
-**Split and merge output keeps only the pages.**
-   ``extractPages()`` and ``merge()`` copy pages and their content into a new, unencrypted document
-   without bookmarks, viewer preferences or the sources' metadata: ``metadata()`` reports only
-   ``creator`` and ``producer`` "PDFium" and the ``creationDate`` of the split or merge. Form fields
-   still draw but can no longer be filled in. PDFium has no API to set metadata, add encryption or
-   create bookmarks; viewer preferences are not copied.
+**Split and merge output keeps the pages and the viewer preferences.**
+   ``extractPages()`` keeps its document's viewer preferences and ``merge()`` the first document's,
+   so a right-to-left document still reads right to left. The result has no bookmarks and none of the
+   sources' metadata: ``metadata()`` reports only ``creator`` and ``producer`` "PDFium" and the
+   ``creationDate`` of the split or merge. Form fields still draw but can no longer be filled in.
+   PDFium has no API to set metadata, add encryption or create bookmarks.
 
 **Reading and writing files work differently.**
-   Both go through PHP streams, so stream wrappers and ``open_basedir`` work. ``open()`` reads the
+   Both go through PHP streams, so stream wrappers and ``open_basedir`` work. ``fromFile()`` reads the
    whole file into PHP memory (counted against ``memory_limit``) and never touches it again, so you
    can save over a file while its document is open.
 
@@ -132,7 +135,7 @@ workers.
 - ``Bitmap`` methods never throw it.
 - Freeing a document, page or page iterator, and ``PageIterator::next()`` and ``rewind()``, never
   throw it, but may wait for the other thread to finish.
-- ``open()`` reads the file before it checks. For a stream you cannot read twice, such as
+- ``fromFile()`` reads the file before it checks. For a stream you cannot read twice, such as
   ``php://stdin``, read it into a string yourself and retry with ``fromString()``.
 - Do not ``pcntl_fork()`` while another thread may be using PDFium. The child would find PDFium
   busy forever and hang when it frees a document or page.

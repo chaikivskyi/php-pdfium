@@ -36,10 +36,20 @@ static void throw_error_code(unsigned long err, const char *context)
 			reason = "unsupported security scheme";
 			break;
 	}
-	zend_throw_exception_ex(ce, (zend_long) err, "%s: %s", context, reason);
+	zend_throw_exception_ex(ce, 0, "%s: %s", context, reason);
 }
 
 ZEND_METHOD(Pdfium_Document, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+ZEND_METHOD(Pdfium_Metadata, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+ZEND_METHOD(Pdfium_Permissions, __construct)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
 }
@@ -126,7 +136,7 @@ static void load_document(pdfium_doc_handle *h, zend_string *password, zval *ret
 	RETURN_OBJ(obj);
 }
 
-ZEND_METHOD(Pdfium_Document, open)
+ZEND_METHOD(Pdfium_Document, fromFile)
 {
 	char *path;
 	size_t path_len;
@@ -218,16 +228,23 @@ ZEND_METHOD(Pdfium_Document, metadata)
 	pdfium_leave();
 
 	if (failed == n) {
-		array_init(return_value);
+		object_init_ex(return_value, pdfium_ce_metadata);
 	}
 	for (i = 0; i < n; i++) {
-		if (!bufs[i]) {
-			continue;
+		if (failed == n) {
+			zval value;
+
+			if (units[i]) {
+				ZVAL_STR(&value, pdfium_utf16le_to_utf8(bufs[i], units[i]));
+			} else {
+				ZVAL_NULL(&value);
+			}
+			zend_update_property(pdfium_ce_metadata, Z_OBJ_P(return_value), entries[i].key, strlen(entries[i].key), &value);
+			zval_ptr_dtor(&value);
 		}
-		if (failed == n && units[i]) {
-			add_assoc_str(return_value, entries[i].key, pdfium_utf16le_to_utf8(bufs[i], units[i]));
+		if (bufs[i]) {
+			efree(bufs[i]);
 		}
-		efree(bufs[i]);
 	}
 	if (failed != n) {
 		zend_throw_exception_ex(pdfium_ce_memory_exception, 0,
@@ -252,7 +269,7 @@ ZEND_METHOD(Pdfium_Document, permissions)
 	bool r2 = FPDF_GetSecurityHandlerRevision(doc) == 2;
 	pdfium_leave();
 
-	array_init(return_value);
+	object_init_ex(return_value, pdfium_ce_permissions);
 	for (size_t i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		int bit = r2 ? flags[i].r2_bit : flags[i].bit;
 		bool allowed = (perms >> (bit - 1)) & 1;
@@ -260,7 +277,7 @@ ZEND_METHOD(Pdfium_Document, permissions)
 		if (bit == 12) {
 			allowed = allowed && ((perms >> 2) & 1);
 		}
-		add_assoc_bool(return_value, flags[i].key, allowed);
+		zend_update_property_bool(pdfium_ce_permissions, Z_OBJ_P(return_value), flags[i].key, strlen(flags[i].key), allowed);
 	}
 }
 
@@ -310,6 +327,7 @@ static assemble_status assemble(pdfium_doc_handle **sources, uint32_t nsources, 
 			return CANNOT_IMPORT;
 		}
 	}
+	FPDF_CopyViewerPreferences(doc, sources[0]->doc);
 	h->doc = doc;
 	return ASSEMBLED;
 }
@@ -351,14 +369,22 @@ static void throw_indexes_error(indexes_status status, int page_count)
 	}
 }
 
+static bool is_encrypted(pdfium_doc_handle *h)
+{
+	return FPDF_GetSecurityHandlerRevision(h->doc) != -1;
+}
+
 ZEND_METHOD(Pdfium_Document, extractPages)
 {
 	HashTable *ht;
 	zval *zv;
+	bool remove_security = false;
 	pdfium_doc_handle *h = this_handle(ZEND_THIS);
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_ARRAY_HT(ht)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(remove_security)
 	ZEND_PARSE_PARAMETERS_END();
 
 	uint32_t n = zend_hash_num_elements(ht);
@@ -384,12 +410,18 @@ ZEND_METHOD(Pdfium_Document, extractPages)
 	}
 	int page_count = FPDF_GetPageCount(h->doc);
 	indexes_status valid = indexes_from(ht, page_count, indexes);
+	bool refused = valid == INDEXES_OK && !remove_security && is_encrypted(h);
 
-	if (valid != INDEXES_OK) {
+	if (valid != INDEXES_OK || refused) {
 		pdfium_leave();
 		OBJ_RELEASE(obj);
 		efree(indexes);
-		throw_indexes_error(valid, page_count);
+		if (refused) {
+			zend_throw_exception(pdfium_ce_unsupported_exception, "The document is encrypted and PDFium cannot "
+				"encrypt the result; pass removeSecurity: true to extract its pages unencrypted", 0);
+		} else {
+			throw_indexes_error(valid, page_count);
+		}
 		RETURN_THROWS();
 	}
 	assemble_status status = assemble(&h, 1, indexes, n, out);
@@ -404,14 +436,37 @@ ZEND_METHOD(Pdfium_Document, extractPages)
 	RETURN_OBJ(obj);
 }
 
+static void throw_merge_encrypted(HashTable *ht, uint32_t position)
+{
+	zend_ulong num = 0;
+	zend_string *key = NULL;
+	uint32_t i = 0;
+
+	ZEND_HASH_FOREACH_KEY(ht, num, key) {
+		if (i++ == position) {
+			break;
+		}
+	} ZEND_HASH_FOREACH_END();
+	if (key) {
+		zend_throw_exception_ex(pdfium_ce_unsupported_exception, 0, "The document at index \"%s\" is encrypted and "
+			"PDFium cannot encrypt the result; pass removeSecurity: true to merge it unencrypted", ZSTR_VAL(key));
+	} else {
+		zend_throw_exception_ex(pdfium_ce_unsupported_exception, 0, "The document at index " ZEND_ULONG_FMT " is "
+			"encrypted and PDFium cannot encrypt the result; pass removeSecurity: true to merge it unencrypted", num);
+	}
+}
+
 ZEND_METHOD(Pdfium_Document, merge)
 {
 	HashTable *ht;
 	zval *zv;
+	bool remove_security = false;
 	uint32_t n = 0;
 
-	ZEND_PARSE_PARAMETERS_START(1, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_ARRAY_HT(ht)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(remove_security)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (!zend_hash_num_elements(ht)) {
@@ -435,6 +490,20 @@ ZEND_METHOD(Pdfium_Document, merge)
 	if (!pdfium_enter()) {
 		OBJ_RELEASE(obj);
 		efree(sources);
+		RETURN_THROWS();
+	}
+	uint32_t encrypted = n;
+
+	for (uint32_t i = 0; !remove_security && i < n && encrypted == n; i++) {
+		if (is_encrypted(sources[i])) {
+			encrypted = i;
+		}
+	}
+	if (encrypted < n) {
+		pdfium_leave();
+		OBJ_RELEASE(obj);
+		efree(sources);
+		throw_merge_encrypted(ht, encrypted);
 		RETURN_THROWS();
 	}
 	assemble_status status = assemble(sources, n, NULL, 0, out);

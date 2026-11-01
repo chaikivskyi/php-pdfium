@@ -6,7 +6,7 @@ pdfium
 open_basedir={PWD}
 --FILE--
 <?php
-$img = Pdfium\Document::open(__DIR__ . "/fixtures/tiny.pdf")->page(0)->render(dpi: 1);
+$img = Pdfium\Document::fromFile(__DIR__ . "/fixtures/tiny.pdf")->page(0)->render(dpi: 1);
 try { $img->savePng(__DIR__ . "/" . str_repeat("a", 5000)); } catch (Throwable $e) { echo get_class($e), ' <- ', $e->getPrevious()?->getMessage() ?? 'none', "\n"; }
 ?>
 --EXPECTF--

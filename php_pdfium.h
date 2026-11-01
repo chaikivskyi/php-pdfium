@@ -36,6 +36,8 @@ extern zend_class_entry *pdfium_ce_document;
 extern zend_class_entry *pdfium_ce_page;
 extern zend_class_entry *pdfium_ce_page_iterator;
 extern zend_class_entry *pdfium_ce_bitmap;
+extern zend_class_entry *pdfium_ce_metadata;
+extern zend_class_entry *pdfium_ce_permissions;
 extern zend_class_entry *pdfium_ce_exception;
 extern zend_class_entry *pdfium_ce_file_exception;
 extern zend_class_entry *pdfium_ce_format_exception;

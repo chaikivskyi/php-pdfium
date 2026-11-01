@@ -4,11 +4,11 @@ Document::page() and extractPages() reject indexes outside the page range, also 
 pdfium
 --FILE--
 <?php
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf');
 foreach ([-1, 3] as $i) {
     try { $doc->page($i); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 }
-$empty = Pdfium\Document::open(__DIR__ . '/fixtures/empty.pdf');
+$empty = Pdfium\Document::fromFile(__DIR__ . '/fixtures/empty.pdf');
 try { $empty->page(0); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 try { $empty->extractPages([0]); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 ?>

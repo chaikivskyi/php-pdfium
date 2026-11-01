@@ -6,7 +6,7 @@ pdfium
 open_basedir={PWD}
 --FILE--
 <?php
-try { Pdfium\Document::open(__DIR__ . "/fixtures/tiny.pdf")->save("php://filter/resource=/tmp/pdfium-filter.pdf"); } catch (Throwable $e) { echo get_class($e), "\n"; }
+try { Pdfium\Document::fromFile(__DIR__ . "/fixtures/tiny.pdf")->save("php://filter/resource=/tmp/pdfium-filter.pdf"); } catch (Throwable $e) { echo get_class($e), "\n"; }
 ?>
 --EXPECT--
 Pdfium\FileException

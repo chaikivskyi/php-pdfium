@@ -5,7 +5,7 @@ pdfium
 --FILE--
 <?php
 $f = __DIR__ . '/fixtures/';
-$page = Pdfium\Document::open($f . 'text-3pages.pdf')->page(0);
+$page = Pdfium\Document::fromFile($f . 'text-3pages.pdf')->page(0);
 $img = $page->render(dpi: 72);
 var_dump($img->width(), $img->height());
 $img = $page->render();
@@ -16,11 +16,11 @@ $img->savePng("$out.png");
 $img->saveJpeg("$out.jpg", quality: 50);
 var_dump(getimagesize("$out.png")[0], getimagesize("$out.jpg")[2] === IMAGETYPE_JPEG);
 unlink("$out.png"); unlink("$out.jpg");
-$r = Pdfium\Document::open($f . 'rotated.pdf')->page(0)->render(dpi: 72);
+$r = Pdfium\Document::fromFile($f . 'rotated.pdf')->page(0)->render(dpi: 72);
 var_dump($r->width(), $r->height());
-$t = Pdfium\Document::open($f . 'tiny.pdf')->page(0)->render(dpi: 1);
+$t = Pdfium\Document::fromFile($f . 'tiny.pdf')->page(0)->render(dpi: 1);
 var_dump($t->width(), $t->height());
-$detached = Pdfium\Document::open($f . 'text-3pages.pdf')->page(2)->render(dpi: 10);
+$detached = Pdfium\Document::fromFile($f . 'text-3pages.pdf')->page(2)->render(dpi: 10);
 gc_collect_cycles();
 var_dump(strlen($detached->toPng()) > 0);
 foreach ([

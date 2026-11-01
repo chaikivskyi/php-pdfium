@@ -4,7 +4,7 @@ A Page keeps its document and source bytes alive
 pdfium
 --FILE--
 <?php
-$page = Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf')->page(1);
+$page = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf')->page(1);
 gc_collect_cycles();
 var_dump($page->index(), $page->width());
 $bytes = file_get_contents(__DIR__ . '/fixtures/text-3pages.pdf');

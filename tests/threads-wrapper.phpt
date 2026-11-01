@@ -1,5 +1,5 @@
 --TEST--
-A stream wrapper written in PHP runs without the PDFium guard held, so another thread can use PDFium while open() reads and save() writes through it
+A stream wrapper written in PHP runs without the PDFium guard held, so another thread can use PDFium while fromFile() reads and save() writes through it
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -11,7 +11,7 @@ require __DIR__ . '/threads.inc';
 function page_count_in_another_thread(): int
 {
     $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
-    $count = $runtime->run(static fn (string $path): int => Pdfium\Document::open($path)->pageCount(),
+    $count = $runtime->run(static fn (string $path): int => Pdfium\Document::fromFile($path)->pageCount(),
         [__DIR__ . '/fixtures/a4.pdf'])->value();
     $runtime->close();
     return $count;
@@ -62,7 +62,7 @@ class ProbingWrapper
 }
 stream_wrapper_register('probe', ProbingWrapper::class);
 
-$doc = Pdfium\Document::open('probe://in.pdf');
+$doc = Pdfium\Document::fromFile('probe://in.pdf');
 $doc->save('probe://out.pdf');
 ?>
 --EXPECT--

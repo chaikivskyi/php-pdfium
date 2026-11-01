@@ -5,13 +5,13 @@ pdfium
 --FILE--
 <?php
 $f = __DIR__ . '/fixtures/';
-$p = Pdfium\Document::open($f . 'text-3pages.pdf')->page(0);
+$p = Pdfium\Document::fromFile($f . 'text-3pages.pdf')->page(0);
 var_dump($p->width(), $p->height(), $p->rotation());
-$p = Pdfium\Document::open($f . 'rotated.pdf')->page(0);
+$p = Pdfium\Document::fromFile($f . 'rotated.pdf')->page(0);
 var_dump($p->width(), $p->height(), $p->rotation());
-$p = Pdfium\Document::open($f . 'cropped.pdf')->page(0);
+$p = Pdfium\Document::fromFile($f . 'cropped.pdf')->page(0);
 var_dump($p->width(), $p->height(), $p->rotation());
-$p = Pdfium\Document::open($f . 'a4.pdf')->page(0);
+$p = Pdfium\Document::fromFile($f . 'a4.pdf')->page(0);
 var_dump($p->width() === 595.28, $p->height() === 841.89);
 ?>
 --EXPECT--

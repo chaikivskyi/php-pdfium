@@ -14,7 +14,7 @@ $doc = Pdfium\Document::fromString(build_pdf([
     '<< /Title (' . str_repeat('A', 12 << 20) . ') >>',
 ], '/Info 4 0 R '));
 try { $doc->metadata(); } catch (Pdfium\MemoryException $e) { echo $e->getMessage(), "\n"; }
-var_dump(Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf')->metadata()['title']);
+var_dump(Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf')->metadata()->title);
 ?>
 --EXPECT--
 The Title entry needs more memory than memory_limit leaves

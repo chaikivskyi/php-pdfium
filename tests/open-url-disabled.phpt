@@ -1,19 +1,19 @@
 --TEST--
-open() and save() through a URL wrapper disabled by allow_url_fopen say why as the previous exception
+fromFile() and save() through a URL wrapper disabled by allow_url_fopen say why as the previous exception
 --EXTENSIONS--
 pdfium
 --INI--
 allow_url_fopen=0
 --FILE--
 <?php
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/tiny.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 class Admin { public $context; }
 stream_wrapper_register('admin', Admin::class);
 stream_wrapper_unregister('data');
 stream_wrapper_register('data', Admin::class);
 stream_wrapper_unregister('file');
 stream_wrapper_register('file', Admin::class);
-foreach ([fn() => Pdfium\Document::open('http://127.0.0.1:9/x.pdf'),
+foreach ([fn() => Pdfium\Document::fromFile('http://127.0.0.1:9/x.pdf'),
           fn() => $doc->save('ftp://admin:secret@127.0.0.1:9/x.pdf'),
           fn() => $doc->save('ftp://data:pw@127.0.0.1:9/x.pdf'),
           fn() => $doc->save('php://filter/write=string.rot13/resource=ftp://u:p@127.0.0.1:9/y.pdf'),

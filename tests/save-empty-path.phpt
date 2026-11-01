@@ -4,7 +4,7 @@ save(), savePng() and saveJpeg() throw ValueError for an empty path
 pdfium
 --FILE--
 <?php
-$doc = Pdfium\Document::open(__DIR__ . "/fixtures/tiny.pdf");
+$doc = Pdfium\Document::fromFile(__DIR__ . "/fixtures/tiny.pdf");
 $img = $doc->page(0)->render(dpi: 1);
 foreach ([
     'save'     => fn() => $doc->save(''),

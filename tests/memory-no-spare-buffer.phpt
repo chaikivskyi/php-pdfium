@@ -1,5 +1,5 @@
 --TEST--
-open(), toString() and toPng() keep no spare buffer beyond their result
+fromFile(), toString() and toPng() keep no spare buffer beyond their result
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -14,7 +14,7 @@ class Unsized {
 }
 stream_wrapper_register('unsized', Unsized::class);
 $before = memory_get_usage();
-$small = Pdfium\Document::open('unsized://x');
+$small = Pdfium\Document::fromFile('unsized://x');
 var_dump(memory_get_usage() - $before < 16384);
 $noise = Pdfium\Document::fromString(noise_pdf(300));
 $before = memory_get_usage();

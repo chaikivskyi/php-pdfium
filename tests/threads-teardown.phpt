@@ -10,19 +10,19 @@ require __DIR__ . '/threads.inc';
 $fixtures = __DIR__ . '/fixtures';
 
 $task = static function (string $fixtures, string $how): array {
-    $doc = with_retry(fn () => Pdfium\Document::open("$fixtures/text-3pages.pdf"));
+    $doc = with_retry(fn () => Pdfium\Document::fromFile("$fixtures/text-3pages.pdf"));
     $page = with_retry(fn () => $doc->page(1));
     $bitmap = with_retry(fn () => $page->render(150));
     $it = $doc->pages();
     $current = with_retry(fn () => $it->current());
     $GLOBALS['keep'] = [
-        with_retry(fn () => Pdfium\Document::open("$fixtures/form.pdf")),
-        with_retry(fn () => Pdfium\Document::open("$fixtures/a4.pdf")->page(0)),
-        with_retry(fn () => Pdfium\Document::open("$fixtures/form.pdf")->page(0)->render(100)),
+        with_retry(fn () => Pdfium\Document::fromFile("$fixtures/form.pdf")),
+        with_retry(fn () => Pdfium\Document::fromFile("$fixtures/a4.pdf")->page(0)),
+        with_retry(fn () => Pdfium\Document::fromFile("$fixtures/form.pdf")->page(0)->render(100)),
         with_retry(fn () => $doc->pages()),
         $doc, $page, $bitmap, $it, $current,
     ];
-    $form = with_retry(fn () => Pdfium\Document::open("$fixtures/form.pdf")->page(0));
+    $form = with_retry(fn () => Pdfium\Document::fromFile("$fixtures/form.pdf")->page(0));
     with_retry(fn () => $form->render(72));
     $GLOBALS['keep'][] = $form;
     $end = microtime(true) + 10;
@@ -45,7 +45,7 @@ foreach (['return', 'return', 'exit', 'fatal'] as $how) {
     $futures[] = $runtime->run($task, [$fixtures, $how]);
 }
 
-$page = with_retry(fn () => Pdfium\Document::open("$fixtures/a4.pdf")->page(0));
+$page = with_retry(fn () => Pdfium\Document::fromFile("$fixtures/a4.pdf")->page(0));
 $renders = 0;
 do {
     with_retry(fn () => $page->render(100));
@@ -62,7 +62,7 @@ $stop = sys_get_temp_dir() . '/pdfium-threads-teardown-stop-' . getmypid();
 @unlink("$stop.started");
 $renderer = new parallel\Runtime(__DIR__ . '/threads.inc');
 $rendering = $renderer->run(static function (string $fixtures, string $stop): bool {
-    $page = with_retry(fn () => Pdfium\Document::open("$fixtures/a4.pdf")->page(0));
+    $page = with_retry(fn () => Pdfium\Document::fromFile("$fixtures/a4.pdf")->page(0));
     $end = microtime(true) + 10;
     while (!file_exists($stop) && microtime(true) < $end) {
         with_retry(fn () => $page->render(100));
@@ -82,7 +82,7 @@ $renderer->close();
 unlink($stop);
 unlink("$stop.started");
 
-$bitmap = Pdfium\Document::open("$fixtures/text-3pages.pdf")->page(0)->render(72);
+$bitmap = Pdfium\Document::fromFile("$fixtures/text-3pages.pdf")->page(0)->render(72);
 var_dump($bitmap->width());
 echo "done\n";
 ?>

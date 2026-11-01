@@ -1,5 +1,5 @@
 --TEST--
-open() reads the whole file through PHP streams: wrappers apply, directories fail, and memory_limit is honoured
+fromFile() reads the whole file through PHP streams: wrappers apply, directories fail, and memory_limit is honoured
 --EXTENSIONS--
 pdfium
 --INI--
@@ -38,7 +38,7 @@ class Minimal {
 }
 stream_wrapper_register('minimal', Minimal::class);
 set_error_handler(function ($no, $msg) { throw new ErrorException($msg); });
-var_dump(Pdfium\Document::open('minimal://x')->pageCount());
+var_dump(Pdfium\Document::fromFile('minimal://x')->pageCount());
 restore_error_handler();
 class ContextSeen extends Minimal {
     public function stream_open($path, $mode, $options, &$opened) {
@@ -49,27 +49,27 @@ class ContextSeen extends Minimal {
 }
 stream_wrapper_register('ctx', ContextSeen::class);
 stream_context_set_default(['ctx' => ['mark' => 'default']]);
-Pdfium\Document::open('ctx://x')->save('ctx://y');
+Pdfium\Document::fromFile('ctx://x')->save('ctx://y');
 stream_wrapper_register('fixture', FixtureStream::class);
 stream_wrapper_register('closethrows', CloseThrows::class);
 stream_wrapper_register('stopsearly', StopsEarly::class);
 foreach (['closethrows://x', 'stopsearly://x'] as $url) {
-    try { Pdfium\Document::open($url); echo "opened\n"; }
+    try { Pdfium\Document::fromFile($url); echo "opened\n"; }
     catch (Pdfium\FileException $e) { echo get_class($e), ' <- ', $e->getPrevious() ? get_class($e->getPrevious()) : 'none', "\n"; }
 }
-var_dump(Pdfium\Document::open('fixture://text-3pages.pdf?' . str_repeat('a', 5000))->pageCount() === 3);
-var_dump(Pdfium\Document::open('fixture://text-3pages.pdf')->pageCount());
-var_dump(Pdfium\Document::open('file://' . __DIR__ . '/fixtures/tiny.pdf')->pageCount());
+var_dump(Pdfium\Document::fromFile('fixture://text-3pages.pdf?' . str_repeat('a', 5000))->pageCount() === 3);
+var_dump(Pdfium\Document::fromFile('fixture://text-3pages.pdf')->pageCount());
+var_dump(Pdfium\Document::fromFile('file://' . __DIR__ . '/fixtures/tiny.pdf')->pageCount());
 ini_set('memory_limit', '-1');
-try { Pdfium\Document::open('/dev/zero'); } catch (Pdfium\FileException $e) { echo get_class($e), ' <- ', $e->getPrevious()->getMessage(), "\n"; }
+try { Pdfium\Document::fromFile('/dev/zero'); } catch (Pdfium\FileException $e) { echo get_class($e), ' <- ', $e->getPrevious()->getMessage(), "\n"; }
 ini_set('memory_limit', '32M');
-try { Pdfium\Document::open(__DIR__ . '/fixtures'); } catch (Pdfium\FileException $e) { echo get_class($e), ' ', $e->getCode(), "\n"; }
+try { Pdfium\Document::fromFile(__DIR__ . '/fixtures'); } catch (Pdfium\FileException $e) { echo get_class($e), ' ', $e->getCode(), "\n"; }
 $big = sys_get_temp_dir() . '/pdfium-open-big-' . getmypid() . '.pdf';
 $fh = fopen($big, 'wb');
 fwrite($fh, file_get_contents(__DIR__ . '/fixtures/tiny.pdf'));
 for ($i = 0; $i < 40; $i++) { fwrite($fh, str_repeat("%\n", 512 << 10)); }
 fclose($fh);
-try { Pdfium\Document::open($big); } catch (Pdfium\MemoryException $e) { echo get_class($e), "\n"; }
+try { Pdfium\Document::fromFile($big); } catch (Pdfium\MemoryException $e) { echo get_class($e), "\n"; }
 unlink($big);
 ?>
 --EXPECTF--
@@ -82,5 +82,5 @@ bool(true)
 int(3)
 int(1)
 Pdfium\FileException <- %s(/dev/zero): Failed to open stream: Not a regular file
-Pdfium\FileException 2
+Pdfium\FileException 0
 Pdfium\MemoryException

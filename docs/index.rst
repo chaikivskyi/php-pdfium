@@ -10,7 +10,7 @@ Pages load only when you ask for them, so walking a long document does not hold 
 
    use Pdfium\Document;
 
-   $doc = Document::open('/path/file.pdf');
+   $doc = Document::fromFile('/path/file.pdf');
 
    foreach ($doc as $page) {
        echo $page->text();

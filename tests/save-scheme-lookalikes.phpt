@@ -7,7 +7,7 @@ pdfium
 $dir = sys_get_temp_dir() . '/pdfium-lookalike-' . getmypid();
 mkdir("$dir/out:", 0777, true);
 chdir($dir);
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/text-3pages.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf');
 try { $doc->save('out://report.pdf'); } catch (Pdfium\FileException $e) { echo $e->getPrevious()->getMessage(), "\n"; }
 
 class Quiet { public $context; public function stream_open($p, $m, $o, &$x) { echo "wrapper called\n"; return false; } }

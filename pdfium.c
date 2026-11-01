@@ -39,6 +39,8 @@ zend_class_entry *pdfium_ce_document;
 zend_class_entry *pdfium_ce_page;
 zend_class_entry *pdfium_ce_page_iterator;
 zend_class_entry *pdfium_ce_bitmap;
+zend_class_entry *pdfium_ce_metadata;
+zend_class_entry *pdfium_ce_permissions;
 zend_class_entry *pdfium_ce_exception;
 zend_class_entry *pdfium_ce_file_exception;
 zend_class_entry *pdfium_ce_format_exception;
@@ -564,7 +566,7 @@ zend_string *pdfium_read_file(const char *path)
 		if (out.oom) {
 			throw_path(pdfium_ce_memory_exception, 0, "Reading ", path, " needs more memory than memory_limit leaves");
 		} else {
-			throw_path(pdfium_ce_file_exception, FPDF_ERR_FILE, "Cannot open ", path, "");
+			throw_path(pdfium_ce_file_exception, 0, "Cannot open ", path, "");
 		}
 		return NULL;
 	}
@@ -624,13 +626,15 @@ PHP_MINIT_FUNCTION(pdfium)
 	FPDF_InitLibraryWithConfig(&config);
 	pdfium_guard_startup();
 
-	pdfium_ce_exception = register_class_Pdfium_Exception(spl_ce_RuntimeException);
+	pdfium_ce_exception = register_class_Pdfium_PdfiumException(spl_ce_RuntimeException);
 	pdfium_ce_file_exception = register_class_Pdfium_FileException(pdfium_ce_exception);
 	pdfium_ce_format_exception = register_class_Pdfium_FormatException(pdfium_ce_exception);
 	pdfium_ce_password_exception = register_class_Pdfium_PasswordException(pdfium_ce_exception);
 	pdfium_ce_unsupported_exception = register_class_Pdfium_UnsupportedException(pdfium_ce_exception);
 	pdfium_ce_memory_exception = register_class_Pdfium_MemoryException(pdfium_ce_exception);
 	pdfium_ce_busy_exception = register_class_Pdfium_BusyException(pdfium_ce_exception);
+	pdfium_ce_metadata = register_class_Pdfium_Metadata();
+	pdfium_ce_permissions = register_class_Pdfium_Permissions();
 
 	/* Before Document: its getIterator() return type narrows IteratorAggregate's to PageIterator. */
 	init_handlers(&page_iterator_handlers, XtOffsetOf(pdfium_page_iterator, std), pdfium_page_iterator_free_obj);

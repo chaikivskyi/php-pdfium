@@ -16,7 +16,7 @@ class NoisyWrites {
 stream_wrapper_register('noisy', NoisyWrites::class);
 error_reporting(E_ALL);
 set_error_handler(function ($no, $msg) { echo "handled: $msg\n"; return true; });
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/tiny.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $doc->save('noisy://x.pdf');
 echo "saved\n";
 $doc->page(0)->render(dpi: 1)->savePng('noisy://x.png');

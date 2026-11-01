@@ -21,7 +21,7 @@ class Writes extends FailingWrites {
 stream_wrapper_register('failing', FailingWrites::class);
 stream_wrapper_register('nounlink', FailingWritesNoUnlink::class);
 stream_wrapper_register('writes', Writes::class);
-$doc = Pdfium\Document::open(__DIR__ . '/fixtures/tiny.pdf');
+$doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $img = $doc->page(0)->render(dpi: 1);
 foreach ([fn() => $doc->save('failing://a.pdf'), fn() => $img->savePng('failing://b.png'),
           fn() => $doc->save('nounlink://c.pdf'), fn() => $doc->save('writes://d.pdf')] as $fn) {
