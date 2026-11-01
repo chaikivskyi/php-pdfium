@@ -70,6 +70,34 @@ jobs:
       - name: Build and test
         run: scripts/test.sh
 
+  zts:
+    name: zts (PHP ${{ matrix.php }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: parallel-1.2.15
+          tools: none
+        env:
+          phpts: ts
+      - name: Install libpng and libjpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libpng-dev libjpeg-dev pkg-config
+      - name: Fetch PDFium
+        run: scripts/fetch-pdfium.sh
+      - name: Build and test
+        shell: bash
+        run: |
+          scripts/test.sh tests 2>&1 | tee "$RUNNER_TEMP/tests.log"
+          ! grep -E 'SKIP.*\[tests/threads-' "$RUNNER_TEMP/tests.log"
+
   asan:
     name: asan (PHP 8.4)
     runs-on: ubuntu-24.04
@@ -96,6 +124,35 @@ jobs:
           ASAN_OPTIONS=detect_leaks=1 \
           LSAN_OPTIONS="suppressions=$PWD/ci/lsan.supp" \
           scripts/test.sh
+
+  asan-zts:
+    name: asan-zts (PHP 8.4)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install libpng and libjpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libpng-dev libjpeg-dev pkg-config
+      - name: Build ZTS PHP and parallel with AddressSanitizer
+        run: ci/php-asan.sh "$RUNNER_TEMP/php" zts
+      - name: Fetch PDFium
+        run: scripts/fetch-pdfium.sh
+      - name: Build with AddressSanitizer
+        run: |
+          "$RUNNER_TEMP/php/bin/phpize"
+          ./configure --with-php-config="$RUNNER_TEMP/php/bin/php-config" --with-pdfium="$PWD/src/libpdfium" \
+            CFLAGS='-fsanitize=address -fno-omit-frame-pointer -g' LDFLAGS=-fsanitize=address
+          make
+      - name: Test
+        shell: bash
+        run: |
+          TEST_PHP_EXECUTABLE="$RUNNER_TEMP/php/bin/php" \
+          USE_ZEND_ALLOC=0 USE_TRACKED_ALLOC=1 TEST_TIMEOUT=600 \
+          ASAN_OPTIONS=detect_leaks=1 \
+          LSAN_OPTIONS="suppressions=$PWD/ci/lsan.supp" \
+          scripts/test.sh tests 2>&1 | tee "$RUNNER_TEMP/tests.log"
+          ! grep -E 'SKIP.*\[tests/threads-' "$RUNNER_TEMP/tests.log"
 
   valgrind:
     name: valgrind (PHP 8.4)
