@@ -87,7 +87,7 @@ var_dump($bitmap->width());
 echo "done\n";
 ?>
 --EXPECTF--
-%A
+Fatal error: Allowed memory size of %d bytes exhausted%s(tried to allocate %d bytes) in %s on line %d
 string(6) "return"
 string(6) "return"
 overlapped: yes
