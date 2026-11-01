@@ -12,6 +12,18 @@ env:
   MAKEFLAGS: -j2
 
 jobs:
+  stub:
+    name: arginfo matches the stub
+    runs-on: ubuntu-24.04
+    container: php:8.4-cli
+    steps:
+      - uses: actions/checkout@v4
+      - name: Regenerate pdfium_arginfo.h and compare
+        run: |
+          cp pdfium_arginfo.h /tmp/pdfium_arginfo.h
+          php /usr/local/lib/php/build/gen_stub.php -f pdfium.stub.php
+          diff -u /tmp/pdfium_arginfo.h pdfium_arginfo.h
+
   test:
     name: test (${{ matrix.os }}, PHP ${{ matrix.php }})
     runs-on: ${{ matrix.os }}
@@ -42,6 +54,8 @@ jobs:
       - name: Fetch PDFium
         run: scripts/fetch-pdfium.sh
       - name: Build and test
+        env:
+          EXTRA_CFLAGS: -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Werror
         run: scripts/test.sh
       - name: Check the library resolves at run time (macOS)
         if: ${{ !cancelled() && runner.os == 'macOS' }}
@@ -68,6 +82,8 @@ jobs:
       - name: Fetch PDFium
         run: scripts/fetch-pdfium.sh
       - name: Build and test
+        env:
+          EXTRA_CFLAGS: -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Werror
         run: scripts/test.sh
 
   zts:
@@ -94,12 +110,14 @@ jobs:
         run: scripts/fetch-pdfium.sh
       - name: Build and test
         shell: bash
+        env:
+          EXTRA_CFLAGS: -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Werror
         run: |
           scripts/test.sh tests 2>&1 | tee "$RUNNER_TEMP/tests.log"
           ! grep -E 'SKIP.*\[tests/threads-' "$RUNNER_TEMP/tests.log"
 
   asan:
-    name: asan (PHP 8.4)
+    name: asan+ubsan (PHP 8.4)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -107,26 +125,29 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libpng-dev libjpeg-dev pkg-config
-      - name: Build PHP with AddressSanitizer
+      - name: Build PHP with AddressSanitizer and UndefinedBehaviorSanitizer
         run: ci/php-asan.sh "$RUNNER_TEMP/php"
       - name: Fetch PDFium
         run: scripts/fetch-pdfium.sh
-      - name: Build with AddressSanitizer
+      - name: Build with AddressSanitizer and UndefinedBehaviorSanitizer
+        env:
+          EXTRA_CFLAGS: -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Werror
         run: |
           "$RUNNER_TEMP/php/bin/phpize"
           ./configure --with-php-config="$RUNNER_TEMP/php/bin/php-config" --with-pdfium="$PWD/src/libpdfium" \
-            CFLAGS='-fsanitize=address -fno-omit-frame-pointer -g' LDFLAGS=-fsanitize=address
+            CFLAGS='-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -g' \
+            LDFLAGS=-fsanitize=address,undefined
           make
       - name: Test
         run: |
           TEST_PHP_EXECUTABLE="$RUNNER_TEMP/php/bin/php" \
-          USE_ZEND_ALLOC=0 \
-          ASAN_OPTIONS=detect_leaks=1 \
+          USE_ZEND_ALLOC=0 USE_TRACKED_ALLOC=1 \
+          ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=print_stacktrace=1 \
           LSAN_OPTIONS="suppressions=$PWD/ci/lsan.supp" \
           scripts/test.sh
 
   asan-zts:
-    name: asan-zts (PHP 8.4)
+    name: asan+ubsan-zts (PHP 8.4)
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -134,22 +155,25 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libpng-dev libjpeg-dev pkg-config
-      - name: Build ZTS PHP and parallel with AddressSanitizer
+      - name: Build ZTS PHP and parallel with AddressSanitizer and UndefinedBehaviorSanitizer
         run: ci/php-asan.sh "$RUNNER_TEMP/php" zts
       - name: Fetch PDFium
         run: scripts/fetch-pdfium.sh
-      - name: Build with AddressSanitizer
+      - name: Build with AddressSanitizer and UndefinedBehaviorSanitizer
+        env:
+          EXTRA_CFLAGS: -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Werror
         run: |
           "$RUNNER_TEMP/php/bin/phpize"
           ./configure --with-php-config="$RUNNER_TEMP/php/bin/php-config" --with-pdfium="$PWD/src/libpdfium" \
-            CFLAGS='-fsanitize=address -fno-omit-frame-pointer -g' LDFLAGS=-fsanitize=address
+            CFLAGS='-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -g' \
+            LDFLAGS=-fsanitize=address,undefined
           make
       - name: Test
         shell: bash
         run: |
           TEST_PHP_EXECUTABLE="$RUNNER_TEMP/php/bin/php" \
           USE_ZEND_ALLOC=0 USE_TRACKED_ALLOC=1 TEST_TIMEOUT=600 \
-          ASAN_OPTIONS=detect_leaks=1 \
+          ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=print_stacktrace=1 \
           LSAN_OPTIONS="suppressions=$PWD/ci/lsan.supp" \
           scripts/test.sh tests 2>&1 | tee "$RUNNER_TEMP/tests.log"
           ! grep -E 'SKIP.*\[tests/threads-' "$RUNNER_TEMP/tests.log"
@@ -173,6 +197,8 @@ jobs:
       - name: Fetch PDFium
         run: scripts/fetch-pdfium.sh
       - name: Build and test under Valgrind
+        env:
+          EXTRA_CFLAGS: -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare -Werror
         run: |
           # run-tests passes no --leak-check of its own. The tracked allocator frees the Zend heap at request
           # end, as the real one does, so what is left is native memory: PDFium's, libpng's and libjpeg's.

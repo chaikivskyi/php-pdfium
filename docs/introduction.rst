@@ -213,8 +213,9 @@ The thread tests run when the ``parallel`` extension is installed; ``scripts/tes
 The public API is defined in ``pdfium.stub.php``. ``pdfium_arginfo.h`` is generated from it with
 PHP's ``build/gen_stub.php``.
 
-CI runs the tests on every supported platform and PHP version, and also under Valgrind and
-AddressSanitizer.
+CI builds with ``-Wall -Wextra -Werror``, checks that ``pdfium_arginfo.h`` matches the stub, and
+runs the tests on every supported platform and PHP version, and also under Valgrind,
+AddressSanitizer and UndefinedBehaviorSanitizer.
 
 Build these docs:
 
