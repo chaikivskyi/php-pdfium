@@ -117,8 +117,22 @@ With ``memory_limit = -1`` there are no checks.
    ``unset()`` it when you are done.
 
 
+.. _threads:
+
 Threads
 -------
 
-Only non-thread-safe (NTS) PHP is supported; see :doc:`platforms`. You can open as many documents
-as you like in one process.
+NTS and ZTS PHP are both supported. PDFium is not thread-safe, so on ZTS only one thread per process
+can use it at a time.
+
+A call made while another thread is using PDFium throws :php:exc:`Pdfium\\BusyException` and does
+nothing, so it is safe to retry. To render in parallel, use several processes, for example PHP-FPM
+workers.
+
+- ``Bitmap`` methods never throw it.
+- Freeing a document, page or page iterator, and ``PageIterator::next()`` and ``rewind()``, never
+  throw it, but may wait for the other thread to finish.
+- ``open()`` reads the file before it checks. For a stream you cannot read twice, such as
+  ``php://stdin``, read it into a string yourself and retry with ``fromString()``.
+- Do not ``pcntl_fork()`` while another thread may be using PDFium. The child would find PDFium
+  busy forever and hang when it frees a document or page.

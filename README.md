@@ -12,7 +12,7 @@ a 160-page document does not hold 160 pages in memory.
 - Split, merge and save.
 - No FFI, and no ini setting beyond `extension=pdfium`.
 
-PHP 8.2 to 8.5, NTS only. Linux x86_64 and arm64 (glibc and Alpine/musl) and macOS arm64.
+PHP 8.2 to 8.5, NTS and ZTS. Linux x86_64 and arm64 (glibc and Alpine/musl) and macOS arm64.
 
 ## Install
 
@@ -64,8 +64,11 @@ phpize's `make clean` runs `find . -name '*.so'`, which deletes
 `src/libpdfium/lib/libpdfium.so`. After a `make clean`, run `scripts/fetch-pdfium.sh` again to
 restore it.
 
-Run the tests with `scripts/test.sh` (or `php run-tests.php -n -d extension=$PWD/modules/pdfium.so tests`).
-`scripts/dev.sh` runs any command inside a Docker image with the toolchain installed.
+Run the tests with `scripts/test.sh` (or `php run-tests.php -n -d extension=$PWD/modules/pdfium.so tests`,
+adding `-d extension=parallel` on ZTS PHP so the thread tests are not skipped).
+`scripts/dev.sh` runs any command inside a Docker image with the toolchain installed;
+`PDFIUM_ZTS=1 scripts/dev.sh scripts/test.sh` uses a ZTS PHP with `parallel`, so the thread tests run
+too.
 
 ## Usage
 
@@ -132,6 +135,7 @@ nor logged (fatal errors still are), and your error handler, if you set one, sti
 | `Pdfium\PasswordException` | A password is required, or the one given is wrong. |
 | `Pdfium\UnsupportedException` | A security handler or feature PDFium does not support. |
 | `Pdfium\MemoryException` | A render, a page's text, a PNG or JPEG encoding, or a serialised document would not fit under `memory_limit`. |
+| `Pdfium\BusyException` | ZTS only: another thread is using PDFium. See [Threads](#threads). |
 
 A bad argument throws `\ValueError` (index out of range, empty list, DPI or quality out of range, empty
 bytes or path) or `\TypeError` (a non-int index, a non-`Document` in a merge list).
@@ -174,11 +178,12 @@ Limits:
 - Encoding to PNG or JPEG stops with `MemoryException` before its output would reach `memory_limit`,
   as do `toString()`, `save()` and `text()`. None of them ends in a fatal error.
 
-## NTS only
+## Threads
 
-PDFium keeps one process-wide library state and is not thread-safe. A build against a ZTS PHP fails
-with an `#error`: `pdfium supports NTS PHP only: PDFium is not thread-safe`, and `composer.json` declares
-`support-zts: false`.
+On ZTS PHP only one thread per process can use PDFium at a time. A call made while another thread is
+using it throws `Pdfium\BusyException` and does nothing, so it is safe to retry. `Document::open()` has
+already read the file by then, so read a stream you cannot read twice into a string and use
+`fromString()`. To render in parallel, use several processes. See `docs/behaviour.rst`.
 
 ## Licence
 

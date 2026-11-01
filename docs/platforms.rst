@@ -28,18 +28,14 @@ CI builds and tests the extension on these platforms with PHP 8.2, 8.3, 8.4 and 
      - arm64
      - ``pdfium-mac-arm64.tgz``
 
+ZTS PHP is supported on Linux x86_64 (glibc) only, where CI tests it on Ubuntu 24.04.
+
 ``scripts/fetch-pdfium.sh`` picks the right build automatically and checks it against
 ``pdfium.sha256``.
 
 
 Not supported
 -------------
-
-**Thread-safe (ZTS) PHP.** PDFium is not thread-safe, so the build stops with:
-
-.. code-block:: text
-
-   #error "pdfium supports NTS PHP only: PDFium is not thread-safe"
 
 **Windows and Intel macOS.** These are not tested, and ``scripts/fetch-pdfium.sh`` stops with
 ``unsupported platform``. You can still download the matching PDFium build yourself and pass its

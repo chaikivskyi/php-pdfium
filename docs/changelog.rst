@@ -13,5 +13,7 @@ First release, built against PDFium |pdfium_version|.
 - Split, merge and save documents, with an option to remove encryption.
 - Throw exceptions for every error, including :php:exc:`Pdfium\\MemoryException` instead of a fatal
   error when ``memory_limit`` would be exceeded.
-- Support PHP 8.2 to 8.5 (NTS) on Linux x86_64 and arm64 (glibc and musl) and macOS arm64.
+- Support PHP 8.2 to 8.5 on Linux x86_64 and arm64 (glibc and musl) and macOS arm64, and ZTS PHP on
+  Linux x86_64.
+- On ZTS PHP, throw :php:exc:`Pdfium\\BusyException` when another thread is using PDFium.
 - Install with PIE.

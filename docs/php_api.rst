@@ -36,6 +36,7 @@ Document
       :throws FormatException: The file is not a PDF or is corrupted.
       :throws PasswordException: A password is needed, or the password is wrong.
       :throws UnsupportedException: The document uses an encryption PDFium does not support.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:staticmethod:: fromString(string $bytes, ?string $password = null) -> Document
 
@@ -48,6 +49,7 @@ Document
       :throws FormatException: The data is not a PDF or is corrupted.
       :throws PasswordException: A password is needed, or the password is wrong.
       :throws UnsupportedException: The document uses an encryption PDFium does not support.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Information
 
@@ -56,12 +58,14 @@ Document
       The number of pages. Fast: no page is loaded.
 
       :rtype: int
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: count() -> int
 
       Same as :php:meth:`pageCount`, so ``count($doc)`` works.
 
       :rtype: int
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: metadata() -> array
 
@@ -73,6 +77,7 @@ Document
 
       :returns: ``array<string, string>``
       :rtype: array
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: permissions() -> array
 
@@ -84,6 +89,7 @@ Document
 
       :returns: ``array<string, bool>``
       :rtype: array
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Pages
 
@@ -95,6 +101,7 @@ Document
       :rtype: Page
       :throws \\ValueError: The index is out of range.
       :throws FormatException: PDFium cannot load the page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: pages() -> PageIterator
 
@@ -123,6 +130,7 @@ Document
       :throws \\ValueError: The list is empty, or an index is out of range.
       :throws \\TypeError: An element is not an ``int``.
       :throws Exception: PDFium cannot copy the pages.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:staticmethod:: merge(array $documents) -> Document
 
@@ -137,6 +145,7 @@ Document
       :throws \\ValueError: The list is empty.
       :throws \\TypeError: An element is not a ``Document``.
       :throws Exception: PDFium cannot copy the pages.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: toString(bool $removeSecurity = false) -> string
 
@@ -147,6 +156,7 @@ Document
       :rtype: string
       :throws MemoryException: The result would not fit under ``memory_limit``.
       :throws Exception: PDFium cannot write the document.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: save(string $path, bool $removeSecurity = false) -> void
 
@@ -161,6 +171,7 @@ Document
       :throws FileException: The file cannot be written.
       :throws MemoryException: The result would not fit under ``memory_limit``.
       :throws Exception: PDFium cannot write the document.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
 
 Page
@@ -181,18 +192,21 @@ Page
       Width in points (1/72 inch), after rotation. For example, ``595.28`` for A4.
 
       :rtype: float
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: height() -> float
 
       Height in points, after rotation. For example, ``841.89`` for A4.
 
       :rtype: float
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: rotation() -> int
 
       Rotation in degrees: ``0``, ``90``, ``180`` or ``270``.
 
       :rtype: int
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: text() -> string
 
@@ -201,6 +215,7 @@ Page
       :rtype: string
       :throws FormatException: PDFium cannot read the page's text.
       :throws MemoryException: The text would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: render(int $dpi = 150) -> Bitmap
 
@@ -211,6 +226,7 @@ Page
       :throws \\ValueError: The DPI is out of range, a side would be over 65,500 pixels, or the
          image would be over 100 million pixels.
       :throws MemoryException: The bitmap would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
 
 PageIterator
@@ -230,6 +246,7 @@ PageIterator
       :rtype: Page
       :throws Exception: The iterator is past the last page.
       :throws FormatException: PDFium cannot load the page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: key() -> int
 
@@ -250,6 +267,7 @@ PageIterator
       Whether the iterator is on a page.
 
       :rtype: bool
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
 
 Bitmap
@@ -354,6 +372,17 @@ these:
 
    The operation would go over ``memory_limit``. Thrown instead of PHP's fatal out-of-memory error.
    See :ref:`memory-limit`.
+
+.. php:exception:: BusyException
+
+   ZTS PHP only. Another thread is using PDFium, and nothing was done. It is safe to retry, except
+   that :php:meth:`Document::open` has already read the file. See :ref:`threads`.
+
+   Every :php:class:`Document`, :php:class:`Page` and :php:class:`PageIterator` method can throw it,
+   including ``current()`` and ``valid()`` in the middle of a ``foreach``, except
+   :php:meth:`Document::pages`, :php:meth:`Document::getIterator`, :php:meth:`Page::index`,
+   :php:meth:`PageIterator::key`, :php:meth:`PageIterator::next` and :php:meth:`PageIterator::rewind`.
+   :php:class:`Bitmap` methods never throw it.
 
 When a document fails to open, ``$e->getCode()`` holds PDFium's error code:
 

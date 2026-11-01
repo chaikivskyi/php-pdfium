@@ -9,7 +9,7 @@ What it does
 - Render pages to PNG or JPEG at any DPI.
 - Split, merge and save documents.
 
-It needs PHP 8.2 to 8.5, non-thread-safe (NTS) builds only. No FFI and no ini settings are needed.
+It needs PHP 8.2 to 8.5, NTS, or ZTS on Linux x86_64. No FFI and no ini settings are needed.
 See :doc:`platforms` for the supported systems.
 
 
@@ -206,6 +206,9 @@ Or run them inside Docker, with all tools installed:
 .. code-block:: sh
 
    scripts/dev.sh scripts/test.sh
+   PDFIUM_ZTS=1 scripts/dev.sh scripts/test.sh   # ZTS PHP, with the thread tests
+
+The thread tests run when the ``parallel`` extension is installed; ``scripts/test.sh`` loads it.
 
 The public API is defined in ``pdfium.stub.php``. ``pdfium_arginfo.h`` is generated from it with
 PHP's ``build/gen_stub.php``.
