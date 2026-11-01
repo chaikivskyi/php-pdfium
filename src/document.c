@@ -9,17 +9,46 @@
 #include <fpdf_save.h>
 #include "zend_exceptions.h"
 
+static void throw_error_code(unsigned long err, const char *context)
+{
+	zend_class_entry *ce = pdfium_ce_exception;
+	const char *reason = "unknown error";
+
+	switch (err) {
+		case FPDF_ERR_FILE:
+			ce = pdfium_ce_file_exception;
+			reason = "file not found or could not be opened";
+			break;
+		case FPDF_ERR_FORMAT:
+			ce = pdfium_ce_format_exception;
+			reason = "not a PDF or corrupted";
+			break;
+		case FPDF_ERR_PAGE:
+			ce = pdfium_ce_format_exception;
+			reason = "page not found or content error";
+			break;
+		case FPDF_ERR_PASSWORD:
+			ce = pdfium_ce_password_exception;
+			reason = "password required or incorrect";
+			break;
+		case FPDF_ERR_SECURITY:
+			ce = pdfium_ce_unsupported_exception;
+			reason = "unsupported security scheme";
+			break;
+	}
+	zend_throw_exception_ex(ce, (zend_long) err, "%s: %s", context, reason);
+}
+
 ZEND_METHOD(Pdfium_Document, __construct)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
 }
 
-pdfium_doc_handle *pdfium_doc_handle_create(FPDF_DOCUMENT doc, zend_string *buffer)
+static pdfium_doc_handle *doc_handle_create(zend_string *buffer)
 {
 	pdfium_doc_handle *h = ecalloc(1, sizeof(*h));
 
-	h->doc = doc;
-	h->buffer = buffer ? zend_string_copy(buffer) : NULL;
+	h->buffer = buffer;
 	h->refs = 1;
 	return h;
 }
@@ -44,12 +73,14 @@ void pdfium_doc_handle_release(pdfium_doc_handle *h)
 	if (--h->refs) {
 		return;
 	}
-	pdfium_enter_wait();
-	if (h->form) {
-		FPDFDOC_ExitFormFillEnvironment(h->form);
+	if (h->doc) {
+		pdfium_enter_wait();
+		if (h->form) {
+			FPDFDOC_ExitFormFillEnvironment(h->form);
+		}
+		FPDF_CloseDocument(h->doc);
+		pdfium_leave();
 	}
-	FPDF_CloseDocument(h->doc);
-	pdfium_leave();
 	if (h->buffer) {
 		zend_string_release(h->buffer);
 	}
@@ -66,13 +97,33 @@ void pdfium_document_free_obj(zend_object *obj)
 	zend_object_std_dtor(obj);
 }
 
-zend_object *pdfium_document_create(pdfium_doc_handle *h)
+static zend_object *new_document(pdfium_doc_handle *h)
 {
 	zval zv;
 
 	object_init_ex(&zv, pdfium_ce_document);
 	pdfium_document_from_obj(Z_OBJ(zv))->h = h;
 	return Z_OBJ(zv);
+}
+
+static void load_document(pdfium_doc_handle *h, zend_string *password, zval *return_value)
+{
+	zend_object *obj = new_document(h);
+
+	if (!pdfium_enter()) {
+		OBJ_RELEASE(obj);
+		RETURN_THROWS();
+	}
+	h->doc = FPDF_LoadMemDocument64(ZSTR_VAL(h->buffer), ZSTR_LEN(h->buffer), password ? ZSTR_VAL(password) : NULL);
+	unsigned long err = h->doc ? 0 : FPDF_GetLastError();
+
+	pdfium_leave();
+	if (!h->doc) {
+		OBJ_RELEASE(obj);
+		throw_error_code(err, "Cannot open document");
+		RETURN_THROWS();
+	}
+	RETURN_OBJ(obj);
 }
 
 ZEND_METHOD(Pdfium_Document, open)
@@ -95,22 +146,7 @@ ZEND_METHOD(Pdfium_Document, open)
 	if (!bytes) {
 		RETURN_THROWS();
 	}
-	if (!pdfium_enter()) {
-		zend_string_release(bytes);
-		RETURN_THROWS();
-	}
-	FPDF_DOCUMENT doc = FPDF_LoadMemDocument64(ZSTR_VAL(bytes), ZSTR_LEN(bytes), password ? ZSTR_VAL(password) : NULL);
-	if (!doc) {
-		pdfium_throw_last_error("Cannot open document");
-		pdfium_leave();
-		zend_string_release(bytes);
-		RETURN_THROWS();
-	}
-	pdfium_doc_handle *h = pdfium_doc_handle_create(doc, bytes);
-	pdfium_leave();
-	zend_object *obj = pdfium_document_create(h);
-	zend_string_release(bytes);
-	RETURN_OBJ(obj);
+	load_document(doc_handle_create(bytes), password, return_value);
 }
 
 ZEND_METHOD(Pdfium_Document, fromString)
@@ -128,18 +164,7 @@ ZEND_METHOD(Pdfium_Document, fromString)
 		RETURN_THROWS();
 	}
 
-	if (!pdfium_enter()) {
-		RETURN_THROWS();
-	}
-	FPDF_DOCUMENT doc = FPDF_LoadMemDocument64(ZSTR_VAL(bytes), ZSTR_LEN(bytes), password ? ZSTR_VAL(password) : NULL);
-	if (!doc) {
-		pdfium_throw_last_error("Cannot open document");
-		pdfium_leave();
-		RETURN_THROWS();
-	}
-	pdfium_doc_handle *h = pdfium_doc_handle_create(doc, bytes);
-	pdfium_leave();
-	RETURN_OBJ(pdfium_document_create(h));
+	load_document(doc_handle_create(zend_string_copy(bytes)), password, return_value);
 }
 
 static pdfium_doc_handle *this_handle(zval *self)
@@ -165,40 +190,50 @@ ZEND_METHOD(Pdfium_Document, metadata)
 		{"Creator", "creator"}, {"Producer", "producer"}, {"CreationDate", "creationDate"}, {"ModDate", "modDate"},
 	};
 	FPDF_DOCUMENT doc = this_handle(ZEND_THIS)->doc;
+	unsigned short *bufs[sizeof(entries) / sizeof(entries[0])] = {0};
+	size_t units[sizeof(entries) / sizeof(entries[0])] = {0};
+	size_t n = sizeof(entries) / sizeof(entries[0]), i, failed = n, converted = 0;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	array_init(return_value);
-	for (size_t i = 0; i < sizeof(entries) / sizeof(entries[0]); i++) {
+	for (i = 0; i < n; i++) {
 		unsigned long bytes = FPDF_GetMetaText(doc, entries[i].tag, NULL, 0);
 
 		if (bytes <= 2) {
 			continue;
 		}
-		if (!pdfium_memory_fits((size_t) bytes / 2 * 5)) {
-			pdfium_leave();
-			zend_throw_exception_ex(pdfium_ce_memory_exception, 0,
-				"The %s entry needs more memory than memory_limit leaves", entries[i].tag);
-			RETURN_THROWS();
+		converted += (size_t) bytes / 2 * 3;
+		if (!pdfium_memory_fits(bytes + converted)) {
+			failed = i;
+			break;
 		}
-		unsigned short *buf = emalloc(bytes);
-		size_t units = 0;
-
-		FPDF_GetMetaText(doc, entries[i].tag, buf, bytes);
-		while (units < bytes / 2 && buf[units]) {
-			units++;
-		}
-		zend_string *value = pdfium_utf16le_to_utf8(buf, units);
-		efree(buf);
-		if (ZSTR_LEN(value)) {
-			add_assoc_str(return_value, entries[i].key, value);
-		} else {
-			zend_string_release(value);
+		bufs[i] = emalloc(bytes);
+		FPDF_GetMetaText(doc, entries[i].tag, bufs[i], bytes);
+		while (units[i] < bytes / 2 && bufs[i][units[i]]) {
+			units[i]++;
 		}
 	}
 	pdfium_leave();
+
+	if (failed == n) {
+		array_init(return_value);
+	}
+	for (i = 0; i < n; i++) {
+		if (!bufs[i]) {
+			continue;
+		}
+		if (failed == n && units[i]) {
+			add_assoc_str(return_value, entries[i].key, pdfium_utf16le_to_utf8(bufs[i], units[i]));
+		}
+		efree(bufs[i]);
+	}
+	if (failed != n) {
+		zend_throw_exception_ex(pdfium_ce_memory_exception, 0,
+			"The %s entry needs more memory than memory_limit leaves", entries[failed].tag);
+		RETURN_THROWS();
+	}
 }
 
 ZEND_METHOD(Pdfium_Document, permissions)
@@ -232,35 +267,25 @@ ZEND_METHOD(Pdfium_Document, permissions)
 ZEND_METHOD(Pdfium_Document, page)
 {
 	zend_long index;
-	pdfium_doc_handle *h = this_handle(ZEND_THIS);
+	int page_count;
 
 	ZEND_PARSE_PARAMETERS_START(1, 1)
 		Z_PARAM_LONG(index)
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (!pdfium_enter()) {
-		RETURN_THROWS();
-	}
-	int page_count = FPDF_GetPageCount(h->doc);
+	zend_object *obj = pdfium_page_load(this_handle(ZEND_THIS), index, &page_count);
 
-	if (!page_count) {
-		pdfium_leave();
-		zend_argument_value_error(1, "must be a page index, but the document has no pages");
-		RETURN_THROWS();
+	if (obj) {
+		RETURN_OBJ(obj);
 	}
-	if (index < 0 || index >= page_count) {
-		pdfium_leave();
-		zend_argument_value_error(1, "must be between 0 and %d", page_count - 1);
-		RETURN_THROWS();
+	if (!EG(exception)) {
+		if (!page_count) {
+			zend_argument_value_error(1, "must be a page index, but the document has no pages");
+		} else {
+			zend_argument_value_error(1, "must be between 0 and %d", page_count - 1);
+		}
 	}
-	zend_object *page = pdfium_page_create(h, (int) index);
-
-	pdfium_leave();
-	if (!page) {
-		pdfium_throw_page_load_error((int) index);
-		RETURN_THROWS();
-	}
-	RETURN_OBJ(page);
+	RETURN_THROWS();
 }
 
 ZEND_METHOD(Pdfium_Document, pages)
@@ -272,22 +297,20 @@ ZEND_METHOD(Pdfium_Document, pages)
 typedef enum { ASSEMBLED, CANNOT_CREATE, CANNOT_IMPORT } assemble_status;
 
 static assemble_status assemble(pdfium_doc_handle **sources, uint32_t nsources, const int *indexes, unsigned long count,
-	pdfium_doc_handle **out)
+	pdfium_doc_handle *h)
 {
 	FPDF_DOCUMENT doc = FPDF_CreateNewDocument();
 
 	if (!doc) {
 		return CANNOT_CREATE;
 	}
-	pdfium_doc_handle *h = pdfium_doc_handle_create(doc, NULL);
-
 	for (uint32_t i = 0; i < nsources; i++) {
-		if (!FPDF_ImportPagesByIndex(h->doc, sources[i]->doc, indexes, count, FPDF_GetPageCount(h->doc))) {
-			pdfium_doc_handle_release(h);
+		if (!FPDF_ImportPagesByIndex(doc, sources[i]->doc, indexes, count, FPDF_GetPageCount(doc))) {
+			FPDF_CloseDocument(doc);
 			return CANNOT_IMPORT;
 		}
 	}
-	*out = h;
+	h->doc = doc;
 	return ASSEMBLED;
 }
 
@@ -300,21 +323,17 @@ static void throw_assemble_error(assemble_status status)
 	}
 }
 
-typedef enum { INDEXES_OK, INDEXES_NOT_INT, INDEXES_NO_PAGES, INDEXES_OUT_OF_RANGE } indexes_status;
+typedef enum { INDEXES_OK, INDEXES_NO_PAGES, INDEXES_OUT_OF_RANGE } indexes_status;
 
-static indexes_status indexes_from(HashTable *ht, int page_count, int *out, zval **bad)
+static indexes_status indexes_from(HashTable *ht, int page_count, int *out)
 {
 	zval *zv;
 
+	if (!page_count) {
+		return INDEXES_NO_PAGES;
+	}
 	ZEND_HASH_FOREACH_VAL(ht, zv) {
 		ZVAL_DEREF(zv);
-		*bad = zv;
-		if (Z_TYPE_P(zv) != IS_LONG) {
-			return INDEXES_NOT_INT;
-		}
-		if (!page_count) {
-			return INDEXES_NO_PAGES;
-		}
 		if (Z_LVAL_P(zv) < 0 || Z_LVAL_P(zv) >= page_count) {
 			return INDEXES_OUT_OF_RANGE;
 		}
@@ -323,11 +342,9 @@ static indexes_status indexes_from(HashTable *ht, int page_count, int *out, zval
 	return INDEXES_OK;
 }
 
-static void throw_indexes_error(indexes_status status, zval *bad, int page_count)
+static void throw_indexes_error(indexes_status status, int page_count)
 {
-	if (status == INDEXES_NOT_INT) {
-		zend_argument_type_error(1, "must contain only int, %s given", zend_zval_type_name(bad));
-	} else if (status == INDEXES_NO_PAGES) {
+	if (status == INDEXES_NO_PAGES) {
 		zend_argument_value_error(1, "must contain only page indexes, but the document has no pages");
 	} else {
 		zend_argument_value_error(1, "must contain only indexes between 0 and %d", page_count - 1);
@@ -337,6 +354,7 @@ static void throw_indexes_error(indexes_status status, zval *bad, int page_count
 ZEND_METHOD(Pdfium_Document, extractPages)
 {
 	HashTable *ht;
+	zval *zv;
 	pdfium_doc_handle *h = this_handle(ZEND_THIS);
 
 	ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -348,32 +366,42 @@ ZEND_METHOD(Pdfium_Document, extractPages)
 		zend_argument_value_error(1, "must not be empty");
 		RETURN_THROWS();
 	}
+	ZEND_HASH_FOREACH_VAL(ht, zv) {
+		ZVAL_DEREF(zv);
+		if (Z_TYPE_P(zv) != IS_LONG) {
+			zend_argument_type_error(1, "must contain only int, %s given", zend_zval_type_name(zv));
+			RETURN_THROWS();
+		}
+	} ZEND_HASH_FOREACH_END();
 	int *indexes = safe_emalloc(n, sizeof(int), 0);
+	pdfium_doc_handle *out = doc_handle_create(NULL);
+	zend_object *obj = new_document(out);
 
 	if (!pdfium_enter()) {
+		OBJ_RELEASE(obj);
 		efree(indexes);
 		RETURN_THROWS();
 	}
 	int page_count = FPDF_GetPageCount(h->doc);
-	zval *bad = NULL;
-	indexes_status valid = indexes_from(ht, page_count, indexes, &bad);
+	indexes_status valid = indexes_from(ht, page_count, indexes);
 
 	if (valid != INDEXES_OK) {
 		pdfium_leave();
+		OBJ_RELEASE(obj);
 		efree(indexes);
-		throw_indexes_error(valid, bad, page_count);
+		throw_indexes_error(valid, page_count);
 		RETURN_THROWS();
 	}
-	pdfium_doc_handle *out = NULL;
-	assemble_status status = assemble(&h, 1, indexes, n, &out);
+	assemble_status status = assemble(&h, 1, indexes, n, out);
 
 	pdfium_leave();
 	efree(indexes);
 	if (status != ASSEMBLED) {
+		OBJ_RELEASE(obj);
 		throw_assemble_error(status);
 		RETURN_THROWS();
 	}
-	RETURN_OBJ(pdfium_document_create(out));
+	RETURN_OBJ(obj);
 }
 
 ZEND_METHOD(Pdfium_Document, merge)
@@ -401,20 +429,24 @@ ZEND_METHOD(Pdfium_Document, merge)
 		sources[n++] = this_handle(zv);
 	} ZEND_HASH_FOREACH_END();
 
+	pdfium_doc_handle *out = doc_handle_create(NULL);
+	zend_object *obj = new_document(out);
+
 	if (!pdfium_enter()) {
+		OBJ_RELEASE(obj);
 		efree(sources);
 		RETURN_THROWS();
 	}
-	pdfium_doc_handle *out = NULL;
-	assemble_status status = assemble(sources, n, NULL, 0, &out);
+	assemble_status status = assemble(sources, n, NULL, 0, out);
 
 	pdfium_leave();
 	efree(sources);
 	if (status != ASSEMBLED) {
+		OBJ_RELEASE(obj);
 		throw_assemble_error(status);
 		RETURN_THROWS();
 	}
-	RETURN_OBJ(pdfium_document_create(out));
+	RETURN_OBJ(obj);
 }
 
 typedef struct {

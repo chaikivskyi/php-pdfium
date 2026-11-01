@@ -113,26 +113,35 @@ ZEND_METHOD(Pdfium_Page, text)
 	efree(buf);
 }
 
-zend_object *pdfium_page_create(pdfium_doc_handle *h, int index)
+zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count)
 {
-	FPDF_PAGE page = FPDF_LoadPage(h->doc, index);
 	zval zv;
 
-	if (!page) {
-		return NULL;
-	}
 	object_init_ex(&zv, pdfium_ce_page);
-	pdfium_page *p = pdfium_page_from_obj(Z_OBJ(zv));
-	p->page = page;
-	p->index = index;
+	zend_object *obj = Z_OBJ(zv);
+	pdfium_page *p = pdfium_page_from_obj(obj);
+	p->index = (int) index;
 	p->h = h;
 	pdfium_doc_handle_addref(h);
-	return Z_OBJ(zv);
-}
 
-void pdfium_throw_page_load_error(int index)
-{
-	zend_throw_exception_ex(pdfium_ce_format_exception, 0, "Cannot load page %d", index);
+	if (!pdfium_enter()) {
+		OBJ_RELEASE(obj);
+		return NULL;
+	}
+	*page_count = FPDF_GetPageCount(h->doc);
+	bool in_range = index >= 0 && index < *page_count;
+	FPDF_PAGE page = in_range ? FPDF_LoadPage(h->doc, (int) index) : NULL;
+
+	pdfium_leave();
+	if (!page) {
+		OBJ_RELEASE(obj);
+		if (in_range) {
+			zend_throw_exception_ex(pdfium_ce_format_exception, 0, "Cannot load page %d", (int) index);
+		}
+		return NULL;
+	}
+	p->page = page;
+	return obj;
 }
 
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h)
@@ -164,22 +173,16 @@ ZEND_METHOD(Pdfium_PageIterator, current)
 	if (!Z_ISUNDEF(it->current)) {
 		RETURN_COPY(&it->current);
 	}
-	if (!pdfium_enter()) {
-		RETURN_THROWS();
-	}
-	if (it->index >= FPDF_GetPageCount(it->h->doc)) {
-		pdfium_leave();
-		zend_throw_exception(pdfium_ce_exception, "Iterator is past the last page", 0);
-		RETURN_THROWS();
-	}
-	zend_object *page = pdfium_page_create(it->h, it->index);
+	int page_count;
+	zend_object *obj = pdfium_page_load(it->h, it->index, &page_count);
 
-	pdfium_leave();
-	if (!page) {
-		pdfium_throw_page_load_error(it->index);
+	if (!obj) {
+		if (!EG(exception)) {
+			zend_throw_exception(pdfium_ce_exception, "Iterator is past the last page", 0);
+		}
 		RETURN_THROWS();
 	}
-	ZVAL_OBJ(&it->current, page);
+	ZVAL_OBJ(&it->current, obj);
 	RETURN_COPY(&it->current);
 }
 

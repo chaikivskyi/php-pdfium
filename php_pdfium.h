@@ -48,12 +48,12 @@ extern zend_class_entry *pdfium_ce_busy_exception;
 bool pdfium_enter(void);
 void pdfium_enter_wait(void);
 void pdfium_leave(void);
-void pdfium_guard_reset(void);
+void pdfium_guard_startup(void);
 #else
 static inline bool pdfium_enter(void) { return true; }
 static inline void pdfium_enter_wait(void) {}
 static inline void pdfium_leave(void) {}
-static inline void pdfium_guard_reset(void) {}
+static inline void pdfium_guard_startup(void) {}
 #endif
 
 static inline pdfium_document *pdfium_document_from_obj(zend_object *obj)
@@ -76,15 +76,11 @@ static inline pdfium_bitmap *pdfium_bitmap_from_obj(zend_object *obj)
 	return (pdfium_bitmap *)((char *)obj - XtOffsetOf(pdfium_bitmap, std));
 }
 
-pdfium_doc_handle *pdfium_doc_handle_create(FPDF_DOCUMENT doc, zend_string *buffer);
 void pdfium_doc_handle_addref(pdfium_doc_handle *h);
 void pdfium_doc_handle_release(pdfium_doc_handle *h);
 FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h);
 
-zend_object *pdfium_document_create(pdfium_doc_handle *h);
-
-zend_object *pdfium_page_create(pdfium_doc_handle *h, int index);
-void pdfium_throw_page_load_error(int index);
+zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count);
 
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h);
 
@@ -98,8 +94,6 @@ void pdfium_document_free_obj(zend_object *obj);
 void pdfium_page_free_obj(zend_object *obj);
 void pdfium_page_iterator_free_obj(zend_object *obj);
 void pdfium_bitmap_free_obj(zend_object *obj);
-
-void pdfium_throw_last_error(const char *context);
 
 bool pdfium_path_given(size_t len);
 

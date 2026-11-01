@@ -30,7 +30,7 @@ $future = $runtime->run(static function (string $fixture, string $stop): int {
 }, [__DIR__ . '/fixtures/a4.pdf', $stop]);
 
 $busy = $saveBusy = false;
-$noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = true;
+$noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
 while ((!$busy || !$saveBusy) && microtime(true) < $end) {
     try {
@@ -55,6 +55,12 @@ while ((!$busy || !$saveBusy) && microtime(true) < $end) {
         $currentNeverBusy = false;
     }
     try {
+        $doc->extractPages(['x']);
+    } catch (TypeError $e) {
+    } catch (Pdfium\BusyException $e) {
+        $typeErrorNeverBusy = false;
+    }
+    try {
         $doc->pageCount();
     } catch (Pdfium\BusyException $e) {
         $busy = $busy || $e->getMessage() === 'PDFium is in use by another thread';
@@ -77,6 +83,7 @@ echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no
 echo 'bitmap never busy: ', $bitmapNeverBusy ? 'yes' : 'no', "\n";
 echo 'release never busy: ', $releaseNeverBusy ? 'yes' : 'no', "\n";
 echo 'loaded current never busy: ', $currentNeverBusy ? 'yes' : 'no', "\n";
+echo 'type error never busy: ', $typeErrorNeverBusy ? 'yes' : 'no', "\n";
 ?>
 --EXPECT--
 bool(true)
@@ -85,3 +92,4 @@ save busy left no file: yes
 bitmap never busy: yes
 release never busy: yes
 loaded current never busy: yes
+type error never busy: yes

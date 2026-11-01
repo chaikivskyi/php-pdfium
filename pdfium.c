@@ -52,37 +52,6 @@ static zend_object_handlers page_handlers;
 static zend_object_handlers page_iterator_handlers;
 static zend_object_handlers bitmap_handlers;
 
-void pdfium_throw_last_error(const char *context)
-{
-	unsigned long err = FPDF_GetLastError();
-	zend_class_entry *ce = pdfium_ce_exception;
-	const char *reason = "unknown error";
-
-	switch (err) {
-		case FPDF_ERR_FILE:
-			ce = pdfium_ce_file_exception;
-			reason = "file not found or could not be opened";
-			break;
-		case FPDF_ERR_FORMAT:
-			ce = pdfium_ce_format_exception;
-			reason = "not a PDF or corrupted";
-			break;
-		case FPDF_ERR_PAGE:
-			ce = pdfium_ce_format_exception;
-			reason = "page not found or content error";
-			break;
-		case FPDF_ERR_PASSWORD:
-			ce = pdfium_ce_password_exception;
-			reason = "password required or incorrect";
-			break;
-		case FPDF_ERR_SECURITY:
-			ce = pdfium_ce_unsupported_exception;
-			reason = "unsupported security scheme";
-			break;
-	}
-	zend_throw_exception_ex(ce, (zend_long) err, "%s: %s", context, reason);
-}
-
 bool pdfium_memory_fits(size_t bytes)
 {
 	return PG(memory_limit) == -1 || zend_memory_usage(true) + bytes + ZEND_MM_CHUNK_SIZE <= (size_t) PG(memory_limit);
@@ -645,8 +614,15 @@ PHP_MINIT_FUNCTION(pdfium)
 {
 	FPDF_LIBRARY_CONFIG config = {.version = 2};
 
+#ifdef ZTS
+	if (type != MODULE_PERSISTENT) {
+		php_error_docref(NULL, E_WARNING, "pdfium cannot be loaded with dl() on ZTS PHP; load it with extension=pdfium");
+		return FAILURE;
+	}
+#endif
 	ZEND_TSRMLS_CACHE_UPDATE();
 	FPDF_InitLibraryWithConfig(&config);
+	pdfium_guard_startup();
 
 	pdfium_ce_exception = register_class_Pdfium_Exception(spl_ce_RuntimeException);
 	pdfium_ce_file_exception = register_class_Pdfium_FileException(pdfium_ce_exception);
@@ -688,17 +664,9 @@ PHP_RINIT_FUNCTION(pdfium)
 	ZEND_TSRMLS_CACHE_UPDATE();
 	return SUCCESS;
 }
-
-PHP_RSHUTDOWN_FUNCTION(pdfium)
-{
-	pdfium_guard_reset();
-	return SUCCESS;
-}
 #define PDFIUM_RINIT PHP_RINIT(pdfium)
-#define PDFIUM_RSHUTDOWN PHP_RSHUTDOWN(pdfium)
 #else
 #define PDFIUM_RINIT NULL
-#define PDFIUM_RSHUTDOWN NULL
 #endif
 
 PHP_MINFO_FUNCTION(pdfium)
@@ -724,7 +692,7 @@ zend_module_entry pdfium_module_entry = {
 	PHP_MINIT(pdfium),
 	PHP_MSHUTDOWN(pdfium),
 	PDFIUM_RINIT,
-	PDFIUM_RSHUTDOWN,
+	NULL,
 	PHP_MINFO(pdfium),
 	PHP_PDFIUM_VERSION,
 	STANDARD_MODULE_PROPERTIES
