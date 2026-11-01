@@ -19,7 +19,7 @@ if test "$PHP_PDFIUM" != "no"; then
   AC_CHECK_FUNCS([posix_fallocate mkostemp])
 
   PHP_SUBST([PDFIUM_SHARED_LIBADD])
-  PHP_NEW_EXTENSION([pdfium], [pdfium.c src/utf16.c src/document.c src/page.c src/bitmap.c], [$ext_shared])
+  PHP_NEW_EXTENSION([pdfium], [pdfium.c src/utf16.c src/document.c src/page.c src/bitmap.c], [$ext_shared],, [-DZEND_ENABLE_STATIC_TSRMLS_CACHE=1])
   PHP_ADD_BUILD_DIR([$ext_builddir/src])
 
   pdfium_version=`cat "$ext_srcdir/PDFIUM_VERSION" 2>/dev/null | tr -d '\r\n'`

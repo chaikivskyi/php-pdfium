@@ -348,7 +348,7 @@ static bool write_in_place(const char *target, const char *path, zend_string *da
 	return write_fd(fd, path, data, true);
 }
 
-static char pending_tmp[MAXPATHLEN];
+ZEND_TLS char pending_tmp[MAXPATHLEN];
 
 static bool write_replacing(const char *local_path, const char *path, zend_string *data)
 {
@@ -644,6 +644,7 @@ PHP_MINIT_FUNCTION(pdfium)
 {
 	FPDF_LIBRARY_CONFIG config = {.version = 2};
 
+	ZEND_TSRMLS_CACHE_UPDATE();
 	FPDF_InitLibraryWithConfig(&config);
 
 	pdfium_ce_exception = register_class_Pdfium_Exception(spl_ce_RuntimeException);
@@ -679,6 +680,17 @@ PHP_MSHUTDOWN_FUNCTION(pdfium)
 	return SUCCESS;
 }
 
+#ifdef ZTS
+PHP_RINIT_FUNCTION(pdfium)
+{
+	ZEND_TSRMLS_CACHE_UPDATE();
+	return SUCCESS;
+}
+#define PDFIUM_RINIT PHP_RINIT(pdfium)
+#else
+#define PDFIUM_RINIT NULL
+#endif
+
 PHP_MINFO_FUNCTION(pdfium)
 {
 	php_info_print_table_start();
@@ -701,7 +713,7 @@ zend_module_entry pdfium_module_entry = {
 	NULL,
 	PHP_MINIT(pdfium),
 	PHP_MSHUTDOWN(pdfium),
-	NULL,
+	PDFIUM_RINIT,
 	NULL,
 	PHP_MINFO(pdfium),
 	PHP_PDFIUM_VERSION,
@@ -709,5 +721,8 @@ zend_module_entry pdfium_module_entry = {
 };
 
 #ifdef COMPILE_DL_PDFIUM
+#ifdef ZTS
+ZEND_TSRMLS_CACHE_DEFINE()
+#endif
 ZEND_GET_MODULE(pdfium)
 #endif

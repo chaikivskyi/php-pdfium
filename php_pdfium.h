@@ -4,10 +4,6 @@
 #include "php.h"
 #include "zend_smart_str.h"
 
-#ifdef ZTS
-#error "pdfium supports NTS PHP only: PDFium is not thread-safe"
-#endif
-
 #include <fpdfview.h>
 #include <fpdf_formfill.h>
 
@@ -15,6 +11,10 @@
 
 extern zend_module_entry pdfium_module_entry;
 #define phpext_pdfium_ptr &pdfium_module_entry
+
+#if defined(ZTS) && defined(COMPILE_DL_PDFIUM)
+ZEND_TSRMLS_CACHE_EXTERN()
+#endif
 
 typedef struct pdfium_doc_handle {
 	FPDF_DOCUMENT doc;
