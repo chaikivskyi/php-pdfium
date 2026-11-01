@@ -88,11 +88,11 @@ ZEND_METHOD(Pdfium_Page, render)
 	if (form) {
 		FPDF_FFLDraw(form, bitmap, p->page, 0, 0, w, h, 0, FPDF_ANNOT);
 	}
+	FPDFBitmap_Destroy(bitmap);
 	pdfium_leave();
 
 	object_init_ex(return_value, pdfium_ce_bitmap);
 	pdfium_bitmap *img = this_bitmap(return_value);
-	img->bitmap = bitmap;
 	img->pixels = pixels;
 	img->width = w;
 	img->height = h;
@@ -368,10 +368,7 @@ void pdfium_bitmap_free_obj(zend_object *obj)
 {
 	pdfium_bitmap *img = pdfium_bitmap_from_obj(obj);
 
-	if (img->bitmap) {
-		pdfium_enter_wait();
-		FPDFBitmap_Destroy(img->bitmap);
-		pdfium_leave();
+	if (img->pixels) {
 		efree(img->pixels);
 	}
 	zend_object_std_dtor(obj);
