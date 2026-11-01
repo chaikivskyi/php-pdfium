@@ -1,12 +1,10 @@
 name: CI images
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ci/docker/**
-      - ci/php-asan.sh
-      - .github/workflows/images.yml
+  workflow_call:
+    outputs:
+      tag:
+        value: ${{ jobs.plan.outputs.tag }}
   schedule:
     - cron: '0 3 * * 1'
   workflow_dispatch:
@@ -16,25 +14,58 @@ permissions:
   packages: write
 
 jobs:
-  php:
-    name: ${{ matrix.php }}-${{ matrix.variant }}
+  plan:
+    name: find missing images
+    runs-on: ubuntu-24.04
+    outputs:
+      tag: ${{ steps.plan.outputs.tag }}
+      missing: ${{ steps.plan.outputs.missing }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: plan
+        env:
+          REPO: ghcr.io/${{ github.repository_owner }}/pdfium-ci
+          REBUILD: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+        run: |
+          tag=$(cat ci/docker/*.Dockerfile ci/php-asan.sh | sha256sum | cut -c1-12)
+          images=$(
+            for php in 8.2 8.3 8.4 8.5; do
+              jq -nc --arg n "$php-nts" --arg b "php:$php-cli-bookworm" \
+                '{name: $n, file: "php", args: "BASE=\($b)", platforms: "linux/amd64,linux/arm64"}'
+              jq -nc --arg n "$php-zts" --arg b "php:$php-zts-bookworm" \
+                '{name: $n, file: "php", args: "BASE=\($b)\nPARALLEL_VERSION=1.2.15", platforms: "linux/amd64"}'
+              jq -nc --arg n "$php-alpine" --arg b "php:$php-cli-alpine" \
+                '{name: $n, file: "php", args: "BASE=\($b)", platforms: "linux/amd64,linux/arm64"}'
+            done
+            jq -nc '{name: "asan-nts", file: "asan", args: "", platforms: "linux/amd64"}'
+            jq -nc '{name: "asan-zts", file: "asan", args: "ZTS=zts", platforms: "linux/amd64"}'
+          )
+          missing=$(
+            echo "$images" | while read -r image; do
+              name=$(echo "$image" | jq -r .name)
+              if [ "$REBUILD" = true ] || ! docker manifest inspect "$REPO:$name-$tag" >/dev/null 2>&1; then
+                echo "$image"
+              fi
+            done | jq -sc .
+          )
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "missing=$missing" >> "$GITHUB_OUTPUT"
+          echo "tag $tag, building: $(echo "$missing" | jq -r 'map(.name) | join(" ")')"
+
+  build:
+    name: build ${{ matrix.name }}
+    needs: plan
+    if: needs.plan.outputs.missing != '[]'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.2', '8.3', '8.4', '8.5']
-        variant: [nts, zts, alpine]
-        include:
-          - variant: nts
-            base: cli-bookworm
-            platforms: linux/amd64,linux/arm64
-          - variant: zts
-            base: zts-bookworm
-            platforms: linux/amd64
-            parallel: 1.2.15
-          - variant: alpine
-            base: cli-alpine
-            platforms: linux/amd64,linux/arm64
+        include: ${{ fromJSON(needs.plan.outputs.missing) }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
@@ -47,34 +78,8 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          file: ci/docker/php.Dockerfile
+          file: ci/docker/${{ matrix.file }}.Dockerfile
           platforms: ${{ matrix.platforms }}
-          build-args: |
-            BASE=php:${{ matrix.php }}-${{ matrix.base }}
-            PARALLEL_VERSION=${{ matrix.parallel }}
+          build-args: ${{ matrix.args }}
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-${{ matrix.variant }}
-
-  asan:
-    name: asan-${{ matrix.variant }}
-    runs-on: ubuntu-24.04
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [nts, zts]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ci/docker/asan.Dockerfile
-          build-args: |
-            ZTS=${{ matrix.variant == 'zts' && 'zts' || '' }}
-          push: true
-          tags: ghcr.io/${{ github.repository_owner }}/pdfium-ci:asan-${{ matrix.variant }}
+          tags: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.name }}-${{ needs.plan.outputs.tag }}

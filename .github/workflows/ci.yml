@@ -15,6 +15,12 @@ env:
   SANITIZE_CFLAGS: -fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer -g
 
 jobs:
+  images:
+    uses: ./.github/workflows/images.yml
+    permissions:
+      contents: read
+      packages: write
+
   stub:
     name: arginfo matches the stub
     runs-on: ubuntu-24.04
@@ -30,8 +36,9 @@ jobs:
   test:
     name: test (${{ matrix.os }}, PHP ${{ matrix.php }})
     runs-on: ${{ matrix.os }}
+    needs: images
     container:
-      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-nts
+      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-nts-${{ needs.images.outputs.tag }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -50,8 +57,9 @@ jobs:
   test-alpine:
     name: test (alpine ${{ matrix.os }}, PHP ${{ matrix.php }})
     runs-on: ${{ matrix.os }}
+    needs: images
     container:
-      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-alpine
+      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-alpine-${{ needs.images.outputs.tag }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -70,8 +78,9 @@ jobs:
   zts:
     name: zts (PHP ${{ matrix.php }})
     runs-on: ubuntu-24.04
+    needs: images
     container:
-      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-zts
+      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-zts-${{ needs.images.outputs.tag }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -92,8 +101,9 @@ jobs:
   asan:
     name: asan+ubsan (PHP 8.4)
     runs-on: ubuntu-24.04
+    needs: images
     container:
-      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:asan-nts
+      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:asan-nts-${{ needs.images.outputs.tag }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -112,8 +122,9 @@ jobs:
   asan-zts:
     name: asan+ubsan-zts (PHP 8.4)
     runs-on: ubuntu-24.04
+    needs: images
     container:
-      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:asan-zts
+      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:asan-zts-${{ needs.images.outputs.tag }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -134,8 +145,9 @@ jobs:
   valgrind:
     name: valgrind (PHP 8.4)
     runs-on: ubuntu-24.04
+    needs: images
     container:
-      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:8.4-nts
+      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:8.4-nts-${{ needs.images.outputs.tag }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
