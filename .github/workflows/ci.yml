@@ -124,7 +124,7 @@ jobs:
           docker run --rm -v "$PWD:/src" -w /src -e MAKEFLAGS -e EXTRA_CFLAGS "$IMAGE" scripts/test.sh tests >/tmp/tests.log 2>&1 || status=$?
           cat /tmp/tests.log
           test "$status" -eq 0
-          ! grep -E 'SKIP.*\[tests/threads-' /tmp/tests.log
+          ! grep -E 'SKIP.*\[tests/threads-' /tmp/tests.log | grep -v 'reason: parallel crashes before PHP 8.4'
 
   asan:
     name: asan+ubsan (PHP 8.4)

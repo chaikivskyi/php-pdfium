@@ -3,7 +3,13 @@ Threads that end, exit() or die of a fatal error with live documents, pages, bit
 --EXTENSIONS--
 pdfium
 --SKIPIF--
-<?php require __DIR__ . '/threads.inc'; threads_skipif(); ?>
+<?php
+require __DIR__ . '/threads.inc';
+threads_skipif();
+if (PHP_VERSION_ID < 80400) {
+    die('skip parallel crashes before PHP 8.4 when a task dies of memory_limit');
+}
+?>
 --FILE--
 <?php
 require __DIR__ . '/threads.inc';

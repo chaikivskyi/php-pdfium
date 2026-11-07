@@ -38,7 +38,7 @@ jobs:
           scripts/test.sh tests >/tmp/tests.log 2>&1 || status=$?
           cat /tmp/tests.log
           test "$status" -eq 0
-          if [ "${{ matrix.ts }}" = zts ]; then ! grep -E 'SKIP.*\[tests/threads-' /tmp/tests.log; fi
+          if [ "${{ matrix.ts }}" = zts ]; then ! grep -E 'SKIP.*\[tests/threads-' /tmp/tests.log | grep -v 'reason: parallel crashes before PHP 8.4'; fi
       - name: Check the library resolves at run time
         if: ${{ !cancelled() }}
         run: |
