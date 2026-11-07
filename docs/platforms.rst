@@ -25,7 +25,7 @@ on demand only (the ``macOS`` workflow); the others run on every push and pull r
    * - Alpine
      - arm64
      - ``pdfium-linux-musl-arm64.tgz``
-   * - macOS 14
+   * - macOS 26
      - arm64
      - ``pdfium-mac-arm64.tgz``
 

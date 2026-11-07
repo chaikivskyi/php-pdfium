@@ -12,8 +12,8 @@ env:
 
 jobs:
   test-macos:
-    name: test (macos-14, PHP ${{ matrix.php }} ${{ matrix.ts }})
-    runs-on: macos-14
+    name: test (macos-26, PHP ${{ matrix.php }} ${{ matrix.ts }})
+    runs-on: macos-26
     strategy:
       fail-fast: false
       matrix:
