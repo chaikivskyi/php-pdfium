@@ -1,4 +1,4 @@
-ARG BASE=php:8.4-cli-bookworm
+ARG BASE=php:8.4-cli-trixie
 FROM $BASE
 ARG PARALLEL_VERSION=
 RUN if command -v apk >/dev/null; then \

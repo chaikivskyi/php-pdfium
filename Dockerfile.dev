@@ -1,4 +1,4 @@
-ARG PHP_IMAGE=php:8.4-cli-bookworm
+ARG PHP_IMAGE=php:8.4-cli-trixie
 FROM $PHP_IMAGE
 ARG PARALLEL_VERSION=
 RUN apt-get update \

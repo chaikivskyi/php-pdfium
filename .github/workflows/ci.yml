@@ -23,7 +23,7 @@ jobs:
 
   stub:
     name: arginfo matches the stub
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     container: php:8.4-cli
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-26.04, ubuntu-26.04-arm]
         php: ['8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
@@ -61,7 +61,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-26.04, ubuntu-26.04-arm]
         php: ['8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +75,7 @@ jobs:
 
   install:
     name: install without --with-pdfium (${{ matrix.image }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: images
     container:
       image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:8.4-${{ matrix.image }}-${{ needs.images.outputs.tag }}
@@ -108,7 +108,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        os: [ubuntu-26.04, ubuntu-26.04-arm]
         image: [zts, alpine-zts]
         php: ['8.2', '8.3', '8.4', '8.5']
     steps:
@@ -128,7 +128,7 @@ jobs:
 
   asan:
     name: asan+ubsan (PHP 8.4)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: images
     container:
       image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:asan-nts-${{ needs.images.outputs.tag }}
@@ -142,12 +142,11 @@ jobs:
           CFLAGS="$SANITIZE_CFLAGS" LDFLAGS=-fsanitize=address,undefined \
           USE_ZEND_ALLOC=0 USE_TRACKED_ALLOC=1 \
           ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=print_stacktrace=1 \
-          LSAN_OPTIONS="suppressions=$PWD/ci/lsan.supp" \
           scripts/test.sh
 
   asan-zts:
     name: asan+ubsan-zts (PHP 8.4)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: images
     container:
       image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:asan-zts-${{ needs.images.outputs.tag }}
@@ -162,13 +161,12 @@ jobs:
           CFLAGS="$SANITIZE_CFLAGS" LDFLAGS=-fsanitize=address,undefined \
           USE_ZEND_ALLOC=0 USE_TRACKED_ALLOC=1 TEST_TIMEOUT=600 \
           ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=print_stacktrace=1 \
-          LSAN_OPTIONS="suppressions=$PWD/ci/lsan.supp" \
           scripts/test.sh tests 2>&1 | tee /tmp/tests.log
           ! grep -E 'SKIP.*\[tests/threads-' /tmp/tests.log
 
   valgrind:
     name: valgrind (PHP 8.4)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     needs: images
     container:
       image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:8.4-nts-${{ needs.images.outputs.tag }}
@@ -181,6 +179,10 @@ jobs:
         run: |
           # run-tests passes no --leak-check of its own. The tracked allocator frees the Zend heap at request
           # end, as the real one does, so what is left is native memory: PDFium's, libpng's and libjpeg's.
+          # --show-mismatched-frees=no: not our bug. libpdfium.so is linked with identical code folding, so several
+          # operator delete variants share one address and Valgrind reports a plain new/delete pair as mismatched.
+          # The extension, libpng and libjpeg are C and never use new or delete.
+          # TODO: drop the option once a pdfium-binaries release no longer folds operator delete.
           USE_ZEND_ALLOC=0 USE_TRACKED_ALLOC=1 \
-          VALGRIND_OPTS="--leak-check=full --suppressions=$PWD/ci/valgrind.supp" \
+          VALGRIND_OPTS="--leak-check=full --show-mismatched-frees=no" \
           scripts/test.sh -m -d report_memleaks=0 tests

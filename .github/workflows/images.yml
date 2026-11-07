@@ -16,7 +16,7 @@ permissions:
 jobs:
   plan:
     name: find missing images
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     outputs:
       tag: ${{ steps.plan.outputs.tag }}
       missing: ${{ steps.plan.outputs.missing }}
@@ -34,9 +34,9 @@ jobs:
         run: |
           images=$(
             for php in 8.2 8.3 8.4 8.5; do
-              jq -nc --arg n "$php-nts" --arg b "php:$php-cli-bookworm" \
+              jq -nc --arg n "$php-nts" --arg b "php:$php-cli-trixie" \
                 '{name: $n, file: "php", args: "BASE=\($b)", platforms: "linux/amd64,linux/arm64"}'
-              jq -nc --arg n "$php-zts" --arg b "php:$php-zts-bookworm" \
+              jq -nc --arg n "$php-zts" --arg b "php:$php-zts-trixie" \
                 '{name: $n, file: "php", args: "BASE=\($b)\nPARALLEL_VERSION=1.2.15", platforms: "linux/amd64,linux/arm64"}'
               jq -nc --arg n "$php-alpine" --arg b "php:$php-cli-alpine" \
                 '{name: $n, file: "php", args: "BASE=\($b)", platforms: "linux/amd64,linux/arm64"}'
@@ -63,7 +63,7 @@ jobs:
     name: build ${{ matrix.name }}
     needs: plan
     if: needs.plan.outputs.missing != '[]'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     strategy:
       fail-fast: false
       matrix:

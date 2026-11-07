@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 ARG ZTS=
 RUN apt-get update \
  && apt-get install -y --no-install-recommends build-essential autoconf pkg-config curl ca-certificates file \

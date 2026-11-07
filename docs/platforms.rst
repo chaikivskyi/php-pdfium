@@ -13,10 +13,10 @@ on demand only (the ``macOS`` workflow); the others run on every push and pull r
    * - System
      - CPU
      - PDFium build
-   * - Debian 12
+   * - Debian 13
      - x86_64
      - ``pdfium-linux-x64.tgz``
-   * - Debian 12
+   * - Debian 13
      - arm64
      - ``pdfium-linux-arm64.tgz``
    * - Alpine
