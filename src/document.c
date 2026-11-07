@@ -9,6 +9,21 @@
 #include <fpdf_save.h>
 #include "zend_exceptions.h"
 
+ZEND_METHOD(Pdfium_Document, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+ZEND_METHOD(Pdfium_Metadata, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+ZEND_METHOD(Pdfium_Permissions, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
 static void throw_error_code(unsigned long err, const char *context)
 {
 	zend_class_entry *ce = pdfium_ce_exception;
@@ -37,21 +52,6 @@ static void throw_error_code(unsigned long err, const char *context)
 			break;
 	}
 	zend_throw_exception_ex(ce, 0, "%s: %s", context, reason);
-}
-
-ZEND_METHOD(Pdfium_Document, __construct)
-{
-	ZEND_PARSE_PARAMETERS_NONE();
-}
-
-ZEND_METHOD(Pdfium_Metadata, __construct)
-{
-	ZEND_PARSE_PARAMETERS_NONE();
-}
-
-ZEND_METHOD(Pdfium_Permissions, __construct)
-{
-	ZEND_PARSE_PARAMETERS_NONE();
 }
 
 static pdfium_doc_handle *doc_handle_create(zend_string *buffer)
@@ -95,16 +95,6 @@ void pdfium_doc_handle_release(pdfium_doc_handle *h)
 		zend_string_release(h->buffer);
 	}
 	efree(h);
-}
-
-void pdfium_document_free_obj(zend_object *obj)
-{
-	pdfium_document *d = pdfium_document_from_obj(obj);
-
-	if (d->h) {
-		pdfium_doc_handle_release(d->h);
-	}
-	zend_object_std_dtor(obj);
 }
 
 static zend_object *new_document(pdfium_doc_handle *h)
@@ -547,22 +537,6 @@ static zend_string *serialise(pdfium_doc_handle *h, bool remove_security)
 	return smart_str_extract(&w.out.s);
 }
 
-ZEND_METHOD(Pdfium_Document, toString)
-{
-	bool remove_security = false;
-
-	ZEND_PARSE_PARAMETERS_START(0, 1)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_BOOL(remove_security)
-	ZEND_PARSE_PARAMETERS_END();
-
-	zend_string *bytes = serialise(this_handle(ZEND_THIS), remove_security);
-	if (!bytes) {
-		RETURN_THROWS();
-	}
-	RETURN_STR(bytes);
-}
-
 ZEND_METHOD(Pdfium_Document, save)
 {
 	char *path;
@@ -579,4 +553,30 @@ ZEND_METHOD(Pdfium_Document, save)
 		RETURN_THROWS();
 	}
 	pdfium_write_and_release(serialise(this_handle(ZEND_THIS), remove_security), path);
+}
+
+ZEND_METHOD(Pdfium_Document, toString)
+{
+	bool remove_security = false;
+
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(remove_security)
+	ZEND_PARSE_PARAMETERS_END();
+
+	zend_string *bytes = serialise(this_handle(ZEND_THIS), remove_security);
+	if (!bytes) {
+		RETURN_THROWS();
+	}
+	RETURN_STR(bytes);
+}
+
+void pdfium_document_free_obj(zend_object *obj)
+{
+	pdfium_document *d = pdfium_document_from_obj(obj);
+
+	if (d->h) {
+		pdfium_doc_handle_release(d->h);
+	}
+	zend_object_std_dtor(obj);
 }

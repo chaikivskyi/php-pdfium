@@ -81,26 +81,21 @@ static inline pdfium_bitmap *pdfium_bitmap_from_obj(zend_object *obj)
 void pdfium_doc_handle_addref(pdfium_doc_handle *h);
 void pdfium_doc_handle_release(pdfium_doc_handle *h);
 FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h);
+void pdfium_document_free_obj(zend_object *obj);
 
 zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count);
-
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h);
-
-bool pdfium_memory_fits(size_t bytes);
-
-bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);
-
-zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count);
-
-void pdfium_document_free_obj(zend_object *obj);
 void pdfium_page_free_obj(zend_object *obj);
 void pdfium_page_iterator_free_obj(zend_object *obj);
+
 void pdfium_bitmap_free_obj(zend_object *obj);
 
+bool pdfium_memory_fits(size_t bytes);
+bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);
 bool pdfium_path_given(size_t len);
-
+zend_string *pdfium_read_file(const char *path);
 void pdfium_write_and_release(zend_string *data, const char *path);
 
-zend_string *pdfium_read_file(const char *path);
+zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count);
 
 #endif
