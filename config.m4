@@ -4,7 +4,7 @@ PHP_ARG_WITH([pdfium],
   [yes])
 
 if test "$PHP_PDFIUM" != "no"; then
-  PHP_NEW_EXTENSION([pdfium], [pdfium.c src/utf16.c src/document.c src/page.c src/bitmap.c src/guard.c], [$ext_shared],, [-DZEND_ENABLE_STATIC_TSRMLS_CACHE=1])
+  PHP_NEW_EXTENSION([pdfium], [pdfium.c src/document.c src/page.c src/bitmap.c src/io.c src/utf16.c src/guard.c], [$ext_shared],, [-DZEND_ENABLE_STATIC_TSRMLS_CACHE=1])
   PHP_ADD_BUILD_DIR([$ext_builddir/src])
 
   pdfium_version=`cat "$ext_srcdir/PDFIUM_VERSION" 2>/dev/null | tr -d '\r\n'`
