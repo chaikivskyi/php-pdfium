@@ -15,4 +15,4 @@ First release, built against PDFium |pdfium_version|.
   error when ``memory_limit`` would be exceeded.
 - Support PHP 8.2 to 8.5, NTS and ZTS, on Linux x86_64 and arm64 and macOS arm64.
 - On ZTS PHP, throw :php:exc:`Pdfium\\BusyException` when another thread is using PDFium.
-- Install with PIE.
+- Install with ``pie install chaikivskyi/php-pdfium``, with no options: the build downloads PDFium.

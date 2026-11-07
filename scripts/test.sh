@@ -11,10 +11,11 @@ if [ -x "$bindir/phpize" ] && [ -x "$bindir/php-config" ]; then
 fi
 want=$("$TEST_PHP_EXECUTABLE" -n -r 'echo PHP_EXTENSION_DIR;')
 have=$(sed -n 's/^EXTENSION_DIR = //p' Makefile 2>/dev/null || true)
-if [ ! -f Makefile ] || [ config.m4 -nt Makefile ] || [ "$have" != "$want" ]; then
+if [ ! -f Makefile ] || [ config.m4 -nt Makefile ] || [ PDFIUM_VERSION -nt Makefile ] || [ "$have" != "$want" ] \
+  || { [ ! -f src/libpdfium/lib/libpdfium.so ] && [ ! -f src/libpdfium/lib/libpdfium.dylib ]; }; then
   rm -rf modules .libs src/.libs ./*.lo ./*.la ./*.dep src/*.lo src/*.dep
   "$phpize"
-  ./configure --with-php-config="$php_config" --with-pdfium="$PWD/src/libpdfium"
+  ./configure --with-php-config="$php_config"
   have=$(sed -n 's/^EXTENSION_DIR = //p' Makefile)
   if [ "$have" != "$want" ]; then
     echo "$phpize builds for $have, but $TEST_PHP_EXECUTABLE needs $want" >&2

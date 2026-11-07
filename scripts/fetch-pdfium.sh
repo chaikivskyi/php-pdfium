@@ -22,3 +22,4 @@ actual=$(sha256sum "$tmp/$asset" 2>/dev/null | cut -d' ' -f1 || true)
 rm -rf "$root/src/libpdfium"
 mkdir -p "$root/src/libpdfium"
 tar -xzf "$tmp/$asset" -C "$root/src/libpdfium"
+printf '%s\n' "$version" > "$root/src/libpdfium/PDFIUM_VERSION"

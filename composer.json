@@ -8,7 +8,7 @@
     "extension-name": "pdfium",
     "support-zts": true,
     "configure-options": [
-      { "name": "with-pdfium", "description": "Path to a pdfium-binaries tree (include/ and lib/)", "needs-value": true }
+      { "name": "with-pdfium", "description": "Path to a pdfium-binaries tree (include/ and lib/); downloaded automatically when omitted", "needs-value": true }
     ]
   }
 }

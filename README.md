@@ -11,34 +11,29 @@ PHP 8.2 to 8.5, NTS and ZTS, on Linux x86_64 and arm64 and macOS arm64.
 
 You need libpng and libjpeg first; see
 [Installation](https://php-pdfium.readthedocs.io/en/latest/introduction.html#installation) for the
-packages per platform. Then fetch PDFium in a checkout of the repository:
+packages per platform. Then install with [PIE](https://github.com/php/pie):
 
 ```sh
-git clone https://github.com/chaikivskyi/php-pdfium
-cd php-pdfium
-scripts/fetch-pdfium.sh
+pie install chaikivskyi/php-pdfium
 ```
 
-Install with [PIE](https://github.com/php/pie), from the checkout:
-
-```sh
-pie install chaikivskyi/php-pdfium --with-pdfium="$PWD/src/libpdfium"
-```
+The build downloads the pinned PDFium release for your platform and checks its checksum, and the
+install puts it next to the extension. Without internet access, download a
+[pdfium-binaries](https://github.com/bblanchon/pdfium-binaries) release yourself and pass
+`--with-pdfium=DIR`.
 
 Or build from source:
 
 ```sh
+git clone https://github.com/chaikivskyi/php-pdfium
+cd php-pdfium
 phpize
-./configure --with-pdfium="$PWD/src/libpdfium"
+./configure
 make
 sudo make install
 ```
 
-`make clean` also deletes `src/libpdfium/lib/libpdfium.so`; run `scripts/fetch-pdfium.sh` again
-afterwards.
-
-Add `extension=pdfium` to `php.ini` if it is not there yet. The extension loads PDFium at run time from
-the `lib/` directory under `--with-pdfium`, so keep that directory where it is.
+Add `extension=pdfium` to `php.ini` if it is not there yet.
 
 ## Usage
 

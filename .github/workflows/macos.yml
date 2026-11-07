@@ -32,8 +32,6 @@ jobs:
         run: |
           brew install libpng jpeg-turbo pkg-config
           echo "PKG_CONFIG_PATH=$(brew --prefix jpeg-turbo)/lib/pkgconfig:$(brew --prefix libpng)/lib/pkgconfig" >> "$GITHUB_ENV"
-      - name: Fetch PDFium
-        run: scripts/fetch-pdfium.sh
       - name: Build and test
         run: |
           status=0
@@ -45,5 +43,10 @@ jobs:
         if: ${{ !cancelled() }}
         run: |
           otool -L modules/pdfium.so
-          otool -l modules/pdfium.so | grep -A2 LC_RPATH
-          otool -L modules/pdfium.so | grep libpdfium | grep -E '@rpath/|'"$PWD"'/src/libpdfium'
+          otool -l modules/pdfium.so | grep -A2 LC_RPATH | grep @loader_path
+          otool -L modules/pdfium.so | grep '@rpath/libpdfium'
+      - name: Install and load without the build tree
+        run: |
+          make install
+          rm -rf src/libpdfium modules .libs
+          php -n -d extension=pdfium -r 'exit(Pdfium\Document::fromFile("tests/fixtures/text-3pages.pdf")->pageCount() === 3 ? 0 : 1);'

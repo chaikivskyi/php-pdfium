@@ -1,0 +1,31 @@
+name: PDFium update
+
+on:
+  schedule:
+    - cron: '0 6 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update:
+    name: update PDFium
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          scripts/update-pdfium.sh
+          echo "version=$(cat PDFIUM_VERSION)" >> "$GITHUB_OUTPUT"
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.PDFIUM_BOT_TOKEN || github.token }}
+          branch: pdfium-update
+          delete-branch: true
+          commit-message: 'chore: update PDFium to ${{ steps.update.outputs.version }}'
+          title: 'Update PDFium to ${{ steps.update.outputs.version }}'
+          body: 'Updates `PDFIUM_VERSION` and `pdfium.sha256` to the pdfium-binaries release [${{ steps.update.outputs.version }}](https://github.com/bblanchon/pdfium-binaries/releases/tag/${{ steps.update.outputs.version }}).'

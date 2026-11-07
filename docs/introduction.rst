@@ -16,8 +16,9 @@ See :doc:`platforms` for the supported systems.
 Installation
 ------------
 
-The extension needs three things: libpng, libjpeg, and a prebuilt PDFium from
-`pdfium-binaries <https://github.com/bblanchon/pdfium-binaries>`_ (version |pdfium_version|).
+The extension needs libpng, libjpeg, and a prebuilt PDFium from
+`pdfium-binaries <https://github.com/bblanchon/pdfium-binaries>`_ (version |pdfium_version|). The
+build downloads PDFium for you.
 
 1. Install libpng and libjpeg:
 
@@ -32,45 +33,40 @@ The extension needs three things: libpng, libjpeg, and a prebuilt PDFium from
       # macOS (Homebrew)
       brew install libpng jpeg-turbo pkg-config
 
-2. Get PDFium. In a checkout of the `repository <https://github.com/chaikivskyi/php-pdfium>`_, run:
+2. Build and install the extension, either with `PIE <https://github.com/php/pie>`_:
 
    .. code-block:: sh
 
-      scripts/fetch-pdfium.sh
+      pie install chaikivskyi/php-pdfium
 
-   This downloads the right build for your platform into ``src/libpdfium/`` and checks its
-   checksum. You can also download ``pdfium-<platform>.tgz`` from the release yourself and unpack it.
-
-3. Build and install the extension, either with `PIE <https://github.com/php/pie>`_:
-
-   .. code-block:: sh
-
-      pie install chaikivskyi/php-pdfium --with-pdfium="$PWD/src/libpdfium"
-
-   or from source:
+   or from a checkout of the `repository <https://github.com/chaikivskyi/php-pdfium>`_:
 
    .. code-block:: sh
 
       phpize
-      ./configure --with-pdfium="$PWD/src/libpdfium"
+      ./configure
       make
       sudo make install
 
-4. Add ``extension=pdfium`` to ``php.ini`` if it is not there yet, and check that it loads:
+   ``configure`` downloads the PDFium build for your platform into ``src/libpdfium/`` and checks
+   it against ``pdfium.sha256``. ``make install`` copies ``libpdfium.so`` (``libpdfium.dylib`` on
+   macOS) next to ``pdfium.so`` in PHP's extension directory, where the extension finds it, so the
+   build directory can be deleted afterwards.
+
+3. Add ``extension=pdfium`` to ``php.ini`` if it is not there yet, and check that it loads:
 
    .. code-block:: sh
 
       php --ri pdfium
 
-.. note::
-
-   The extension remembers where PDFium's ``lib/`` directory is. Do not move or delete it after
-   building.
+To build without internet access, download ``pdfium-<platform>.tgz`` from the pdfium-binaries
+release yourself, unpack it so that ``include/`` and ``lib/`` sit side by side, and pass its
+directory with ``--with-pdfium=DIR`` to ``pie install`` or ``./configure``.
 
 .. warning::
 
-   ``make clean`` also deletes ``src/libpdfium/lib/libpdfium.so``. Run ``scripts/fetch-pdfium.sh``
-   again afterwards.
+   ``make clean`` also deletes ``src/libpdfium/lib/libpdfium.so``. Run ``./configure`` again
+   afterwards to download it again.
 
 
 Usage
@@ -228,6 +224,12 @@ CI builds with ``-Wall -Wextra -Werror``, checks that ``pdfium_arginfo.h`` match
 runs the tests on every supported platform and PHP version, and also under Valgrind,
 AddressSanitizer and UndefinedBehaviorSanitizer. The Linux jobs run in prebuilt images from
 ``ci/docker/``, which the ``CI images`` workflow publishes to ``ghcr.io``.
+
+PDFium is pinned by ``PDFIUM_VERSION`` and ``pdfium.sha256``. ``scripts/update-pdfium.sh`` moves
+both to the latest pdfium-binaries release, or to the one given as its argument. The ``PDFium
+update`` workflow runs it on the first day of each month and opens a pull request when there is a
+new release. It uses the ``PDFIUM_BOT_TOKEN`` secret, a fine-grained token with contents and pull
+request write access to this repository, so that CI runs on that pull request.
 
 Build these docs:
 

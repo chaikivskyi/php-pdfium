@@ -29,15 +29,15 @@ on demand only (the ``macOS`` workflow); the others run on every push and pull r
      - arm64
      - ``pdfium-mac-arm64.tgz``
 
-``scripts/fetch-pdfium.sh`` picks the right build automatically and checks it against
+``configure`` picks the right build automatically and checks it against
 ``pdfium.sha256``.
 
 
 Not supported
 -------------
 
-**Windows and Intel macOS.** These are not tested, and ``scripts/fetch-pdfium.sh`` stops with
-``unsupported platform``. You can still download the matching PDFium build yourself and pass its
+**Windows and Intel macOS.** These are not tested, and ``configure`` stops with ``unsupported platform``
+followed by ``cannot download PDFium``. You can still download the matching PDFium build yourself and pass its
 directory to ``--with-pdfium``, at your own risk.
 
 The PDFium directory must contain ``include/fpdfview.h`` and ``lib/``. Otherwise ``configure`` fails

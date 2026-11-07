@@ -49,8 +49,6 @@ jobs:
         php: ['8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch PDFium
-        run: scripts/fetch-pdfium.sh
       - name: Build and test
         run: scripts/test.sh
 
@@ -70,10 +68,34 @@ jobs:
         php: ['8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch PDFium
-        run: scripts/fetch-pdfium.sh
       - name: Build and test
         run: scripts/test.sh
+
+  install:
+    name: install without --with-pdfium (${{ matrix.image }})
+    runs-on: ubuntu-24.04
+    needs: images
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:8.4-${{ matrix.image }}-${{ needs.images.outputs.tag }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [nts, alpine]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and install
+        run: |
+          phpize
+          ./configure
+          make
+          make install
+      - name: Load without the build tree
+        run: |
+          rm -rf src/libpdfium modules .libs
+          php -n -d extension=pdfium -r 'exit(Pdfium\Document::fromFile("tests/fixtures/text-3pages.pdf")->pageCount() === 3 ? 0 : 1);'
 
   zts:
     name: zts (${{ matrix.image }} ${{ matrix.os }}, PHP ${{ matrix.php }})
@@ -92,8 +114,6 @@ jobs:
         php: ['8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch PDFium
-        run: scripts/fetch-pdfium.sh
       - name: Build and test
         run: |
           status=0
@@ -113,8 +133,6 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch PDFium
-        run: scripts/fetch-pdfium.sh
       - name: Build and test
         run: |
           CFLAGS="$SANITIZE_CFLAGS" LDFLAGS=-fsanitize=address,undefined \
@@ -134,8 +152,6 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch PDFium
-        run: scripts/fetch-pdfium.sh
       - name: Build and test
         shell: bash
         run: |
@@ -157,8 +173,6 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Fetch PDFium
-        run: scripts/fetch-pdfium.sh
       - name: Build and test under Valgrind
         run: |
           # run-tests passes no --leak-check of its own. The tracked allocator frees the Zend heap at request
