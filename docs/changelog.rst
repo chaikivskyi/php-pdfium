@@ -1,18 +1,21 @@
 Changelog
 =========
 
-0.1.0 (unreleased)
+0.1.0 (2026-11-07)
 ------------------
 
 First release, built against PDFium |pdfium_version|.
 
+Features:
+
 - Open PDFs from a file or a string, with an optional password.
 - Read the page count, metadata, permissions, page sizes, rotation and text.
-- Iterate over pages lazily, one at a time, with ``foreach ($doc as $page)`` or ``pages()``.
-- Render pages to PNG or JPEG at 1 to 2400 DPI.
-- Split, merge and save documents, with an option to remove encryption.
-- Throw exceptions for every error, including :php:exc:`Pdfium\\MemoryException` instead of a fatal
-  error when ``memory_limit`` would be exceeded.
-- Support PHP 8.2 to 8.5, NTS and ZTS, on Linux x86_64 and arm64 and macOS arm64.
-- On ZTS PHP, throw :php:exc:`Pdfium\\BusyException` when another thread is using PDFium.
-- Install with ``pie install chaikivskyi/php-pdfium``, with no options: the build downloads PDFium.
+- Iterate over pages.
+- Render pages to PNG or JPEG.
+- Split, merge and save documents.
+
+Supported:
+
+- PHP 8.2 to 8.5, NTS and ZTS.
+- Linux x86_64 and arm64 (glibc and musl), macOS arm64.
+- Installation with ``pie install chaikivskyi/php-pdfium``.
