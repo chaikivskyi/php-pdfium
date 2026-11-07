@@ -1,4 +1,4 @@
-# pdfium
+# php-pdfium
 
 A native PHP extension for fast PDF work, built on Google's [PDFium](https://pdfium.googlesource.com/pdfium/).
 Open, read, render, split and merge PDFs; pages load on demand, so long documents stay cheap.
