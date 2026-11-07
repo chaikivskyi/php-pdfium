@@ -32,19 +32,21 @@ jobs:
           REPO: ghcr.io/${{ github.repository_owner }}/pdfium-ci
           REBUILD: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
         run: |
-          tag=$(cat ci/docker/*.Dockerfile ci/php-asan.sh | sha256sum | cut -c1-12)
           images=$(
             for php in 8.2 8.3 8.4 8.5; do
               jq -nc --arg n "$php-nts" --arg b "php:$php-cli-bookworm" \
                 '{name: $n, file: "php", args: "BASE=\($b)", platforms: "linux/amd64,linux/arm64"}'
               jq -nc --arg n "$php-zts" --arg b "php:$php-zts-bookworm" \
-                '{name: $n, file: "php", args: "BASE=\($b)\nPARALLEL_VERSION=1.2.15", platforms: "linux/amd64"}'
+                '{name: $n, file: "php", args: "BASE=\($b)\nPARALLEL_VERSION=1.2.15", platforms: "linux/amd64,linux/arm64"}'
               jq -nc --arg n "$php-alpine" --arg b "php:$php-cli-alpine" \
                 '{name: $n, file: "php", args: "BASE=\($b)", platforms: "linux/amd64,linux/arm64"}'
+              jq -nc --arg n "$php-alpine-zts" --arg b "php:$php-zts-alpine" \
+                '{name: $n, file: "php", args: "BASE=\($b)\nPARALLEL_VERSION=1.2.15", platforms: "linux/amd64,linux/arm64"}'
             done
             jq -nc '{name: "asan-nts", file: "asan", args: "", platforms: "linux/amd64"}'
             jq -nc '{name: "asan-zts", file: "asan", args: "ZTS=zts", platforms: "linux/amd64"}'
           )
+          tag=$({ cat ci/docker/*.Dockerfile ci/php-asan.sh; echo "$images"; } | sha256sum | cut -c1-12)
           missing=$(
             echo "$images" | while read -r image; do
               name=$(echo "$image" | jq -r .name)

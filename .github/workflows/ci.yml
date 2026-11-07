@@ -76,26 +76,30 @@ jobs:
         run: scripts/test.sh
 
   zts:
-    name: zts (PHP ${{ matrix.php }})
-    runs-on: ubuntu-24.04
+    name: zts (${{ matrix.image }} ${{ matrix.os }}, PHP ${{ matrix.php }})
+    runs-on: ${{ matrix.os }}
     needs: images
     container:
-      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-zts-${{ needs.images.outputs.tag }}
+      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-${{ matrix.image }}-${{ needs.images.outputs.tag }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-24.04, ubuntu-24.04-arm]
+        image: [zts, alpine-zts]
         php: ['8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
       - name: Fetch PDFium
         run: scripts/fetch-pdfium.sh
       - name: Build and test
-        shell: bash
         run: |
-          scripts/test.sh tests 2>&1 | tee /tmp/tests.log
+          status=0
+          scripts/test.sh tests >/tmp/tests.log 2>&1 || status=$?
+          cat /tmp/tests.log
+          test "$status" -eq 0
           ! grep -E 'SKIP.*\[tests/threads-' /tmp/tests.log
 
   asan:

@@ -3,8 +3,7 @@
 A native PHP extension for fast PDF work, built on Google's [PDFium](https://pdfium.googlesource.com/pdfium/).
 Open, read, render, split and merge PDFs; pages load on demand, so long documents stay cheap.
 
-PHP 8.2 to 8.5 on Linux x86_64 and arm64 (glibc and musl) and macOS arm64. ZTS PHP is supported on
-Linux x86_64 with glibc only.
+PHP 8.2 to 8.5, NTS and ZTS, on Linux x86_64 and arm64 and macOS arm64.
 
 **Documentation: <https://php-pdfium.readthedocs.io/>**
 

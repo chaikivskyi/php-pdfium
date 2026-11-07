@@ -4,7 +4,7 @@ Platforms
 Supported
 ---------
 
-CI builds and tests the extension on these platforms with PHP 8.2, 8.3, 8.4 and 8.5 (NTS). macOS runs
+CI builds and tests the extension on these platforms with PHP 8.2, 8.3, 8.4 and 8.5, NTS and ZTS. macOS runs
 on demand only (the ``macOS`` workflow); the others run on every push and pull request.
 
 .. list-table::
@@ -13,23 +13,21 @@ on demand only (the ``macOS`` workflow); the others run on every push and pull r
    * - System
      - CPU
      - PDFium build
-   * - Debian 12 (glibc)
+   * - Debian 12
      - x86_64
      - ``pdfium-linux-x64.tgz``
-   * - Debian 12 (glibc)
+   * - Debian 12
      - arm64
      - ``pdfium-linux-arm64.tgz``
-   * - Alpine (musl)
+   * - Alpine
      - x86_64
      - ``pdfium-linux-musl-x64.tgz``
-   * - Alpine (musl)
+   * - Alpine
      - arm64
      - ``pdfium-linux-musl-arm64.tgz``
    * - macOS 14
      - arm64
      - ``pdfium-mac-arm64.tgz``
-
-ZTS PHP is supported on Linux x86_64 (glibc) only, where CI tests it on Debian 12.
 
 ``scripts/fetch-pdfium.sh`` picks the right build automatically and checks it against
 ``pdfium.sha256``.

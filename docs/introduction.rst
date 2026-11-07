@@ -9,7 +9,7 @@ What it does
 - Render pages to PNG or JPEG at any DPI.
 - Split, merge and save documents.
 
-It needs PHP 8.2 to 8.5. ZTS PHP is supported on Linux x86_64 with glibc only. No FFI and no ini settings are needed.
+It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
 See :doc:`platforms` for the supported systems.
 
 

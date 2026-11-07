@@ -12,21 +12,22 @@ env:
 
 jobs:
   test-macos:
-    name: test (macos-14, PHP ${{ matrix.php }})
+    name: test (macos-14, PHP ${{ matrix.php }} ${{ matrix.ts }})
     runs-on: macos-14
     strategy:
       fail-fast: false
       matrix:
         php: ['8.2', '8.3', '8.4', '8.5']
+        ts: [nts, zts]
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          extensions: none
+          extensions: ${{ matrix.ts == 'zts' && 'none, parallel' || 'none' }}
           tools: none
         env:
-          phpts: nts
+          phpts: ${{ matrix.ts }}
       - name: Install libpng and libjpeg
         run: |
           brew install libpng jpeg-turbo pkg-config
@@ -34,7 +35,12 @@ jobs:
       - name: Fetch PDFium
         run: scripts/fetch-pdfium.sh
       - name: Build and test
-        run: scripts/test.sh
+        run: |
+          status=0
+          scripts/test.sh tests >/tmp/tests.log 2>&1 || status=$?
+          cat /tmp/tests.log
+          test "$status" -eq 0
+          if [ "${{ matrix.ts }}" = zts ]; then ! grep -E 'SKIP.*\[tests/threads-' /tmp/tests.log; fi
       - name: Check the library resolves at run time
         if: ${{ !cancelled() }}
         run: |
