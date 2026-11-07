@@ -56,11 +56,8 @@ jobs:
     name: test (alpine ${{ matrix.os }}, PHP ${{ matrix.php }})
     runs-on: ${{ matrix.os }}
     needs: images
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-alpine-${{ needs.images.outputs.tag }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-alpine-${{ needs.images.outputs.tag }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,8 +65,13 @@ jobs:
         php: ['8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and test
-        run: scripts/test.sh
+        run: docker run --rm -v "$PWD:/src" -w /src -e MAKEFLAGS -e EXTRA_CFLAGS "$IMAGE" scripts/test.sh
 
   install:
     name: install without --with-pdfium (${{ matrix.image }})
@@ -101,11 +103,8 @@ jobs:
     name: zts (${{ matrix.image }} ${{ matrix.os }}, PHP ${{ matrix.php }})
     runs-on: ${{ matrix.os }}
     needs: images
-    container:
-      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-${{ matrix.image }}-${{ needs.images.outputs.tag }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/pdfium-ci:${{ matrix.php }}-${{ matrix.image }}-${{ needs.images.outputs.tag }}
     strategy:
       fail-fast: false
       matrix:
@@ -114,10 +113,15 @@ jobs:
         php: ['8.2', '8.3', '8.4', '8.5']
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and test
         run: |
           status=0
-          scripts/test.sh tests >/tmp/tests.log 2>&1 || status=$?
+          docker run --rm -v "$PWD:/src" -w /src -e MAKEFLAGS -e EXTRA_CFLAGS "$IMAGE" scripts/test.sh tests >/tmp/tests.log 2>&1 || status=$?
           cat /tmp/tests.log
           test "$status" -eq 0
           ! grep -E 'SKIP.*\[tests/threads-' /tmp/tests.log
