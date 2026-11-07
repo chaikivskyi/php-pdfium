@@ -9,7 +9,7 @@ What it does
 - Render pages to PNG or JPEG at any DPI.
 - Split, merge and save documents.
 
-It needs PHP 8.2 to 8.5, NTS, or ZTS on Linux x86_64. No FFI and no ini settings are needed.
+It needs PHP 8.2 to 8.5. ZTS PHP is supported on Linux x86_64 with glibc only. No FFI and no ini settings are needed.
 See :doc:`platforms` for the supported systems.
 
 
@@ -32,7 +32,7 @@ The extension needs three things: libpng, libjpeg, and a prebuilt PDFium from
       # macOS (Homebrew)
       brew install libpng jpeg-turbo pkg-config
 
-2. Get PDFium. In a checkout of the `repository <https://github.com/chaikivskyi/pdfium>`_, run:
+2. Get PDFium. In a checkout of the `repository <https://github.com/chaikivskyi/php-pdfium>`_, run:
 
    .. code-block:: sh
 
@@ -45,7 +45,7 @@ The extension needs three things: libpng, libjpeg, and a prebuilt PDFium from
 
    .. code-block:: sh
 
-      pie install chaikivskyi/pdfium --with-pdfium=/path/to/pdfium
+      pie install chaikivskyi/php-pdfium --with-pdfium="$PWD/src/libpdfium"
 
    or from source:
 
@@ -214,6 +214,13 @@ Or run them inside Docker, with all tools installed:
 
 The thread tests run when the ``parallel`` extension is installed; ``scripts/test.sh`` loads it.
 
+Without the scripts, run PHP's test runner directly. On ZTS PHP add ``-d extension=parallel`` so the
+thread tests are not skipped:
+
+.. code-block:: sh
+
+   php run-tests.php -n -d extension=$PWD/modules/pdfium.so tests
+
 The public API is defined in ``pdfium.stub.php``. ``pdfium_arginfo.h`` is generated from it with
 PHP's ``build/gen_stub.php``.
 
@@ -234,7 +241,7 @@ Build these docs:
 Contributing
 ------------
 
-Report bugs and send pull requests on `GitHub <https://github.com/chaikivskyi/pdfium>`_. Please include
+Report bugs and send pull requests on `GitHub <https://github.com/chaikivskyi/php-pdfium>`_. Please include
 the output of ``php -v`` and ``php --ri pdfium``, and the PDF that causes the problem if you can share
 it.
 

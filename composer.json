@@ -1,5 +1,5 @@
 {
-  "name": "chaikivskyi/pdfium",
+  "name": "chaikivskyi/php-pdfium",
   "description": "Fast native PDF extension for PHP, built on PDFium",
   "type": "php-ext",
   "license": "MIT",

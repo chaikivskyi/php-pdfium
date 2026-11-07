@@ -81,7 +81,7 @@ Rendering
 
 - on a white background, with no transparency;
 - with annotations and form fields;
-- at its size after rotation.
+- the crop box, clipped to the media box, at its size after rotation.
 
 The image size is ``points × dpi / 72``, rounded, and at least 1 pixel. An A4 page
 (595.28 × 841.89 points) at 150 DPI gives 1240 × 1754 pixels.

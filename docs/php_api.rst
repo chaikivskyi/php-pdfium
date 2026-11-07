@@ -272,14 +272,14 @@ Page
 
    .. php:method:: width() -> float
 
-      Width in points (1/72 inch), after rotation. For example, ``595.28`` for A4.
+      Width of the crop box, clipped to the media box, in points (1/72 inch), after rotation. For example, ``595.28`` for A4.
 
       :rtype: float
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: height() -> float
 
-      Height in points, after rotation. For example, ``841.89`` for A4.
+      Height of the crop box, clipped to the media box, in points, after rotation. For example, ``841.89`` for A4.
 
       :rtype: float
       :throws BusyException: ZTS only: another thread is using PDFium.
