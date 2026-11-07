@@ -250,7 +250,7 @@ static void sync_dir(const char *target, const char *slash)
 	int fd;
 
 	snprintf(dir, sizeof(dir), "%.*s", slash == target ? 1 : (int) (slash - target), target);
-	fd = open(dir, O_RDONLY);
+	fd = open(dir, O_RDONLY | O_CLOEXEC);
 	if (fd >= 0) {
 		fsync(fd);
 		close(fd);
@@ -325,6 +325,9 @@ static bool write_replacing(const char *local_path, const char *path, zend_strin
 		fd = mkostemp(tmp, O_CLOEXEC);
 #else
 		fd = mkstemp(tmp);
+		if (fd >= 0) {
+			fcntl(fd, F_SETFD, FD_CLOEXEC);
+		}
 #endif
 	}
 	if (fd >= 0) {
@@ -510,6 +513,42 @@ static bool read_all(php_stream *stream, pdfium_buf *out, const char *path, bool
 	}
 }
 
+static php_stream *open_regular(const char *local_path, const char *path)
+{
+	zend_stat_t st;
+
+	if (VCWD_STAT(local_path, &st) == 0 && !S_ISREG(st.st_mode)) {
+		warn_path(path, "Failed to open stream: Not a regular file");
+		return NULL;
+	}
+
+	int fd = VCWD_OPEN(local_path, O_RDONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC);
+
+	if (fd < 0) {
+		warn_path(path, "Failed to open stream: %s", strerror(errno));
+		return NULL;
+	}
+
+	bool statted = zend_fstat(fd, &st) == 0;
+	bool other_type = statted && !S_ISREG(st.st_mode);
+	int flags = statted && !other_type ? fcntl(fd, F_GETFL) : -1;
+
+	if (flags < 0 || fcntl(fd, F_SETFL, flags & ~O_NONBLOCK) != 0) {
+		int error = errno;
+
+		close(fd);
+		warn_path(path, "Failed to open stream: %s", other_type ? "Not a regular file" : strerror(error));
+		return NULL;
+	}
+
+	php_stream *stream = php_stream_fopen_from_fd(fd, "rb", NULL);
+
+	if (!stream) {
+		close(fd);
+	}
+	return stream;
+}
+
 zend_string *pdfium_read_file(const char *path)
 {
 	stream_scope sc;
@@ -519,12 +558,10 @@ zend_string *pdfium_read_file(const char *path)
 	if (scope_begin(&sc, path)) {
 		zend_try {
 			php_stream *stream = NULL;
-			zend_stat_t st;
-			bool allowed = !sc.local || php_check_open_basedir(sc.local_path) == 0;
 
-			if (allowed && sc.local && VCWD_STAT(sc.local_path, &st) == 0 && !S_ISREG(st.st_mode)) {
-				warn_path(path, "Failed to open stream: Not a regular file");
-			} else if (allowed) {
+			if (sc.local && php_check_open_basedir(sc.local_path) == 0) {
+				stream = open_regular(sc.local_path, path);
+			} else if (!sc.local) {
 				stream = php_stream_open_wrapper_ex((char *) path, "rb", REPORT_ERRORS, NULL, php_stream_context_from_zval(NULL, 0));
 			}
 			if (stream) {
