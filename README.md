@@ -9,9 +9,20 @@ PHP 8.2 to 8.5, NTS and ZTS, on Linux x86_64 and arm64 and macOS arm64.
 
 ## Install
 
-You need libpng and libjpeg first; see
-[Installation](https://php-pdfium.readthedocs.io/en/latest/introduction.html#installation) for the
-packages per platform. Then install with [PIE](https://github.com/php/pie):
+You need libpng and libjpeg first:
+
+```sh
+# Debian / Ubuntu
+sudo apt-get install -y libpng-dev libjpeg-dev pkg-config
+
+# Alpine
+apk add libpng-dev libjpeg-turbo-dev pkgconf
+
+# macOS (Homebrew)
+brew install libpng jpeg-turbo pkg-config
+```
+
+Then install with [PIE](https://github.com/php/pie):
 
 ```sh
 pie install chaikivskyi/php-pdfium
