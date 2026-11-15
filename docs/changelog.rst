@@ -1,8 +1,8 @@
 Changelog
 =========
 
-0.2.0 (2026-11-15)
-------------------
+v0.2.0 (2026-11-15)
+-------------------
 
 Features:
 
@@ -24,8 +24,8 @@ Changes:
 - ``Page::text()`` gives a hyphen that PDFium joins across a line break as ``-``, not U+FFFE.
 - ``Page::text()`` leaves out a character PDFium cannot map to Unicode, not U+FFFE.
 
-0.1.0 (2026-11-07)
-------------------
+v0.1.0 (2026-11-07)
+-------------------
 
 First release, built against PDFium |pdfium_version|.
 
