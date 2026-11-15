@@ -6,6 +6,8 @@ What it does
 
 - Open a PDF from a file or a string, with an optional password.
 - Read the page count, metadata, permissions, page sizes, rotation and text.
+- Find text on a page: search it, read the text inside a rectangle, list the URLs written in it,
+  and get every character with its position, font and colour.
 - Render pages to PNG or JPEG at any DPI.
 - Split, merge and save documents.
 
@@ -118,6 +120,26 @@ Work with pages
    // A single page:
    $page = $doc->page(4);   // the fifth page
 
+Find text on a page
+~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: php
+
+   use Pdfium\Rect;
+
+   $text = $doc->page(0)->textPage();   // reads the page's text once
+
+   foreach ($text->search('invoice') as $match) {
+       $match->text;       // 'Invoice', as written on the page
+       $match->rects[0];   // a Rect to highlight, in points
+   }
+
+   $text->textIn(new Rect(left: 400, bottom: 90, right: 560, top: 110));   // '1 240.00'
+   $text->chars()[0]->fontName;   // 'Helvetica'
+   $text->webLinks()[0]->url;     // 'https://example.com'
+
+See :ref:`text-positions` for the coordinates and how characters are counted.
+
 Render pages
 ~~~~~~~~~~~~
 
@@ -219,6 +241,11 @@ thread tests are not skipped:
 
 The public API is defined in ``pdfium.stub.php``. ``pdfium_arginfo.h`` is generated from it with
 PHP's ``build/gen_stub.php``.
+
+``src/unicode_tables.h`` holds the case-folding and word-character tables for
+``TextPage::search()``. ``scripts/unicode-tables.py`` generates it from the Unicode data of the
+Python that runs it, and records that version as ``PDFIUM_UNICODE_VERSION``. Do not edit the
+header; run the script again.
 
 CI builds with ``-Wall -Wextra -Werror``, checks that ``pdfium_arginfo.h`` matches the stub, and
 runs the tests on every supported platform and PHP version, and also under Valgrind,

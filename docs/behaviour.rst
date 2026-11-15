@@ -11,7 +11,10 @@ There is no ``close()``. PHP frees a document when nothing refers to it any more
 document alive:
 
 - the :php:class:`Document <Pdfium\\Document>` object itself;
-- any :php:class:`Page <Pdfium\\Page>` or :php:class:`PageIterator <Pdfium\\PageIterator>` from it.
+- any :php:class:`Page <Pdfium\\Page>`, :php:class:`TextPage <Pdfium\\TextPage>` or
+  :php:class:`PageIterator <Pdfium\\PageIterator>` from it.
+
+A :php:class:`TextPage <Pdfium\\TextPage>` also keeps its page loaded.
 
 A document opened with ``fromString()`` also keeps its string in memory.
 
@@ -21,7 +24,7 @@ These do **not** keep a document alive:
 - a document made from it with ``extractPages()`` or ``merge()``. The pages are copied, so you can
   free the source right away.
 
-To free a document, ``unset()`` it and every page and iterator taken from it.
+To free a document, ``unset()`` it and every page, text page and iterator taken from it.
 
 
 .. _pdfium-defaults:
@@ -96,6 +99,40 @@ Limits:
 Going over a limit throws ``\ValueError``. The limits cannot be changed. PNG and JPEG output is RGB.
 
 
+.. _text-positions:
+
+Text positions
+--------------
+
+Positions are in the PDF's own coordinates: points (1/72 inch), with ``y`` growing upwards and,
+on most pages, the origin (0, 0) at the bottom left corner. The page's rotation is not applied.
+
+To mark a character on an image from ``render()``, convert its position to pixels:
+
+.. code-block:: php
+
+   $across = $char->x * $dpi / 72;
+   $down = ($page->height() - $char->y) * $dpi / 72;
+
+This holds for a page with no rotation whose crop box starts at 0, 0.
+
+Character indexes follow PDFium's count:
+
+- a character PDFium adds, such as a space between words or a line break, has an index too. Its
+  ``Char`` has ``generated`` set to ``true``;
+- a character outside the Basic Multilingual Plane, such as an emoji, takes two indexes. The first
+  ``Char`` has the whole character as ``text`` and the second has ``""``;
+- when a word is hyphenated across two lines, PDFium joins it and no line break follows. The
+  hyphen's ``Char`` has ``hyphen`` set to ``true`` and its ``text`` is ``"-"``, as in ``text()``.
+
+A character PDFium cannot map to Unicode has an empty ``text`` and is left out of ``text()``,
+``textIn()`` and the text of search matches. Joining every ``text`` usually gives the same string
+as ``text()``, but not always: ``text()`` and ``textIn()`` leave control characters out.
+
+``search()`` looks for the needle in what ``text()`` shows, so a match can run over a character
+PDFium cannot map.
+
+
 .. _memory-limit:
 
 Memory limit
@@ -108,9 +145,18 @@ Rough memory needed:
 
 - ``render()``: about 7 bytes per pixel.
 - ``text()``: about 8 bytes per character.
+- ``textIn()`` and ``textInEach()``: about 30 bytes per character on the page, whatever the
+  rectangles, and about 600 bytes per rectangle.
+- ``chars()``: about 600 bytes per character returned.
+- ``search()``: about 8 bytes per character on the page, 10 bytes per byte of the needle, and
+  about 500 bytes per match.
+- ``webLinks()``: about 500 bytes per result.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 
 With ``memory_limit = -1`` there are no checks.
+
+A ``TextPage`` keeps the page's text inside PDFium, which ``memory_limit`` does not count, for as
+long as it lives. ``unset()`` it when you are done with the page.
 
 .. note::
 
@@ -133,8 +179,8 @@ nothing, so it is safe to retry. To render in parallel, use several processes, f
 workers.
 
 - ``Bitmap`` methods never throw it.
-- Freeing a document, page or page iterator, and ``PageIterator::next()`` and ``rewind()``, never
-  throw it, but may wait for the other thread to finish.
+- Freeing a document, page, text page or page iterator, and ``PageIterator::next()`` and
+  ``rewind()``, never throw it, but may wait for the other thread to finish.
 - ``fromFile()`` reads the file before it checks. For a stream you cannot read twice, such as
   ``php://stdin``, read it into a string yourself and retry with ``fromString()``.
 - Do not ``pcntl_fork()`` while another thread may be using PDFium. The child would find PDFium
