@@ -1,6 +1,29 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Features:
+
+- ``Page::textPage()``: a ``TextPage`` that reads the page's text once and keeps it.
+- ``TextPage::chars()``: every character, or a range of them, with its boxes, origin, font name,
+  size, weight and flags, fill and stroke colours, angle and text matrix.
+- ``TextPage::charCount()``: the number of characters.
+- ``TextPage::charIndexAt()``: the character at a point.
+- ``TextPage::textIn()``: the text inside a rectangle, given as a new ``Rect``.
+- ``TextPage::textInEach()``: the text inside each of many rectangles, reading the page once.
+- ``TextPage::search()``: matches with their character range, text and rectangles.
+- ``TextPage::webLinks()``: URLs and email addresses written in the text.
+- ``TextPage::text()``: the same as ``Page::text()``.
+- Value classes for the results: ``Rect``, ``Char``, ``Color``, ``Matrix``, ``TextMatch`` and
+  ``WebLink``.
+
+Changes:
+
+- ``Page::text()`` gives a hyphen that PDFium joins across a line break as ``-``, not U+FFFE.
+- ``Page::text()`` leaves out a character PDFium cannot map to Unicode, not U+FFFE.
+
 0.1.0 (2026-11-07)
 ------------------
 

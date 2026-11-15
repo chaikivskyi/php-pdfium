@@ -189,6 +189,114 @@ final readonly class Permissions
     private function __construct() {}
 }
 
+/** A rectangle in PDF points, with y growing upwards. */
+final readonly class Rect
+{
+    public float $left;
+    public float $bottom;
+    public float $right;
+    public float $top;
+
+    /**
+     * @throws \ValueError when a side is not finite, $left > $right or $bottom > $top
+     */
+    public function __construct(float $left, float $bottom, float $right, float $top) {}
+}
+
+/** An RGB colour with alpha, each from 0 to 255; alpha 255 is opaque. */
+final readonly class Color
+{
+    public int $red;
+    public int $green;
+    public int $blue;
+    public int $alpha;
+
+    private function __construct() {}
+}
+
+/** A PDF transformation matrix [a b c d e f]: x' = a*x + c*y + e, y' = b*x + d*y + f. */
+final readonly class Matrix
+{
+    public float $a;
+    public float $b;
+    public float $c;
+    public float $d;
+    public float $e;
+    public float $f;
+
+    private function __construct() {}
+}
+
+/** One character of a page's text, as TextPage::chars() returns it. */
+final readonly class Char
+{
+    /**
+     * The character as UTF-8; empty when PDFium cannot map it to Unicode, and for the second half of
+     * a character outside the Basic Multilingual Plane, which PDFium counts as two.
+     */
+    public string $text;
+    /** The tight bounds of the glyph; zero-sized for a space. */
+    public Rect $box;
+    /** The bounds of the glyph's whole cell, from the font's ascent to its descent. */
+    public Rect $looseBox;
+    /** The x coordinate of the glyph origin. */
+    public float $x;
+    /** The y coordinate of the glyph origin, on the baseline. */
+    public float $y;
+    public float $fontSize;
+    public ?string $fontName;
+    public ?int $fontWeight;
+    /** The PDF font descriptor flags (PDF 1.7, 9.8.2); 0 when unknown. */
+    public int $fontFlags;
+    /** The colour the glyph is filled with; null when PDFium cannot tell. */
+    public ?Color $fillColor;
+    /** The colour the glyph is outlined with; null when PDFium cannot tell. */
+    public ?Color $strokeColor;
+    /** Counter-clockwise rotation in degrees, from 0 up to 360, rounded to four decimal places. */
+    public float $angle;
+    /**
+     * The matrix of the text object the character is in: its text matrix and the page transformation,
+     * without the font size or the character's offset along the line; null when PDFium cannot tell.
+     */
+    public ?Matrix $matrix;
+    /** Whether PDFium added the character, such as a space between words or a line break. */
+    public bool $generated;
+    /** Whether this is a hyphen that splits a word across two lines; PDFium joins the word and its text is "-". */
+    public bool $hyphen;
+    /** Whether the font maps this character to Unicode wrongly. */
+    public bool $unicodeMapError;
+
+    private function __construct() {}
+}
+
+/** One match of TextPage::search(). */
+final readonly class TextMatch
+{
+    /** The index in TextPage::chars() of the first character. */
+    public int $index;
+    /** How many character indexes it covers. */
+    public int $length;
+    public string $text;
+    /** @var Rect[] one per line the match covers */
+    public array $rects;
+
+    private function __construct() {}
+}
+
+/** A URL written in a page's text, as TextPage::webLinks() returns it. */
+final readonly class WebLink
+{
+    public string $url;
+    /** The index in TextPage::chars() of the first character. */
+    public int $index;
+    /** How many character indexes it covers. */
+    public int $length;
+    /** @var Rect[] one per line the URL covers */
+    public array $rects;
+
+    private function __construct() {}
+}
+
 /**
  * @strict-properties
  * @not-serializable
@@ -242,6 +350,113 @@ final class Page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function render(int $dpi = 150): Bitmap {}
+
+    /**
+     * Reads the page's text once and keeps it, for chars(), search() and the other text methods.
+     *
+     * @throws FormatException when PDFium cannot load the page's text
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function textPage(): TextPage {}
+}
+
+/**
+ * The page's text as PDFium read it once. It keeps its page and document alive.
+ *
+ * @strict-properties
+ * @not-serializable
+ */
+final class TextPage
+{
+    private function __construct() {}
+
+    /**
+     * The same as Page::text().
+     *
+     * @throws MemoryException when the text would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function text(): string {}
+
+    /**
+     * The number of characters: the size of chars().
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function charCount(): int {}
+
+    /**
+     * The characters of text(), in the same order: all of them, or $length of them from the character
+     * index $start, fewer when the text ends first; a null $length means every character from $start.
+     * The character index is the one search(), webLinks() and charIndexAt() use; the returned list
+     * starts at 0 for the character at $start. PDFium counts a character outside the Basic Multilingual
+     * Plane as two; the second one's text is empty.
+     *
+     * @return Char[]
+     * @throws \ValueError when $start is outside 0..charCount() or $length is negative
+     * @throws MemoryException when the characters would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function chars(int $start = 0, ?int $length = null): array {}
+
+    /**
+     * The index of the character at this point, or null. The tolerances are the width and height of
+     * an area centred on the point, so a character up to half a tolerance away also counts.
+     *
+     * @throws \ValueError when a coordinate or tolerance is not finite, or a tolerance is negative
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function charIndexAt(float $x, float $y, float $xTolerance = 0.0, float $yTolerance = 0.0): ?int {}
+
+    /**
+     * The text of the characters whose centre is inside the rectangle or on its edge, as UTF-8.
+     *
+     * @throws \ValueError when a side of $rect is unset or one its constructor refuses, as in one made without it
+     * @throws MemoryException when the text would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function textIn(Rect $rect): string {}
+
+    /**
+     * textIn() for every rectangle, reading the page's characters once: far faster than one textIn()
+     * call per rectangle.
+     *
+     * @param Rect[] $rects
+     * @return string[] under the keys of $rects
+     * @throws \TypeError when $rects holds anything but a Rect
+     * @throws \ValueError when a side of a rectangle is unset or one its constructor refuses, as in one made
+     *         without it
+     * @throws MemoryException when the texts would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function textInEach(array $rects): array {}
+
+    /**
+     * Every match of $needle in text(), in order.
+     *
+     * @param bool $matchCase without it, case is ignored for every alphabet in the Basic Multilingual
+     *        Plane, one character for one: "ß" does not match "SS"
+     * @param bool $wholeWord only matches that, where they start or end with a letter or digit, have no
+     *        other one right before or after them; the characters of scripts written without spaces
+     *        between words, such as Chinese, Japanese and Thai, do not count as letters
+     * @param bool $overlapping look for the next match from the second character of the last one,
+     *        not from after its end
+     * @return TextMatch[]
+     * @throws \ValueError when $needle is empty, not valid UTF-8 or contains a NUL byte
+     * @throws MemoryException when the matches would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function search(string $needle, bool $matchCase = false, bool $wholeWord = false, bool $overlapping = false): array {}
+
+    /**
+     * The http, https and www URLs and the email addresses written in the text, which PDFium finds
+     * by their shape; link annotations are not included.
+     *
+     * @return WebLink[]
+     * @throws MemoryException when the links would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function webLinks(): array {}
 }
 
 /**

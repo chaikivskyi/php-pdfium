@@ -11,9 +11,16 @@
 zend_class_entry *pdfium_ce_document;
 zend_class_entry *pdfium_ce_page;
 zend_class_entry *pdfium_ce_page_iterator;
+zend_class_entry *pdfium_ce_text_page;
 zend_class_entry *pdfium_ce_bitmap;
 zend_class_entry *pdfium_ce_metadata;
 zend_class_entry *pdfium_ce_permissions;
+zend_class_entry *pdfium_ce_rect;
+zend_class_entry *pdfium_ce_color;
+zend_class_entry *pdfium_ce_matrix;
+zend_class_entry *pdfium_ce_char;
+zend_class_entry *pdfium_ce_text_match;
+zend_class_entry *pdfium_ce_web_link;
 zend_class_entry *pdfium_ce_exception;
 zend_class_entry *pdfium_ce_file_exception;
 zend_class_entry *pdfium_ce_format_exception;
@@ -25,6 +32,7 @@ zend_class_entry *pdfium_ce_busy_exception;
 static zend_object_handlers document_handlers;
 static zend_object_handlers page_handlers;
 static zend_object_handlers page_iterator_handlers;
+static zend_object_handlers text_page_handlers;
 static zend_object_handlers bitmap_handlers;
 
 static zend_object *object_create(zend_class_entry *ce, size_t size, const zend_object_handlers *handlers)
@@ -50,6 +58,11 @@ static zend_object *page_create(zend_class_entry *ce)
 static zend_object *page_iterator_create(zend_class_entry *ce)
 {
 	return object_create(ce, sizeof(pdfium_page_iterator), &page_iterator_handlers);
+}
+
+static zend_object *text_page_create(zend_class_entry *ce)
+{
+	return object_create(ce, sizeof(pdfium_text_page), &text_page_handlers);
 }
 
 static zend_object *bitmap_create(zend_class_entry *ce)
@@ -89,6 +102,12 @@ PHP_MINIT_FUNCTION(pdfium)
 	pdfium_ce_busy_exception = register_class_Pdfium_BusyException(pdfium_ce_exception);
 	pdfium_ce_metadata = register_class_Pdfium_Metadata();
 	pdfium_ce_permissions = register_class_Pdfium_Permissions();
+	pdfium_ce_rect = register_class_Pdfium_Rect();
+	pdfium_ce_color = register_class_Pdfium_Color();
+	pdfium_ce_matrix = register_class_Pdfium_Matrix();
+	pdfium_ce_char = register_class_Pdfium_Char();
+	pdfium_ce_text_match = register_class_Pdfium_TextMatch();
+	pdfium_ce_web_link = register_class_Pdfium_WebLink();
 
 	/* Before Document: its getIterator() return type narrows IteratorAggregate's to PageIterator. */
 	init_handlers(&page_iterator_handlers, XtOffsetOf(pdfium_page_iterator, std), pdfium_page_iterator_free_obj);
@@ -103,10 +122,18 @@ PHP_MINIT_FUNCTION(pdfium)
 	pdfium_ce_page = register_class_Pdfium_Page();
 	pdfium_ce_page->create_object = page_create;
 
+	init_handlers(&text_page_handlers, XtOffsetOf(pdfium_text_page, std), pdfium_text_page_free_obj);
+	pdfium_ce_text_page = register_class_Pdfium_TextPage();
+	pdfium_ce_text_page->create_object = text_page_create;
+
 	init_handlers(&bitmap_handlers, XtOffsetOf(pdfium_bitmap, std), pdfium_bitmap_free_obj);
 	pdfium_ce_bitmap = register_class_Pdfium_Bitmap();
 	pdfium_ce_bitmap->create_object = bitmap_create;
 
+	if (!pdfium_text_slots_match()) {
+		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/text.c do not match pdfium.stub.php");
+		return FAILURE;
+	}
 	return SUCCESS;
 }
 

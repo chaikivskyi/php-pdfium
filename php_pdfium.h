@@ -25,19 +25,34 @@ typedef struct pdfium_doc_handle {
 	uint32_t refs;
 } pdfium_doc_handle;
 
+typedef struct pdfium_page_handle {
+	pdfium_doc_handle *h;
+	FPDF_PAGE page;
+	bool form_loaded;
+	uint32_t refs;
+} pdfium_page_handle;
+
 typedef struct { pdfium_doc_handle *h; zend_object std; } pdfium_document;
-typedef struct { pdfium_doc_handle *h; FPDF_PAGE page; int index; bool form_loaded; zend_object std; } pdfium_page;
+typedef struct { pdfium_page_handle *ph; int index; zend_object std; } pdfium_page;
 typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std; } pdfium_page_iterator;
 typedef struct { unsigned char *pixels; int width, height; zend_object std; } pdfium_bitmap;
+typedef struct { pdfium_page_handle *ph; FPDF_TEXTPAGE tp; zend_object std; } pdfium_text_page;
 
 typedef struct { smart_str s; bool oom; } pdfium_buf;
 
 extern zend_class_entry *pdfium_ce_document;
 extern zend_class_entry *pdfium_ce_page;
 extern zend_class_entry *pdfium_ce_page_iterator;
+extern zend_class_entry *pdfium_ce_text_page;
 extern zend_class_entry *pdfium_ce_bitmap;
 extern zend_class_entry *pdfium_ce_metadata;
 extern zend_class_entry *pdfium_ce_permissions;
+extern zend_class_entry *pdfium_ce_rect;
+extern zend_class_entry *pdfium_ce_color;
+extern zend_class_entry *pdfium_ce_matrix;
+extern zend_class_entry *pdfium_ce_char;
+extern zend_class_entry *pdfium_ce_text_match;
+extern zend_class_entry *pdfium_ce_web_link;
 extern zend_class_entry *pdfium_ce_exception;
 extern zend_class_entry *pdfium_ce_file_exception;
 extern zend_class_entry *pdfium_ce_format_exception;
@@ -68,9 +83,19 @@ static inline pdfium_page *pdfium_page_from_obj(zend_object *obj)
 	return (pdfium_page *)((char *)obj - XtOffsetOf(pdfium_page, std));
 }
 
+static inline pdfium_page_handle *pdfium_this_page(zval *self)
+{
+	return pdfium_page_from_obj(Z_OBJ_P(self))->ph;
+}
+
 static inline pdfium_page_iterator *pdfium_page_iterator_from_obj(zend_object *obj)
 {
 	return (pdfium_page_iterator *)((char *)obj - XtOffsetOf(pdfium_page_iterator, std));
+}
+
+static inline pdfium_text_page *pdfium_text_page_from_obj(zend_object *obj)
+{
+	return (pdfium_text_page *)((char *)obj - XtOffsetOf(pdfium_text_page, std));
 }
 
 static inline pdfium_bitmap *pdfium_bitmap_from_obj(zend_object *obj)
@@ -83,10 +108,15 @@ void pdfium_doc_handle_release(pdfium_doc_handle *h);
 FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h);
 void pdfium_document_free_obj(zend_object *obj);
 
+void pdfium_page_handle_addref(pdfium_page_handle *ph);
+void pdfium_page_handle_release(pdfium_page_handle *ph);
+void pdfium_text_page_free_obj(zend_object *obj);
+bool pdfium_text_slots_match(void);
 zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count);
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h);
 void pdfium_page_free_obj(zend_object *obj);
 void pdfium_page_iterator_free_obj(zend_object *obj);
+double pdfium_points(float value);
 
 void pdfium_bitmap_free_obj(zend_object *obj);
 
@@ -96,6 +126,22 @@ bool pdfium_path_given(size_t len);
 zend_string *pdfium_read_file(const char *path);
 void pdfium_write_and_release(zend_string *data, const char *path);
 
+static inline bool pdfium_high_surrogate(uint32_t u)
+{
+	return u >= 0xD800 && u <= 0xDBFF;
+}
+
+static inline bool pdfium_low_surrogate(uint32_t u)
+{
+	return u >= 0xDC00 && u <= 0xDFFF;
+}
+
+static inline uint32_t pdfium_surrogate_pair(uint32_t high, uint32_t low)
+{
+	return 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00);
+}
+
 zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count);
+size_t pdfium_utf8_encode(uint32_t cp, char *out);
 
 #endif

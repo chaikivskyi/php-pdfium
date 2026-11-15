@@ -33,7 +33,7 @@ static int pixels_for(float points, zend_long dpi)
 
 ZEND_METHOD(Pdfium_Page, render)
 {
-	pdfium_page *p = pdfium_page_from_obj(Z_OBJ_P(ZEND_THIS));
+	pdfium_page_handle *p = pdfium_this_page(ZEND_THIS);
 	zend_long dpi = 150;
 
 	ZEND_PARSE_PARAMETERS_START(0, 1)

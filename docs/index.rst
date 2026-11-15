@@ -1,8 +1,9 @@
 php-pdfium
 ==========
 
-**pdfium** is a PHP extension for reading, rendering, splitting and merging PDF files. It is built on
-Google's `PDFium <https://pdfium.googlesource.com/pdfium/>`_, the PDF engine inside Chrome.
+**pdfium** is a PHP extension for reading, searching, rendering, splitting and merging PDF files.
+It is built on Google's `PDFium <https://pdfium.googlesource.com/pdfium/>`_, the PDF engine inside
+Chrome.
 
 Pages load only when you ask for them, so walking a long document does not hold every page in memory.
 

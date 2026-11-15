@@ -45,3 +45,23 @@ function text_pdf(int $chars): string
 {
     return page_pdf(612, 792, 'BT /F1 1 Tf 0 0 Td ' . str_repeat('(' . str_repeat('x', 10000) . ') Tj ', intdiv($chars, 10000)) . 'ET');
 }
+
+function cmap_pdf(string $content, string ...$bfchars): string
+{
+    $cmap = '/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CMapName /X def 1 begincodespacerange <00> <FF> '
+        . 'endcodespacerange ' . count($bfchars) . ' beginbfchar ' . implode(' ', $bfchars)
+        . ' endbfchar endcmap CMapName currentdict /CMap defineresource pop end end';
+    return page_pdf(612, 792, $content, '/Font << /F2 6 0 R >>', [
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /ToUnicode 7 0 R >>',
+        stream_obj($cmap),
+    ]);
+}
+
+function lines_pdf(string ...$lines): string
+{
+    $content = '';
+    foreach ($lines as $i => $line) {
+        $content .= 'BT /F1 12 Tf 72 ' . (700 - 100 * $i) . ' Td (' . $line . ') Tj ET ';
+    }
+    return page_pdf(612, 792, $content);
+}
