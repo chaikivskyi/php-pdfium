@@ -339,8 +339,11 @@ final class Page
     public function text(): string {}
 
     /**
-     * Renders the page on white. Each side is max(1, round(points * $dpi / 72)) pixels.
+     * Renders the page, on white unless $transparent is true. Each side is
+     * max(1, round(points * $dpi / 72)) pixels.
      *
+     * @param bool $transparent render on a transparent background instead: PNG keeps the alpha channel;
+     *        JPEG has none, so it is drawn on white
      * @param bool $annotations draw annotations and form fields. The first such render, of any page, can
      *        add appearance streams to the document's form fields, which save() and toString() then
      *        include; false leaves the document unchanged
@@ -351,7 +354,7 @@ final class Page
      *         bitmap counts against memory_limit for as long as the Bitmap lives
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public function render(int $dpi = 150, bool $annotations = true): Bitmap {}
+    public function render(int $dpi = 150, bool $transparent = false, bool $annotations = true): Bitmap {}
 
     /**
      * Reads the page's text once and keeps it, for chars(), search() and the other text methods.
@@ -505,7 +508,7 @@ final class Bitmap
     public function height(): int {}
 
     /**
-     * 8-bit RGB PNG.
+     * 8-bit PNG: RGB, or RGBA after a transparent render().
      *
      * @throws MemoryException when the PNG would not fit under memory_limit
      * @throws PdfiumException when encoding fails
@@ -513,6 +516,8 @@ final class Bitmap
     public function toPng(): string {}
 
     /**
+     * 8-bit JPEG: RGB; a transparent render is drawn on white.
+     *
      * @throws \ValueError when $quality is outside 1..100
      * @throws MemoryException when the JPEG would not fit under memory_limit
      * @throws PdfiumException when encoding fails

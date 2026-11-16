@@ -89,6 +89,7 @@ Rendering
 
 Options change that:
 
+- ``transparent: true``: a transparent background instead of white;
 - ``annotations: false``: only the page's content, without annotations or form fields.
 
 The image size is ``points × dpi / 72``, rounded, and at least 1 pixel. An A4 page
@@ -101,7 +102,10 @@ Limits:
 - The image can have at most 100 million pixels.
 - JPEG quality must be from 1 to 100 (default 85).
 
-Going over a limit throws ``\ValueError``. The limits cannot be changed. PNG and JPEG output is RGB.
+Going over a limit throws ``\ValueError``. The limits cannot be changed.
+
+PNG and JPEG output is RGB. A transparent render gives an RGBA PNG, with straight (not
+premultiplied) alpha; JPEG has no alpha channel, so its JPEG is drawn on white.
 
 
 .. _text-positions:
@@ -148,7 +152,7 @@ first and throws :php:exc:`Pdfium\\MemoryException` instead, so you can catch it
 
 Rough memory needed:
 
-- ``render()``: about 7 bytes per pixel.
+- ``render()``: about 7 bytes per pixel, 8 with ``transparent``.
 - ``text()``: about 8 bytes per character.
 - ``textIn()`` and ``textInEach()``: about 30 bytes per character on the page, whatever the
   rectangles, and about 600 bytes per rectangle.

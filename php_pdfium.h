@@ -35,7 +35,7 @@ typedef struct pdfium_page_handle {
 typedef struct { pdfium_doc_handle *h; zend_object std; } pdfium_document;
 typedef struct { pdfium_page_handle *ph; int index; zend_object std; } pdfium_page;
 typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std; } pdfium_page_iterator;
-typedef struct { unsigned char *pixels; int width, height; zend_object std; } pdfium_bitmap;
+typedef struct { unsigned char *pixels; int width, height; bool alpha, gray; zend_object std; } pdfium_bitmap;
 typedef struct { pdfium_page_handle *ph; FPDF_TEXTPAGE tp; zend_object std; } pdfium_text_page;
 
 typedef struct { smart_str s; bool oom; } pdfium_buf;

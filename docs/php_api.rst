@@ -308,11 +308,12 @@ Page
       :throws MemoryException: The text would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
-   .. php:method:: render(int $dpi = 150, bool $annotations = true) -> Bitmap
+   .. php:method:: render(int $dpi = 150, bool $transparent = false, bool $annotations = true) -> Bitmap
 
       Renders the page to a bitmap. See :ref:`rendering`.
 
       :param int $dpi: Resolution, from 1 to 2400.
+      :param bool $transparent: Render on a transparent background instead of white.
       :param bool $annotations: Draw annotations and form fields. The first such render can add
          appearance streams that a later save writes; ``false`` leaves the document unchanged.
       :rtype: Bitmap
@@ -544,7 +545,7 @@ Bitmap
 
    .. php:method:: toPng() -> string
 
-      The bitmap as PNG data.
+      The bitmap as PNG data: RGB, or RGBA for a transparent render.
 
       :rtype: string
       :throws MemoryException: The PNG would not fit under ``memory_limit``.
@@ -552,7 +553,7 @@ Bitmap
 
    .. php:method:: toJpeg(int $quality = 85) -> string
 
-      The bitmap as JPEG data.
+      The bitmap as JPEG data. A transparent render is drawn on white.
 
       :param int $quality: Quality, from 1 to 100.
       :rtype: string

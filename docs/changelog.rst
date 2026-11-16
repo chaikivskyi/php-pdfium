@@ -7,6 +7,8 @@ Unreleased
 Features:
 
 - ``Page::render()`` option ``annotations: false``: the page without annotations or form fields.
+- ``Page::render()`` option ``transparent: true``: a transparent background, with alpha in PNG
+  output; JPEG is drawn on white.
 
 v0.2.0 (2026-11-15)
 -------------------

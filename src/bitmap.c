@@ -35,11 +35,12 @@ ZEND_METHOD(Pdfium_Page, render)
 {
 	pdfium_page_handle *p = pdfium_this_page(ZEND_THIS);
 	zend_long dpi = 150;
-	bool annotations = true;
+	bool transparent = false, annotations = true;
 
-	ZEND_PARSE_PARAMETERS_START(0, 2)
+	ZEND_PARSE_PARAMETERS_START(0, 3)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_LONG(dpi)
+		Z_PARAM_BOOL(transparent)
 		Z_PARAM_BOOL(annotations)
 	ZEND_PARSE_PARAMETERS_END();
 
@@ -65,7 +66,7 @@ ZEND_METHOD(Pdfium_Page, render)
 			PDFIUM_MAX_PIXELS);
 		RETURN_THROWS();
 	}
-	if (!pdfium_memory_fits((size_t) w * h * 7)) {
+	if (!pdfium_memory_fits((size_t) w * h * (7 + transparent))) {
 		pdfium_leave();
 		zend_throw_exception_ex(pdfium_ce_memory_exception, 0,
 			"Rendering %dx%d pixels needs more memory than memory_limit leaves", w, h);
@@ -73,7 +74,7 @@ ZEND_METHOD(Pdfium_Page, render)
 	}
 
 	void *pixels = safe_emalloc((size_t) w * 4, h, 0);
-	FPDF_BITMAP bitmap = FPDFBitmap_CreateEx(w, h, FPDFBitmap_BGRx, pixels, w * 4);
+	FPDF_BITMAP bitmap = FPDFBitmap_CreateEx(w, h, transparent ? FPDFBitmap_BGRA : FPDFBitmap_BGRx, pixels, w * 4);
 	if (!bitmap) {
 		pdfium_leave();
 		efree(pixels);
@@ -86,7 +87,7 @@ ZEND_METHOD(Pdfium_Page, render)
 		p->form_loaded = true;
 	}
 	int flags = annotations ? FPDF_ANNOT : 0;
-	FPDFBitmap_FillRect(bitmap, 0, 0, w, h, 0xFFFFFFFF);
+	FPDFBitmap_FillRect(bitmap, 0, 0, w, h, transparent ? 0x00000000 : 0xFFFFFFFF);
 	FPDF_RenderPageBitmap(bitmap, p->page, 0, 0, w, h, 0, flags);
 	if (form) {
 		FPDF_FFLDraw(form, bitmap, p->page, 0, 0, w, h, 0, flags);
@@ -99,6 +100,8 @@ ZEND_METHOD(Pdfium_Page, render)
 	img->pixels = pixels;
 	img->width = w;
 	img->height = h;
+	img->alpha = transparent;
+	img->gray = false;
 }
 
 ZEND_METHOD(Pdfium_Bitmap, width)
@@ -113,14 +116,30 @@ ZEND_METHOD(Pdfium_Bitmap, height)
 	RETURN_LONG(this_bitmap(ZEND_THIS)->height);
 }
 
-static void bgrx_row_to_rgb(const pdfium_bitmap *img, int y, unsigned char *rgb)
+static unsigned char on_white(unsigned char c, unsigned char a)
+{
+	return (unsigned char) ((c * a + 255 * (255 - a) + 127) / 255);
+}
+
+static int out_channels(const pdfium_bitmap *img, bool keep_alpha)
+{
+	return 3 + (keep_alpha && img->alpha);
+}
+
+static void row_out(const pdfium_bitmap *img, int y, unsigned char *out, bool keep_alpha)
 {
 	const unsigned char *src = img->pixels + (size_t) y * img->width * 4;
+	bool composite = img->alpha && !keep_alpha;
 
-	for (int x = img->width; x > 0; x--, src += 4, rgb += 3) {
-		rgb[0] = src[2];
-		rgb[1] = src[1];
-		rgb[2] = src[0];
+	for (int x = img->width; x > 0; x--, src += 4) {
+		unsigned char a = img->alpha ? src[3] : 255;
+
+		*out++ = composite ? on_white(src[2], a) : src[2];
+		*out++ = composite ? on_white(src[1], a) : src[1];
+		*out++ = composite ? on_white(src[0], a) : src[0];
+		if (keep_alpha && img->alpha) {
+			*out++ = a;
+		}
 	}
 }
 
@@ -153,11 +172,12 @@ static bool png_write(png_structp png, png_infop info, const pdfium_bitmap *img,
 		return false;
 	}
 	png_set_write_fn(png, out, png_on_write, png_on_flush);
-	png_set_IHDR(png, info, img->width, img->height, 8, PNG_COLOR_TYPE_RGB,
+	png_set_IHDR(png, info, img->width, img->height, 8,
+		PNG_COLOR_TYPE_RGB | (img->alpha ? PNG_COLOR_MASK_ALPHA : 0),
 		PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 	png_write_info(png, info);
 	for (int y = 0, h = img->height; y < h; y++) {
-		bgrx_row_to_rgb(img, y, row);
+		row_out(img, y, row, true);
 		png_write_row(png, row);
 	}
 	png_write_end(png, info);
@@ -173,7 +193,7 @@ static zend_string *encode_png(const pdfium_bitmap *img)
 	bool ok = false;
 
 	if (info) {
-		unsigned char *row = safe_emalloc(img->width, 3, 0);
+		unsigned char *row = safe_emalloc(img->width, out_channels(img, true), 0);
 
 		ok = png_write(png, info, img, &out, row);
 		efree(row);
@@ -251,13 +271,13 @@ static bool jpeg_write(j_compress_ptr cinfo, jpeg_err *err, jpeg_dest *dest, con
 	cinfo->dest = &dest->pub;
 	cinfo->image_width = img->width;
 	cinfo->image_height = img->height;
-	cinfo->input_components = 3;
+	cinfo->input_components = out_channels(img, false);
 	cinfo->in_color_space = JCS_RGB;
 	jpeg_set_defaults(cinfo);
 	jpeg_set_quality(cinfo, quality, TRUE);
 	jpeg_start_compress(cinfo, TRUE);
 	for (JDIMENSION y = 0; y < cinfo->image_height; y++) {
-		bgrx_row_to_rgb(img, y, row);
+		row_out(img, y, row, false);
 		jpeg_write_scanlines(cinfo, &row, 1);
 	}
 	jpeg_finish_compress(cinfo);
@@ -270,7 +290,7 @@ static zend_string *encode_jpeg(const pdfium_bitmap *img, int quality)
 	jpeg_err err;
 	jpeg_dest *dest = emalloc(sizeof(*dest));
 	pdfium_buf out = {0};
-	unsigned char *row = safe_emalloc(img->width, 3, 0);
+	unsigned char *row = safe_emalloc(img->width, out_channels(img, false), 0);
 	bool ok;
 
 	memset(&cinfo, 0, sizeof(cinfo));
