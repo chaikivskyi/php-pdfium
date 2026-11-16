@@ -35,10 +35,12 @@ ZEND_METHOD(Pdfium_Page, render)
 {
 	pdfium_page_handle *p = pdfium_this_page(ZEND_THIS);
 	zend_long dpi = 150;
+	bool annotations = true;
 
-	ZEND_PARSE_PARAMETERS_START(0, 1)
+	ZEND_PARSE_PARAMETERS_START(0, 2)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_LONG(dpi)
+		Z_PARAM_BOOL(annotations)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (dpi < 1 || dpi > 2400) {
@@ -78,15 +80,16 @@ ZEND_METHOD(Pdfium_Page, render)
 		zend_throw_exception_ex(pdfium_ce_memory_exception, 0, "Cannot allocate a %dx%d bitmap", w, h);
 		RETURN_THROWS();
 	}
-	FPDF_FORMHANDLE form = pdfium_doc_handle_form(p->h);
+	FPDF_FORMHANDLE form = annotations ? pdfium_doc_handle_form(p->h) : NULL;
 	if (form && !p->form_loaded) {
 		FORM_OnAfterLoadPage(p->page, form);
 		p->form_loaded = true;
 	}
+	int flags = annotations ? FPDF_ANNOT : 0;
 	FPDFBitmap_FillRect(bitmap, 0, 0, w, h, 0xFFFFFFFF);
-	FPDF_RenderPageBitmap(bitmap, p->page, 0, 0, w, h, 0, FPDF_ANNOT);
+	FPDF_RenderPageBitmap(bitmap, p->page, 0, 0, w, h, 0, flags);
 	if (form) {
-		FPDF_FFLDraw(form, bitmap, p->page, 0, 0, w, h, 0, FPDF_ANNOT);
+		FPDF_FFLDraw(form, bitmap, p->page, 0, 0, w, h, 0, flags);
 	}
 	FPDFBitmap_Destroy(bitmap);
 	pdfium_leave();

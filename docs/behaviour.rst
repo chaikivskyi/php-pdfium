@@ -70,9 +70,10 @@ The extension follows PDFium and adds no rules of its own.
    how to clean up.
 
 **Rendering can change what saving writes.**
-   The first ``render()`` of a page sets up PDFium's form support for the document. For form fields
-   without an appearance stream, PDFium then generates one, and a later ``save()`` or
-   ``toString()`` includes it.
+   The first time any page of a document is rendered with annotations (the default), PDFium sets up
+   form support for the document. For form fields without an appearance stream, PDFium then
+   generates one, and a later ``save()`` or ``toString()`` includes it. ``annotations: false``
+   leaves the document unchanged.
 
 
 .. _rendering:
@@ -85,6 +86,10 @@ Rendering
 - on a white background, with no transparency;
 - with annotations and form fields;
 - the crop box, clipped to the media box, at its size after rotation.
+
+Options change that:
+
+- ``annotations: false``: only the page's content, without annotations or form fields.
 
 The image size is ``points × dpi / 72``, rounded, and at least 1 pixel. An A4 page
 (595.28 × 841.89 points) at 150 DPI gives 1240 × 1754 pixels.

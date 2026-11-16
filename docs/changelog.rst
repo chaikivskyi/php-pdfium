@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Features:
+
+- ``Page::render()`` option ``annotations: false``: the page without annotations or form fields.
+
 v0.2.0 (2026-11-15)
 -------------------
 

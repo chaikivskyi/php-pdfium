@@ -65,3 +65,15 @@ function lines_pdf(string ...$lines): string
     }
     return page_pdf(612, 792, $content);
 }
+
+function annot_pdf(): string
+{
+    return build_pdf([
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R /Annots [5 0 R] >>',
+        stream_obj(''),
+        '<< /Type /Annot /Subtype /Square /Rect [10 60 40 90] /F 4 /AP << /N 6 0 R >> >>',
+        stream_obj('0 g 0 0 30 30 re f', '/Type /XObject /Subtype /Form /BBox [0 0 30 30] '),
+    ]);
+}

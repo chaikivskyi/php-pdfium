@@ -339,9 +339,11 @@ final class Page
     public function text(): string {}
 
     /**
-     * Renders the page with annotations and form fields drawn, on white.
-     * Each side is max(1, round(points * $dpi / 72)) pixels. The first render of a form page can add
-     * appearance streams for its fields to the document, which save() and toString() then include.
+     * Renders the page on white. Each side is max(1, round(points * $dpi / 72)) pixels.
+     *
+     * @param bool $annotations draw annotations and form fields. The first such render, of any page, can
+     *        add appearance streams to the document's form fields, which save() and toString() then
+     *        include; false leaves the document unchanged
      *
      * @throws \ValueError when $dpi is outside 1..2400, a side would exceed 65,500 pixels, or the image
      *         would exceed 100,000,000 pixels
@@ -349,7 +351,7 @@ final class Page
      *         bitmap counts against memory_limit for as long as the Bitmap lives
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public function render(int $dpi = 150): Bitmap {}
+    public function render(int $dpi = 150, bool $annotations = true): Bitmap {}
 
     /**
      * Reads the page's text once and keeps it, for chars(), search() and the other text methods.

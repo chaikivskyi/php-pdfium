@@ -308,11 +308,13 @@ Page
       :throws MemoryException: The text would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
-   .. php:method:: render(int $dpi = 150) -> Bitmap
+   .. php:method:: render(int $dpi = 150, bool $annotations = true) -> Bitmap
 
       Renders the page to a bitmap. See :ref:`rendering`.
 
       :param int $dpi: Resolution, from 1 to 2400.
+      :param bool $annotations: Draw annotations and form fields. The first such render can add
+         appearance streams that a later save writes; ``false`` leaves the document unchanged.
       :rtype: Bitmap
       :throws \\ValueError: The DPI is out of range, a side would be over 65,500 pixels, or the
          image would be over 100 million pixels.
