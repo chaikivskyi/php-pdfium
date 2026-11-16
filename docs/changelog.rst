@@ -9,6 +9,8 @@ Features:
 - ``Page::render()`` option ``annotations: false``: the page without annotations or form fields.
 - ``Page::render()`` option ``transparent: true``: a transparent background, with alpha in PNG
   output; JPEG is drawn on white.
+- ``Page::render()`` option ``grayscale: true``: a gray image, with one-channel PNG and JPEG output
+  (two channels, gray and alpha, in a transparent PNG).
 
 v0.2.0 (2026-11-15)
 -------------------

@@ -90,7 +90,8 @@ Rendering
 Options change that:
 
 - ``transparent: true``: a transparent background instead of white;
-- ``annotations: false``: only the page's content, without annotations or form fields.
+- ``annotations: false``: only the page's content, without annotations or form fields;
+- ``grayscale: true``: gray instead of colour.
 
 The image size is ``points × dpi / 72``, rounded, and at least 1 pixel. An A4 page
 (595.28 × 841.89 points) at 150 DPI gives 1240 × 1754 pixels.
@@ -104,8 +105,19 @@ Limits:
 
 Going over a limit throws ``\ValueError``. The limits cannot be changed.
 
-PNG and JPEG output is RGB. A transparent render gives an RGBA PNG, with straight (not
-premultiplied) alpha; JPEG has no alpha channel, so its JPEG is drawn on white.
+The output channels follow the options:
+
+==================================  ===============  =====
+Options                             PNG              JPEG
+==================================  ===============  =====
+none                                RGB              RGB
+``transparent``                     RGBA             RGB
+``grayscale``                       gray             gray
+``transparent`` and ``grayscale``   gray and alpha   gray
+==================================  ===============  =====
+
+Alpha is straight, not premultiplied. JPEG has no alpha channel, so a transparent render's JPEG is
+drawn on white.
 
 
 .. _text-positions:
@@ -152,7 +164,8 @@ first and throws :php:exc:`Pdfium\\MemoryException` instead, so you can catch it
 
 Rough memory needed:
 
-- ``render()``: about 7 bytes per pixel, 8 with ``transparent``.
+- ``render()``: about 7 bytes per pixel; 8 with ``transparent``, 5 with ``grayscale`` and 6 with
+  both.
 - ``text()``: about 8 bytes per character.
 - ``textIn()`` and ``textInEach()``: about 30 bytes per character on the page, whatever the
   rectangles, and about 600 bytes per rectangle.
@@ -169,10 +182,11 @@ long as it lives. ``unset()`` it when you are done with the page.
 
 .. note::
 
-   A :php:class:`Bitmap <Pdfium\\Bitmap>` holds its pixels (4 bytes each) in PHP memory for as long as
-   it lives, so they count toward ``memory_limit`` and show in ``memory_get_usage()``. Keeping many
-   large bitmaps can make the next ``render()`` throw ``MemoryException``. Save or encode a bitmap and
-   ``unset()`` it when you are done.
+   A :php:class:`Bitmap <Pdfium\\Bitmap>` holds its pixels (4 bytes each; 1 in grayscale, 2 in
+   transparent grayscale) in PHP memory for as long as it lives, so they count toward
+   ``memory_limit`` and show in ``memory_get_usage()``. Keeping many large bitmaps can make the next
+   ``render()`` throw ``MemoryException``. Save or encode a bitmap and ``unset()`` it when you are
+   done.
 
 
 .. _threads:

@@ -31,17 +31,41 @@ static int pixels_for(float points, zend_long dpi)
 	return !(px >= 1) ? 1 : px > INT_MAX ? INT_MAX : (int) px;
 }
 
+static int channels_for(bool gray, bool alpha)
+{
+	return (gray ? 1 : 3) + alpha;
+}
+
+static unsigned char luma(const unsigned char *bgr)
+{
+	return (unsigned char) ((299 * bgr[2] + 587 * bgr[1] + 114 * bgr[0] + 500) / 1000);
+}
+
+static void *to_gray(unsigned char *pixels, size_t count, bool alpha)
+{
+	size_t step = 1 + alpha;
+
+	for (size_t i = 0; i < count; i++) {
+		pixels[i * step] = luma(pixels + i * 4);
+		if (alpha) {
+			pixels[i * step + 1] = pixels[i * 4 + 3];
+		}
+	}
+	return erealloc(pixels, count * step);
+}
+
 ZEND_METHOD(Pdfium_Page, render)
 {
 	pdfium_page_handle *p = pdfium_this_page(ZEND_THIS);
 	zend_long dpi = 150;
-	bool transparent = false, annotations = true;
+	bool transparent = false, annotations = true, grayscale = false;
 
-	ZEND_PARSE_PARAMETERS_START(0, 3)
+	ZEND_PARSE_PARAMETERS_START(0, 4)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_LONG(dpi)
 		Z_PARAM_BOOL(transparent)
 		Z_PARAM_BOOL(annotations)
+		Z_PARAM_BOOL(grayscale)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (dpi < 1 || dpi > 2400) {
@@ -66,7 +90,7 @@ ZEND_METHOD(Pdfium_Page, render)
 			PDFIUM_MAX_PIXELS);
 		RETURN_THROWS();
 	}
-	if (!pdfium_memory_fits((size_t) w * h * (7 + transparent))) {
+	if (!pdfium_memory_fits((size_t) w * h * (4 + channels_for(grayscale, transparent)))) {
 		pdfium_leave();
 		zend_throw_exception_ex(pdfium_ce_memory_exception, 0,
 			"Rendering %dx%d pixels needs more memory than memory_limit leaves", w, h);
@@ -95,13 +119,16 @@ ZEND_METHOD(Pdfium_Page, render)
 	FPDFBitmap_Destroy(bitmap);
 	pdfium_leave();
 
+	if (grayscale) {
+		pixels = to_gray(pixels, (size_t) w * h, transparent);
+	}
 	object_init_ex(return_value, pdfium_ce_bitmap);
 	pdfium_bitmap *img = this_bitmap(return_value);
 	img->pixels = pixels;
 	img->width = w;
 	img->height = h;
 	img->alpha = transparent;
-	img->gray = false;
+	img->gray = grayscale;
 }
 
 ZEND_METHOD(Pdfium_Bitmap, width)
@@ -123,20 +150,25 @@ static unsigned char on_white(unsigned char c, unsigned char a)
 
 static int out_channels(const pdfium_bitmap *img, bool keep_alpha)
 {
-	return 3 + (keep_alpha && img->alpha);
+	return channels_for(img->gray, keep_alpha && img->alpha);
 }
 
 static void row_out(const pdfium_bitmap *img, int y, unsigned char *out, bool keep_alpha)
 {
-	const unsigned char *src = img->pixels + (size_t) y * img->width * 4;
+	int step = img->gray ? 1 + img->alpha : 4;
+	const unsigned char *src = img->pixels + (size_t) y * img->width * step;
 	bool composite = img->alpha && !keep_alpha;
 
-	for (int x = img->width; x > 0; x--, src += 4) {
-		unsigned char a = img->alpha ? src[3] : 255;
+	for (int x = img->width; x > 0; x--, src += step) {
+		unsigned char a = !img->alpha ? 255 : img->gray ? src[1] : src[3];
 
-		*out++ = composite ? on_white(src[2], a) : src[2];
-		*out++ = composite ? on_white(src[1], a) : src[1];
-		*out++ = composite ? on_white(src[0], a) : src[0];
+		if (img->gray) {
+			*out++ = composite ? on_white(src[0], a) : src[0];
+		} else {
+			*out++ = composite ? on_white(src[2], a) : src[2];
+			*out++ = composite ? on_white(src[1], a) : src[1];
+			*out++ = composite ? on_white(src[0], a) : src[0];
+		}
 		if (keep_alpha && img->alpha) {
 			*out++ = a;
 		}
@@ -173,7 +205,7 @@ static bool png_write(png_structp png, png_infop info, const pdfium_bitmap *img,
 	}
 	png_set_write_fn(png, out, png_on_write, png_on_flush);
 	png_set_IHDR(png, info, img->width, img->height, 8,
-		PNG_COLOR_TYPE_RGB | (img->alpha ? PNG_COLOR_MASK_ALPHA : 0),
+		(img->gray ? PNG_COLOR_TYPE_GRAY : PNG_COLOR_TYPE_RGB) | (img->alpha ? PNG_COLOR_MASK_ALPHA : 0),
 		PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
 	png_write_info(png, info);
 	for (int y = 0, h = img->height; y < h; y++) {
@@ -272,7 +304,7 @@ static bool jpeg_write(j_compress_ptr cinfo, jpeg_err *err, jpeg_dest *dest, con
 	cinfo->image_width = img->width;
 	cinfo->image_height = img->height;
 	cinfo->input_components = out_channels(img, false);
-	cinfo->in_color_space = JCS_RGB;
+	cinfo->in_color_space = img->gray ? JCS_GRAYSCALE : JCS_RGB;
 	jpeg_set_defaults(cinfo);
 	jpeg_set_quality(cinfo, quality, TRUE);
 	jpeg_start_compress(cinfo, TRUE);

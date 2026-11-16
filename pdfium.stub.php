@@ -347,14 +347,22 @@ final class Page
      * @param bool $annotations draw annotations and form fields. The first such render, of any page, can
      *        add appearance streams to the document's form fields, which save() and toString() then
      *        include; false leaves the document unchanged
+     * @param bool $grayscale render in gray: PNG and JPEG output have one gray channel, two in a
+     *        transparent PNG
      *
      * @throws \ValueError when $dpi is outside 1..2400, a side would exceed 65,500 pixels, or the image
      *         would exceed 100,000,000 pixels
      * @throws MemoryException when the bitmap and its encoding would not fit under memory_limit; the
-     *         bitmap counts against memory_limit for as long as the Bitmap lives
+     *         bitmap (4 bytes a pixel, 1 in grayscale, 2 in transparent grayscale) counts against
+     *         memory_limit for as long as the Bitmap lives
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public function render(int $dpi = 150, bool $transparent = false, bool $annotations = true): Bitmap {}
+    public function render(
+        int $dpi = 150,
+        bool $transparent = false,
+        bool $annotations = true,
+        bool $grayscale = false,
+    ): Bitmap {}
 
     /**
      * Reads the page's text once and keeps it, for chars(), search() and the other text methods.
@@ -508,7 +516,7 @@ final class Bitmap
     public function height(): int {}
 
     /**
-     * 8-bit PNG: RGB, or RGBA after a transparent render().
+     * 8-bit PNG: RGB, RGBA, gray, or gray and alpha, following render()'s $transparent and $grayscale.
      *
      * @throws MemoryException when the PNG would not fit under memory_limit
      * @throws PdfiumException when encoding fails
@@ -516,7 +524,7 @@ final class Bitmap
     public function toPng(): string {}
 
     /**
-     * 8-bit JPEG: RGB; a transparent render is drawn on white.
+     * 8-bit JPEG: RGB, or gray with render()'s $grayscale; a transparent render is drawn on white.
      *
      * @throws \ValueError when $quality is outside 1..100
      * @throws MemoryException when the JPEG would not fit under memory_limit
