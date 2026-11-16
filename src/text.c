@@ -19,7 +19,6 @@
 #define UNMAPPED_MARK 0xFFFE
 #define POINTS_KEPT 256
 
-enum { RECT_LEFT, RECT_BOTTOM, RECT_RIGHT, RECT_TOP, RECT_SLOTS };
 enum {
 	CHAR_TEXT, CHAR_BOX, CHAR_LOOSE_BOX, CHAR_X, CHAR_Y, CHAR_FONT_SIZE, CHAR_FONT_NAME, CHAR_FONT_WEIGHT,
 	CHAR_FONT_FLAGS, CHAR_FILL_COLOR, CHAR_STROKE_COLOR, CHAR_ANGLE, CHAR_MATRIX, CHAR_GENERATED, CHAR_HYPHEN,
@@ -972,7 +971,7 @@ ZEND_METHOD(Pdfium_TextPage, charIndexAt)
 	RETURN_LONG(index);
 }
 
-static const char *rect_fault(const zval *zr, double *sides)
+const char *pdfium_rect_fault(const zval *zr, double *sides)
 {
 	bool finite = true;
 
@@ -1001,7 +1000,7 @@ ZEND_METHOD(Pdfium_TextPage, textIn)
 		Z_PARAM_OBJECT_OF_CLASS(zr, pdfium_ce_rect)
 	ZEND_PARSE_PARAMETERS_END();
 
-	const char *fault = rect_fault(zr, sides);
+	const char *fault = pdfium_rect_fault(zr, sides);
 
 	if (fault) {
 		zend_argument_value_error(1, "must have %s", fault);
@@ -1044,7 +1043,7 @@ ZEND_METHOD(Pdfium_TextPage, textInEach)
 			zend_argument_type_error(1, "must contain only %s objects", ZSTR_VAL(pdfium_ce_rect->name));
 			break;
 		}
-		const char *fault = rect_fault(zr, sides + RECT_SLOTS * r++);
+		const char *fault = pdfium_rect_fault(zr, sides + RECT_SLOTS * r++);
 
 		if (fault) {
 			zend_argument_value_error(1, "must contain only rectangles with %s", fault);

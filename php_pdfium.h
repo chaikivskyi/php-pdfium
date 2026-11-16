@@ -40,6 +40,8 @@ typedef struct { pdfium_page_handle *ph; FPDF_TEXTPAGE tp; zend_object std; } pd
 
 typedef struct { smart_str s; bool oom; } pdfium_buf;
 
+enum { RECT_LEFT, RECT_BOTTOM, RECT_RIGHT, RECT_TOP, RECT_SLOTS };
+
 extern zend_class_entry *pdfium_ce_document;
 extern zend_class_entry *pdfium_ce_page;
 extern zend_class_entry *pdfium_ce_page_iterator;
@@ -117,6 +119,7 @@ zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h);
 void pdfium_page_free_obj(zend_object *obj);
 void pdfium_page_iterator_free_obj(zend_object *obj);
 double pdfium_points(float value);
+const char *pdfium_rect_fault(const zval *zr, double *sides);
 
 void pdfium_bitmap_free_obj(zend_object *obj);
 

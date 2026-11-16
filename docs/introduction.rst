@@ -8,7 +8,8 @@ What it does
 - Read the page count, metadata, permissions, page sizes, rotation and text.
 - Find text on a page: search it, read the text inside a rectangle, list the URLs written in it,
   and get every character with its position, font and colour.
-- Render pages to PNG or JPEG at any DPI.
+- Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
+  transparent.
 - Split, merge and save documents.
 
 It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
@@ -156,7 +157,12 @@ Render pages
    $png  = $bitmap->toPng();    // as a string
    $jpeg = $bitmap->toJpeg();
 
-See :ref:`rendering` for sizes and limits.
+   // Just the total, at 300 DPI, gray on a transparent background:
+   $total = new Rect(left: 400, bottom: 90, right: 560, top: 110);
+   $doc->page(0)->render(dpi: 300, region: $total, transparent: true, grayscale: true)
+       ->savePng('/tmp/total.png');
+
+See :ref:`rendering` for the options, sizes and limits.
 
 Split, merge and save
 ~~~~~~~~~~~~~~~~~~~~~

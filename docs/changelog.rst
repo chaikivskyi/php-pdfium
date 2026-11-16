@@ -6,6 +6,8 @@ Unreleased
 
 Features:
 
+- ``Page::render()`` option ``region``: only a rectangle of the page, given as a ``Rect`` in points,
+  as for ``TextPage::textIn()``.
 - ``Page::render()`` option ``annotations: false``: the page without annotations or form fields.
 - ``Page::render()`` option ``transparent: true``: a transparent background, with alpha in PNG
   output; JPEG is drawn on white.

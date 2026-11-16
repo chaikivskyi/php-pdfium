@@ -8,7 +8,7 @@ All classes are in the ``Pdfium`` namespace. The exact signatures are in ``pdfiu
 Except for :php:class:`Rect`, you cannot create these classes with ``new``. Get a
 :php:class:`Document` from :php:meth:`Document::fromFile` or :php:meth:`Document::fromString`, and
 everything else from the document. You create a :php:class:`Rect` to pass to
-:php:meth:`TextPage::textIn` or :php:meth:`TextPage::textInEach`.
+:php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
 
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator` and
 :php:class:`Bitmap` cannot be cloned or serialized. The value classes (:php:class:`Metadata`,
@@ -308,19 +308,22 @@ Page
       :throws MemoryException: The text would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
-   .. php:method:: render(int $dpi = 150, bool $transparent = false, bool $annotations = true, bool $grayscale = false) -> Bitmap
+   .. php:method:: render(int $dpi = 150, ?Rect $region = null, bool $transparent = false, bool $annotations = true, bool $grayscale = false) -> Bitmap
 
       Renders the page to a bitmap. See :ref:`rendering`.
 
       :param int $dpi: Resolution, from 1 to 2400.
+      :param ?Rect $region: Render only this area, in points, as for
+         :ref:`text positions <text-positions>`.
       :param bool $transparent: Render on a transparent background instead of white.
       :param bool $annotations: Draw annotations and form fields. The first such render can add
          appearance streams that a later save writes; ``false`` leaves the document unchanged.
       :param bool $grayscale: Render in gray: PNG and JPEG output have one gray channel, two in a
          transparent PNG.
       :rtype: Bitmap
-      :throws \\ValueError: The DPI is out of range, a side would be over 65,500 pixels, or the
-         image would be over 100 million pixels.
+      :throws \\ValueError: The DPI is out of range, a limit in :ref:`rendering` is exceeded, or the
+         region has no width or height, does not overlap the page, or has a side unset or one its
+         constructor refuses, as in one made without its constructor.
       :throws MemoryException: The bitmap would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -594,7 +597,7 @@ Rect
    A rectangle in points, with ``y`` growing upwards: a final, read-only value. See
    :ref:`text-positions`. :php:meth:`TextPage::chars`, :php:meth:`TextPage::search` and
    :php:meth:`TextPage::webLinks` return them, and you create one to pass to
-   :php:meth:`TextPage::textIn` or :php:meth:`TextPage::textInEach`.
+   :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
 
    .. php:method:: __construct(float $left, float $bottom, float $right, float $top)
 

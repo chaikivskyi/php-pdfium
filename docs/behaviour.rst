@@ -89,6 +89,7 @@ Rendering
 
 Options change that:
 
+- ``region``: only a rectangle of the page, see below;
 - ``transparent: true``: a transparent background instead of white;
 - ``annotations: false``: only the page's content, without annotations or form fields;
 - ``grayscale: true``: gray instead of colour.
@@ -96,14 +97,32 @@ Options change that:
 The image size is ``points × dpi / 72``, rounded, and at least 1 pixel. An A4 page
 (595.28 × 841.89 points) at 150 DPI gives 1240 × 1754 pixels.
 
+The ``region`` :php:class:`Rect <Pdfium\\Rect>` is in points, as for
+:ref:`text positions <text-positions>`, so a search match can be cropped directly:
+
+.. code-block:: php
+
+   $match = $page->textPage()->search('Total')[0];
+   $page->render(dpi: 300, region: $match->rects[0])->savePng('/tmp/total.png');
+
+The image is that part of a whole-page render at the same DPI, rotated with the page (so width and
+height swap at 90° and 270°), to within a pixel at the edges. Its size is the rectangle's size ×
+dpi / 72, rounded, and at least 1 pixel. Parts outside the page come out as background. A rectangle
+with no width or height, or one that does not overlap the page (touching its edge is not enough),
+throws ``\ValueError``.
+
 Limits:
 
 - DPI must be from 1 to 2400.
 - Each side can be at most 65,500 pixels, the largest JPEG allows.
 - The image can have at most 100 million pixels.
+- With ``region``, the whole page at that DPI can be at most 4,194,304 pixels a side, far beyond
+  any real page.
 - JPEG quality must be from 1 to 100 (default 85).
 
-Going over a limit throws ``\ValueError``. The limits cannot be changed.
+Going over a limit throws ``\ValueError``. The limits cannot be changed. With ``region``, the other
+size limits apply to the region's image, so a small area can be rendered at a DPI the whole page
+could not.
 
 The output channels follow the options:
 
@@ -135,7 +154,13 @@ To mark a character on an image from ``render()``, convert its position to pixel
    $across = $char->x * $dpi / 72;
    $down = ($page->height() - $char->y) * $dpi / 72;
 
-This holds for a page with no rotation whose crop box starts at 0, 0.
+This holds for a page with no rotation whose crop box starts at 0, 0. For a ``region`` image,
+measure from the region's top left corner instead, which works on any page with no rotation:
+
+.. code-block:: php
+
+   $across = ($char->x - $region->left) * $dpi / 72;
+   $down = ($region->top - $char->y) * $dpi / 72;
 
 Character indexes follow PDFium's count:
 

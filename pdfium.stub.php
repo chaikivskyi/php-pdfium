@@ -342,6 +342,9 @@ final class Page
      * Renders the page, on white unless $transparent is true. Each side is
      * max(1, round(points * $dpi / 72)) pixels.
      *
+     * @param Rect|null $region render only this area, in points as TextPage gives them (rotation not
+     *        applied); the image is that part of the whole-page render, to within a pixel at the edges,
+     *        with background outside the page, and the image size limits apply to it, not the whole page
      * @param bool $transparent render on a transparent background instead: PNG keeps the alpha channel;
      *        JPEG has none, so it is drawn on white
      * @param bool $annotations draw annotations and form fields. The first such render, of any page, can
@@ -350,8 +353,10 @@ final class Page
      * @param bool $grayscale render in gray: PNG and JPEG output have one gray channel, two in a
      *        transparent PNG
      *
-     * @throws \ValueError when $dpi is outside 1..2400, a side would exceed 65,500 pixels, or the image
-     *         would exceed 100,000,000 pixels
+     * @throws \ValueError when $dpi is outside 1..2400, the image would exceed 65,500 pixels a side or
+     *         100,000,000 pixels, the whole page would exceed 4,194,304 pixels a side with $region, or
+     *         $region has no width or height, does not overlap the page, or has a side unset or one its
+     *         constructor refuses
      * @throws MemoryException when the bitmap and its encoding would not fit under memory_limit; the
      *         bitmap (4 bytes a pixel, 1 in grayscale, 2 in transparent grayscale) counts against
      *         memory_limit for as long as the Bitmap lives
@@ -359,6 +364,7 @@ final class Page
      */
     public function render(
         int $dpi = 150,
+        ?Rect $region = null,
         bool $transparent = false,
         bool $annotations = true,
         bool $grayscale = false,

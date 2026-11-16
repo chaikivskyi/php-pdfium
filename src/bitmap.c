@@ -3,6 +3,7 @@
 #endif
 
 #include "php_pdfium.h"
+#include <fpdf_edit.h>
 #include "zend_exceptions.h"
 #include <math.h>
 #include <setjmp.h>
@@ -13,6 +14,7 @@
 
 #define PDFIUM_MAX_PIXELS 100000000
 #define PDFIUM_JPEG_CHUNK 16384
+#define PDFIUM_MAX_PAGE_SIDE (1 << 22)
 
 ZEND_METHOD(Pdfium_Bitmap, __construct)
 {
@@ -24,9 +26,9 @@ static pdfium_bitmap *this_bitmap(zval *self)
 	return pdfium_bitmap_from_obj(Z_OBJ_P(self));
 }
 
-static int pixels_for(float points, zend_long dpi)
+static int pixels_for(double points, zend_long dpi)
 {
-	double px = round((double) points * (double) dpi / 72.0);
+	double px = round(points * (double) dpi / 72.0);
 
 	return !(px >= 1) ? 1 : px > INT_MAX ? INT_MAX : (int) px;
 }
@@ -54,15 +56,44 @@ static void *to_gray(unsigned char *pixels, size_t count, bool alpha)
 	return erealloc(pixels, count * step);
 }
 
+static bool region_place(FPDF_PAGE page, const double *sides, zend_long dpi, int page_w, int page_h, int *w, int *h,
+	int *x0, int *y0)
+{
+	FS_RECTF box;
+	int ax = 0, ay = 0, bx = 0, by = 0, rotation;
+
+	if (!FPDF_GetPageBoundingBox(page, &box) || sides[RECT_RIGHT] <= box.left || sides[RECT_LEFT] >= box.right
+		|| sides[RECT_TOP] <= box.bottom || sides[RECT_BOTTOM] >= box.top) {
+		return false;
+	}
+	*w = pixels_for(sides[RECT_RIGHT] - sides[RECT_LEFT], dpi);
+	*h = pixels_for(sides[RECT_TOP] - sides[RECT_BOTTOM], dpi);
+	rotation = FPDFPage_GetRotation(page);
+	if (rotation == 1 || rotation == 3) {
+		int swap = *w;
+
+		*w = *h;
+		*h = swap;
+	}
+	FPDF_PageToDevice(page, 0, 0, page_w, page_h, 0, sides[RECT_LEFT], sides[RECT_TOP], &ax, &ay);
+	FPDF_PageToDevice(page, 0, 0, page_w, page_h, 0, sides[RECT_RIGHT], sides[RECT_BOTTOM], &bx, &by);
+	*x0 = MIN(ax, bx);
+	*y0 = MIN(ay, by);
+	return true;
+}
+
 ZEND_METHOD(Pdfium_Page, render)
 {
 	pdfium_page_handle *p = pdfium_this_page(ZEND_THIS);
 	zend_long dpi = 150;
+	zval *region = NULL;
+	double sides[RECT_SLOTS];
 	bool transparent = false, annotations = true, grayscale = false;
 
-	ZEND_PARSE_PARAMETERS_START(0, 4)
+	ZEND_PARSE_PARAMETERS_START(0, 5)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_LONG(dpi)
+		Z_PARAM_OBJECT_OF_CLASS_OR_NULL(region, pdfium_ce_rect)
 		Z_PARAM_BOOL(transparent)
 		Z_PARAM_BOOL(annotations)
 		Z_PARAM_BOOL(grayscale)
@@ -72,21 +103,45 @@ ZEND_METHOD(Pdfium_Page, render)
 		zend_argument_value_error(1, "must be between 1 and 2400");
 		RETURN_THROWS();
 	}
+	const char *fault = region ? pdfium_rect_fault(region, sides) : NULL;
+
+	if (region && !fault && (sides[RECT_LEFT] == sides[RECT_RIGHT] || sides[RECT_BOTTOM] == sides[RECT_TOP])) {
+		fault = "a width and a height";
+	}
+	if (fault) {
+		zend_argument_value_error(2, "must have %s", fault);
+		RETURN_THROWS();
+	}
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	int w = pixels_for(FPDF_GetPageWidthF(p->page), dpi);
-	int h = pixels_for(FPDF_GetPageHeightF(p->page), dpi);
+	int page_w = pixels_for(FPDF_GetPageWidthF(p->page), dpi);
+	int page_h = pixels_for(FPDF_GetPageHeightF(p->page), dpi);
+	int w = page_w, h = page_h, x0 = 0, y0 = 0;
+	uint32_t size_arg = region ? 2 : 1;
 
+	if (region) {
+		if (page_w > PDFIUM_MAX_PAGE_SIDE || page_h > PDFIUM_MAX_PAGE_SIDE) {
+			pdfium_leave();
+			zend_argument_value_error(2, "needs the whole page at %dx%d pixels, above the %d-pixel limit per side "
+				"for a region", page_w, page_h, PDFIUM_MAX_PAGE_SIDE);
+			RETURN_THROWS();
+		}
+		if (!region_place(p->page, sides, dpi, page_w, page_h, &w, &h, &x0, &y0)) {
+			pdfium_leave();
+			zend_argument_value_error(2, "must overlap the page");
+			RETURN_THROWS();
+		}
+	}
 	if (w > JPEG_MAX_DIMENSION || h > JPEG_MAX_DIMENSION) {
 		pdfium_leave();
-		zend_argument_value_error(1, "would render %dx%d pixels, above the %d-pixel limit per side", w, h,
+		zend_argument_value_error(size_arg, "would render %dx%d pixels, above the %d-pixel limit per side", w, h,
 			(int) JPEG_MAX_DIMENSION);
 		RETURN_THROWS();
 	}
 	if ((double) w * h > PDFIUM_MAX_PIXELS) {
 		pdfium_leave();
-		zend_argument_value_error(1, "would render %dx%d pixels, above the %d-pixel ceiling", w, h,
+		zend_argument_value_error(size_arg, "would render %dx%d pixels, above the %d-pixel ceiling", w, h,
 			PDFIUM_MAX_PIXELS);
 		RETURN_THROWS();
 	}
@@ -112,9 +167,9 @@ ZEND_METHOD(Pdfium_Page, render)
 	}
 	int flags = annotations ? FPDF_ANNOT : 0;
 	FPDFBitmap_FillRect(bitmap, 0, 0, w, h, transparent ? 0x00000000 : 0xFFFFFFFF);
-	FPDF_RenderPageBitmap(bitmap, p->page, 0, 0, w, h, 0, flags);
+	FPDF_RenderPageBitmap(bitmap, p->page, -x0, -y0, page_w, page_h, 0, flags);
 	if (form) {
-		FPDF_FFLDraw(form, bitmap, p->page, 0, 0, w, h, 0, flags);
+		FPDF_FFLDraw(form, bitmap, p->page, -x0, -y0, page_w, page_h, 0, flags);
 	}
 	FPDFBitmap_Destroy(bitmap);
 	pdfium_leave();
