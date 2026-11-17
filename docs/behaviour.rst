@@ -209,6 +209,10 @@ PDFium would read its page number against this document and give the wrong page.
 An ``"URI"`` action's ``uri`` is returned exactly as the PDF stores it. PDF asks for 7-bit ASCII,
 but real files hold UTF-8 and other encodings, so check it before you use it as text.
 
+Page labels follow the document's label ranges. A page before the first range still gets a label
+from PDFium: its page number, counting from 1, so that page 0 is ``"1"``. An empty label, from a
+range with neither a style nor a prefix, is ``null``.
+
 Actions PDFium does not read, such as JavaScript, named actions and form submission, have the
 type ``"Unsupported"`` and nothing else set.
 

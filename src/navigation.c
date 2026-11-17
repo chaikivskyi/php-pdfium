@@ -420,3 +420,89 @@ ZEND_METHOD(Pdfium_Document, bookmarks)
 	zend_hash_destroy(&visited);
 	pdfium_leave_or_throw(return_value, oom);
 }
+
+ZEND_METHOD(Pdfium_Document, pageLabel)
+{
+	pdfium_doc_handle *h = pdfium_document_from_obj(Z_OBJ_P(ZEND_THIS))->h;
+	unsigned short *units = NULL;
+	unsigned long bytes = 0;
+	zend_long index;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_LONG(index)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	int count = FPDF_GetPageCount(h->doc);
+
+	if (index < 0 || index >= count) {
+		pdfium_leave();
+		if (!count) {
+			zend_argument_value_error(1, "must be a page index, but the document has no pages");
+		} else {
+			zend_argument_value_error(1, "must be between 0 and %d", count - 1);
+		}
+		RETURN_THROWS();
+	}
+	bytes = FPDF_GetPageLabel(h->doc, (int) index, NULL, 0);
+	if (bytes > 2 && !pdfium_memory_fits((size_t) bytes * 3)) {
+		pdfium_leave();
+		zend_throw_exception(pdfium_ce_memory_exception, "The page label needs more memory than memory_limit leaves", 0);
+		RETURN_THROWS();
+	}
+	if (bytes > 2) {
+		units = emalloc(bytes);
+		FPDF_GetPageLabel(h->doc, (int) index, units, bytes);
+	}
+	pdfium_leave();
+	if (!units) {
+		RETURN_NULL();
+	}
+	size_t n = 0;
+
+	while (n < bytes / 2 && units[n]) {
+		n++;
+	}
+	if (n) {
+		RETVAL_STR(pdfium_utf16le_to_utf8(units, n));
+	}
+	efree(units);
+}
+
+static void file_id(INTERNAL_FUNCTION_PARAMETERS, FPDF_FILEIDTYPE type)
+{
+	pdfium_doc_handle *h = pdfium_document_from_obj(Z_OBJ_P(ZEND_THIS))->h;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	unsigned long bytes = FPDF_GetFileIdentifier(h->doc, type, NULL, 0);
+
+	if (bytes && !pdfium_memory_fits(bytes)) {
+		pdfium_leave();
+		zend_throw_exception(pdfium_ce_memory_exception, "The file identifier needs more memory than memory_limit leaves", 0);
+		RETURN_THROWS();
+	}
+	if (bytes) {
+		zend_string *s = zend_string_alloc(bytes, 0);
+
+		FPDF_GetFileIdentifier(h->doc, type, ZSTR_VAL(s), bytes);
+		ZSTR_LEN(s) = bytes - 1;
+		ZSTR_VAL(s)[ZSTR_LEN(s)] = '\0';
+		RETVAL_STR(s);
+	}
+	pdfium_leave();
+}
+
+ZEND_METHOD(Pdfium_Document, permanentId)
+{
+	file_id(INTERNAL_FUNCTION_PARAM_PASSTHRU, FILEIDTYPE_PERMANENT);
+}
+
+ZEND_METHOD(Pdfium_Document, changingId)
+{
+	file_id(INTERNAL_FUNCTION_PARAM_PASSTHRU, FILEIDTYPE_CHANGING);
+}

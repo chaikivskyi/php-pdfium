@@ -95,6 +95,34 @@ final class Document implements \Countable, \IteratorAggregate
     public function bookmarks(): array {}
 
     /**
+     * The page's label as UTF-8, such as "iv" or "A-3"; null when the document has no page labels or
+     * the label is empty. No page is loaded.
+     *
+     * @throws \ValueError when $index is outside 0..pageCount()-1
+     * @throws MemoryException when the label would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function pageLabel(int $index): ?string {}
+
+    /**
+     * The first entry of the trailer's /ID, set when the file was created, as raw bytes; null when
+     * there is none.
+     *
+     * @throws MemoryException when the identifier would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function permanentId(): ?string {}
+
+    /**
+     * The second entry of the trailer's /ID, changed each time the file is saved, as raw bytes; null
+     * when there is none.
+     *
+     * @throws MemoryException when the identifier would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function changingId(): ?string {}
+
+    /**
      * @throws \ValueError when $index is outside 0..pageCount()-1
      * @throws FormatException when PDFium cannot load the page
      * @throws BusyException on ZTS PHP when another thread is using PDFium

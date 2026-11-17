@@ -119,6 +119,36 @@ Document
       :throws MemoryException: The outline would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: pageLabel(int $index) -> ?string
+
+      The label a viewer shows for the page instead of its number, such as ``"iv"`` or ``"A-3"``,
+      as UTF-8; ``null`` when the document has no page labels or the label is empty. No page is
+      loaded.
+
+      :param int $index: The 0-based page index.
+      :rtype: ?string
+      :throws \\ValueError: ``$index`` is outside ``0`` .. ``pageCount() - 1``.
+      :throws MemoryException: The label would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: permanentId() -> ?string
+
+      The first entry of the trailer's ``/ID``, set when the file was first written, as raw bytes:
+      use ``bin2hex()`` to show it. ``null`` when the file has no ``/ID``.
+
+      :rtype: ?string
+      :throws MemoryException: The identifier would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: changingId() -> ?string
+
+      The second entry of the trailer's ``/ID``, which changes each time the file is saved, as raw
+      bytes; ``null`` when the file has no ``/ID``.
+
+      :rtype: ?string
+      :throws MemoryException: The identifier would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. rubric:: Pages
 
    .. php:method:: page(int $index) -> Page
