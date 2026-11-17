@@ -57,6 +57,11 @@ var_dump(Pdfium\Document::fromString(nav_pdf(
     extra: ['<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /A << /S /GoToE /F (outer.pdf) /D [0 /Fit] /T << /R /C /N (embedded.pdf) >> >> >>'],
     pageExtra: ['/Annots [6 0 R]', '', ''],
 ))->page(0)->links()[0]->action->filePath);
+$bare = Pdfium\Document::fromString(nav_pdf(
+    extra: ['<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] >>'],
+    pageExtra: ['/Annots [6 0 R]', '', ''],
+))->page(0)->links()[0];
+var_dump($bare->destination, $bare->action);
 ?>
 --EXPECT--
 6
@@ -92,3 +97,5 @@ NULL
 NULL
 string(33) "https://example.com/dir/page.html"
 string(9) "outer.pdf"
+NULL
+NULL

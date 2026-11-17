@@ -1,5 +1,5 @@
 --TEST--
-Document::bookmarks() returns the outline as a tree with titles, open state, colours, styles, destinations and actions
+Document::bookmarks() returns the outline as a tree with titles, open state, colours, styles, destinations and actions; a colour outside 0..1 is null
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -25,6 +25,12 @@ $c2 = $b[1];
 var_dump($c2->open, $c2->italic, $c2->bold, $c2->destination, $c2->action->uri);
 var_dump($c2->children[0]->destination->pageIndex, $c2->children[0]->destination == $c2->children[0]->action->destination);
 var_dump(unserialize(serialize($b)) == $b);
+foreach (['[1.5 0 0]', '[1 0 0.5 1]'] as $color) {
+    var_dump(Pdfium\Document::fromString(nav_pdf('/Outlines 6 0 R', [
+        '<< /Type /Outlines /First 7 0 R /Last 7 0 R /Count 1 >>',
+        "<< /Title (X) /Parent 6 0 R /C $color >>",
+    ]))->bookmarks()[0]->color);
+}
 var_dump(Pdfium\Document::fromString(nav_pdf())->bookmarks());
 ?>
 --EXPECT--
@@ -65,5 +71,7 @@ string(20) "https://example.com/"
 int(2)
 bool(true)
 bool(true)
+NULL
+NULL
 array(0) {
 }

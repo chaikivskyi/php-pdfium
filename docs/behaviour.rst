@@ -198,9 +198,11 @@ it out, with the entries after it at that level. It also stops at 100 levels: th
 A bookmark or link leads either to a destination or through an action. Its ``destination`` is
 where it leads in this document: its own destination, or that of its ``"GoTo"`` action, so for a
 ``"GoTo"`` action the same destination appears twice. With any other action, ``destination`` is
-``null``.
+``null``. An entry that has both, which the PDF specification does not allow, is read through its
+action, and its own destination is ignored.
 
-A :php:class:`Destination <Pdfium\\Destination>` is always in this document. An action that
+A :php:class:`Destination <Pdfium\\Destination>` is always in this document; one whose page does
+not exist in this document is ``null``. An action that
 leads into another file (``"GoToR"``) or into an embedded file (``"GoToE"``) has no destination:
 PDFium would read its page number against this document and give the wrong page. Its
 ``filePath`` says which file; for ``"GoToE"``, it is the PDF file that holds the embedded one,
@@ -209,8 +211,6 @@ PDFium would read its page number against this document and give the wrong page.
 A ``"URI"`` action's ``uri`` is returned as the PDF stores it, except that a relative URI gets the
 document's base URI in front, when the document sets one. PDF asks for 7-bit ASCII, but real files
 hold UTF-8 and other encodings, so check it before you use it as text.
-
-A destination whose page does not exist in this document is ``null``.
 
 Actions PDFium does not read, such as JavaScript, named actions and form submission, have the
 type ``"Unsupported"`` and nothing else set.
@@ -235,12 +235,12 @@ Rough memory needed:
 - ``search()``: about 8 bytes per character on the page, 10 bytes per byte of the needle, and
   about 500 bytes per match.
 - ``webLinks()``: about 500 bytes per result.
-- ``links()`` and ``linkAt()``: about 2 KB per link, 256 bytes per :php:class:`Quad
-  <Pdfium\\Quad>`, and the length of its URI or file path.
-- ``openAction()`` and ``closeAction()``: about 1 KB, and the length of the URI or file path.
+- ``permanentId()`` and ``changingId()``: the length of the identifier.
 - ``bookmarks()``: about 2 KB per entry, 5 bytes per character of its title, and the length of
   its URI or file path.
-- ``permanentId()`` and ``changingId()``: the length of the identifier.
+- ``openAction()`` and ``closeAction()``: about 1 KB, and the length of the URI or file path.
+- ``links()`` and ``linkAt()``: about 2 KB per link, 256 bytes per quad, and the length of its
+  URI or file path.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 
 With ``memory_limit = -1`` there are no checks.

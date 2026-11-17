@@ -72,6 +72,7 @@ final class Document implements \Countable, \IteratorAggregate
     /**
      * The document information entries; empty or missing ones are null.
      *
+     * @throws MemoryException when an entry would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function metadata(): Metadata {}
@@ -85,7 +86,7 @@ final class Document implements \Countable, \IteratorAggregate
 
     /**
      * The first entry of the trailer's /ID, set when the file was created, as raw bytes; null when
-     * there is none.
+     * there is none or it is empty.
      *
      * @throws MemoryException when the identifier would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -94,7 +95,7 @@ final class Document implements \Countable, \IteratorAggregate
 
     /**
      * The second entry of the trailer's /ID, changed each time the file is saved, as raw bytes; null
-     * when there is none.
+     * when there is none or it is empty.
      *
      * @throws MemoryException when the identifier would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -342,7 +343,7 @@ final readonly class Bookmark
     public bool $bold;
     /** Where the entry leads in this document; null when it leads elsewhere or nowhere. */
     public ?Destination $destination;
-    /** What the entry does, when it has an action rather than a plain destination. */
+    /** What the entry does, when it has an action rather than a plain destination; null when it has none. */
     public ?Action $action;
     /** @var Bookmark[] */
     public array $children;
@@ -362,7 +363,7 @@ final readonly class Link
     public array $quadPoints;
     /** Where the link leads in this document; null when it leads elsewhere or nowhere. */
     public ?Destination $destination;
-    /** What the link does, when it has an action rather than a plain destination. */
+    /** What the link does, when it has an action rather than a plain destination; null when it has none. */
     public ?Action $action;
 
     private function __construct() {}
@@ -415,7 +416,7 @@ final readonly class Action
     public ?string $uri;
     /**
      * The file, as UTF-8, for a GoToR or Launch action, and for a GoToE action the PDF file that holds
-     * the embedded one; null when the action names none.
+     * the embedded one; null when the action names none, and for every other type.
      */
     public ?string $filePath;
     /** Where a GoTo action leads; null for every other type. */

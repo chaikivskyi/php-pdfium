@@ -80,6 +80,7 @@ Document
       The document's title, author and so on. See :php:class:`Metadata`.
 
       :rtype: Metadata
+      :throws MemoryException: An entry would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: permissions() -> Permissions
@@ -93,7 +94,7 @@ Document
    .. php:method:: permanentId() -> ?string
 
       The first entry of the trailer's ``/ID``, set when the file was first written, as raw bytes:
-      use ``bin2hex()`` to show it. ``null`` when the file has no ``/ID``.
+      use ``bin2hex()`` to show it. ``null`` when the file has no ``/ID`` or the entry is empty.
 
       :rtype: ?string
       :throws MemoryException: The identifier would not fit under ``memory_limit``.
@@ -102,7 +103,7 @@ Document
    .. php:method:: changingId() -> ?string
 
       The second entry of the trailer's ``/ID``, which changes each time the file is saved, as raw
-      bytes; ``null`` when the file has no ``/ID``.
+      bytes; ``null`` when the file has no ``/ID`` or the entry is empty.
 
       :rtype: ?string
       :throws MemoryException: The identifier would not fit under ``memory_limit``.
@@ -403,7 +404,7 @@ Page
 
    .. php:method:: closeAction() -> ?Action
 
-      The action a viewer runs when it closes the page, or ``null``.
+      The action a viewer runs when it closes the page, or ``null``. See :ref:`navigation`.
 
       :rtype: ?Action
       :throws MemoryException: The action would not fit under ``memory_limit``.
@@ -434,6 +435,8 @@ Page
       The topmost link annotation at a point, or ``null``. The point is in points, as
       :php:class:`TextPage` gives positions.
 
+      :param float $x: Horizontal position in points.
+      :param float $y: Vertical position in points, from the bottom of the page.
       :rtype: ?Link
       :throws \\ValueError: ``$x`` or ``$y`` is not finite.
       :throws MemoryException: The link would not fit under ``memory_limit``.
@@ -952,7 +955,8 @@ Bookmark
 
    .. php:attr:: action
 
-      ``?Action``: what the entry does, when it has an action rather than a plain destination.
+      ``?Action``: what the entry does, when it has an action rather than a plain destination;
+      ``null`` when it has none.
 
    .. php:attr:: children
 
@@ -984,7 +988,8 @@ Link
 
    .. php:attr:: action
 
-      ``?Action``: what the link does, when it has an action rather than a plain destination.
+      ``?Action``: what the link does, when it has an action rather than a plain destination;
+      ``null`` when it has none.
 
 
 Quad
@@ -1066,7 +1071,8 @@ Action
    .. php:attr:: filePath
 
       ``?string``: the file, as UTF-8, for ``"GoToR"`` and ``"Launch"``; for ``"GoToE"``, the PDF
-      file that holds the embedded one, ``null`` when that is this document.
+      file that holds the embedded one, ``null`` when that is this document. ``null`` for every
+      other type.
 
    .. php:attr:: destination
 

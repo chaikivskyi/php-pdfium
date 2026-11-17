@@ -14,13 +14,13 @@ Features:
 - ``Page::render()`` option ``grayscale: true``: a gray image, with one-channel PNG and JPEG output
   (two channels, gray and alpha, in a transparent PNG).
 - ``Document::permanentId()`` and ``Document::changingId()``: the two entries of the file's ``/ID``.
-- ``Page::openAction()`` and ``Page::closeAction()``: the actions a viewer runs when it opens or
-  closes the page.
 - ``Document::bookmarks()``: the outline, as a tree of ``Bookmark`` values with their titles,
   colours, styles and where they lead.
+- ``Page::openAction()`` and ``Page::closeAction()``: the actions a viewer runs when it opens or
+  closes the page.
 - ``Page::links()`` and ``Page::linkAt()``: the page's link annotations, with where they lead.
-- Value classes ``Link``, ``Quad``, ``Destination`` (a page in this document and how to show it)
-  and ``Action`` (``GoTo``, ``GoToR``, ``URI``, ``Launch`` and ``GoToE`` actions).
+- Value classes ``Bookmark``, ``Link``, ``Quad``, ``Destination`` (a page in this document and how
+  to show it) and ``Action`` (``GoTo``, ``GoToR``, ``URI``, ``Launch`` and ``GoToE`` actions).
 
 v0.2.0 (2026-11-15)
 -------------------
