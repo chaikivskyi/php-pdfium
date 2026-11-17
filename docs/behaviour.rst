@@ -190,6 +190,11 @@ front, as the page stores them, and ``linkAt()`` gives the one in front. A URL t
 written in the text, with no annotation, is not a link annotation; ``TextPage::webLinks()`` finds
 those.
 
+A broken outline can loop: an entry can point back to one before it, as a sibling or as a child.
+``bookmarks()`` lists each entry once. When it meets an entry it has already listed, it leaves
+it out, with the entries after it at that level. It also stops at 100 levels: the entries at the
+100th level have no children, whatever the PDF says. Real outlines are far shallower.
+
 A bookmark or link leads either to a destination or through an action. Its ``destination`` is
 where it leads in this document: its own destination, or that of its ``"GoTo"`` action, so for a
 ``"GoTo"`` action the same destination appears twice. With any other action, ``destination`` is
@@ -228,6 +233,7 @@ Rough memory needed:
   about 500 bytes per match.
 - ``webLinks()``: about 500 bytes per result.
 - ``links()``: about 2 KB per link, and the length of its URI or file path.
+- ``bookmarks()``: about 2 KB per entry, and twice the length of its title.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 
 With ``memory_limit = -1`` there are no checks.

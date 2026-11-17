@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 82ffd6b0a4facec8f8827df264b2d5dc31d81c1f */
+ * Stub hash: 6c3e3c551aa4f6d126ebddfb3f37921e2b93bcd0 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -23,6 +23,9 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_metadata, 0
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_permissions, 0, 0, Pdfium\\Permissions, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_bookmarks, 0, 0, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_page, 0, 1, Pdfium\\Page, 0)
@@ -78,6 +81,8 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Action___construct arginfo_class_Pdfium_Document___construct
 
+#define arginfo_class_Pdfium_Bookmark___construct arginfo_class_Pdfium_Document___construct
+
 #define arginfo_class_Pdfium_Link___construct arginfo_class_Pdfium_Document___construct
 
 #define arginfo_class_Pdfium_Quad___construct arginfo_class_Pdfium_Document___construct
@@ -112,8 +117,7 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Page_closeAction arginfo_class_Pdfium_Page_openAction
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Page_links, 0, 0, IS_ARRAY, 0)
-ZEND_END_ARG_INFO()
+#define arginfo_class_Pdfium_Page_links arginfo_class_Pdfium_Document_bookmarks
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Page_linkAt, 0, 2, Pdfium\\Link, 1)
 	ZEND_ARG_TYPE_INFO(0, x, IS_DOUBLE, 0)
@@ -153,7 +157,7 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_TextPage_search, 0,
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, overlapping, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Pdfium_TextPage_webLinks arginfo_class_Pdfium_Page_links
+#define arginfo_class_Pdfium_TextPage_webLinks arginfo_class_Pdfium_Document_bookmarks
 
 #define arginfo_class_Pdfium_PageIterator___construct arginfo_class_Pdfium_Document___construct
 
@@ -197,6 +201,7 @@ ZEND_METHOD(Pdfium_Document, fromString);
 ZEND_METHOD(Pdfium_Document, pageCount);
 ZEND_METHOD(Pdfium_Document, metadata);
 ZEND_METHOD(Pdfium_Document, permissions);
+ZEND_METHOD(Pdfium_Document, bookmarks);
 ZEND_METHOD(Pdfium_Document, page);
 ZEND_METHOD(Pdfium_Document, pages);
 ZEND_METHOD(Pdfium_Document, extractPages);
@@ -213,6 +218,7 @@ ZEND_METHOD(Pdfium_TextMatch, __construct);
 ZEND_METHOD(Pdfium_WebLink, __construct);
 ZEND_METHOD(Pdfium_Destination, __construct);
 ZEND_METHOD(Pdfium_Action, __construct);
+ZEND_METHOD(Pdfium_Bookmark, __construct);
 ZEND_METHOD(Pdfium_Link, __construct);
 ZEND_METHOD(Pdfium_Quad, __construct);
 ZEND_METHOD(Pdfium_Page, __construct);
@@ -262,6 +268,7 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 #endif
 	ZEND_ME(Pdfium_Document, metadata, arginfo_class_Pdfium_Document_metadata, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, permissions, arginfo_class_Pdfium_Document_permissions, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, bookmarks, arginfo_class_Pdfium_Document_bookmarks, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, page, arginfo_class_Pdfium_Document_page, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, pages, arginfo_class_Pdfium_Document_pages, ZEND_ACC_PUBLIC)
 #if (PHP_VERSION_ID >= 80400)
@@ -323,6 +330,11 @@ static const zend_function_entry class_Pdfium_Destination_methods[] = {
 
 static const zend_function_entry class_Pdfium_Action_methods[] = {
 	ZEND_ME(Pdfium_Action, __construct, arginfo_class_Pdfium_Action___construct, ZEND_ACC_PRIVATE)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_Bookmark_methods[] = {
+	ZEND_ME(Pdfium_Bookmark, __construct, arginfo_class_Pdfium_Bookmark___construct, ZEND_ACC_PRIVATE)
 	ZEND_FE_END
 };
 
@@ -1036,6 +1048,72 @@ static zend_class_entry *register_class_Pdfium_Action(void)
 	zend_string *property_destination_class_Pdfium_Destination = zend_string_init("Pdfium\\Destination", sizeof("Pdfium\\Destination")-1, 1);
 	zend_declare_typed_property(class_entry, property_destination_name, &property_destination_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_destination_class_Pdfium_Destination, 0, MAY_BE_NULL));
 	zend_string_release(property_destination_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_Bookmark(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Bookmark", class_Pdfium_Bookmark_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS;
+#endif
+
+	zval property_title_default_value;
+	ZVAL_UNDEF(&property_title_default_value);
+	zend_string *property_title_name = zend_string_init("title", sizeof("title") - 1, 1);
+	zend_declare_typed_property(class_entry, property_title_name, &property_title_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_title_name);
+
+	zval property_open_default_value;
+	ZVAL_UNDEF(&property_open_default_value);
+	zend_string *property_open_name = zend_string_init("open", sizeof("open") - 1, 1);
+	zend_declare_typed_property(class_entry, property_open_name, &property_open_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_open_name);
+
+	zval property_color_default_value;
+	ZVAL_UNDEF(&property_color_default_value);
+	zend_string *property_color_name = zend_string_init("color", sizeof("color") - 1, 1);
+	zend_string *property_color_class_Pdfium_Color = zend_string_init("Pdfium\\Color", sizeof("Pdfium\\Color")-1, 1);
+	zend_declare_typed_property(class_entry, property_color_name, &property_color_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_color_class_Pdfium_Color, 0, MAY_BE_NULL));
+	zend_string_release(property_color_name);
+
+	zval property_italic_default_value;
+	ZVAL_UNDEF(&property_italic_default_value);
+	zend_string *property_italic_name = zend_string_init("italic", sizeof("italic") - 1, 1);
+	zend_declare_typed_property(class_entry, property_italic_name, &property_italic_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_italic_name);
+
+	zval property_bold_default_value;
+	ZVAL_UNDEF(&property_bold_default_value);
+	zend_string *property_bold_name = zend_string_init("bold", sizeof("bold") - 1, 1);
+	zend_declare_typed_property(class_entry, property_bold_name, &property_bold_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_bold_name);
+
+	zval property_destination_default_value;
+	ZVAL_UNDEF(&property_destination_default_value);
+	zend_string *property_destination_name = zend_string_init("destination", sizeof("destination") - 1, 1);
+	zend_string *property_destination_class_Pdfium_Destination = zend_string_init("Pdfium\\Destination", sizeof("Pdfium\\Destination")-1, 1);
+	zend_declare_typed_property(class_entry, property_destination_name, &property_destination_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_destination_class_Pdfium_Destination, 0, MAY_BE_NULL));
+	zend_string_release(property_destination_name);
+
+	zval property_action_default_value;
+	ZVAL_UNDEF(&property_action_default_value);
+	zend_string *property_action_name = zend_string_init("action", sizeof("action") - 1, 1);
+	zend_string *property_action_class_Pdfium_Action = zend_string_init("Pdfium\\Action", sizeof("Pdfium\\Action")-1, 1);
+	zend_declare_typed_property(class_entry, property_action_name, &property_action_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_CLASS(property_action_class_Pdfium_Action, 0, MAY_BE_NULL));
+	zend_string_release(property_action_name);
+
+	zval property_children_default_value;
+	ZVAL_UNDEF(&property_children_default_value);
+	zend_string *property_children_name = zend_string_init("children", sizeof("children") - 1, 1);
+	zend_declare_typed_property(class_entry, property_children_name, &property_children_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_children_name);
 
 	return class_entry;
 }

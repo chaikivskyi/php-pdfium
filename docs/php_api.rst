@@ -14,8 +14,8 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 :php:class:`Bitmap` cannot be cloned or serialized. The value classes (:php:class:`Metadata`,
 :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`, :php:class:`Color`,
 :php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`, :php:class:`Destination`,
-:php:class:`Action`, :php:class:`Link` and :php:class:`Quad`) are read-only and can be cloned and
-serialized.
+:php:class:`Action`, :php:class:`Link`, :php:class:`Quad` and :php:class:`Bookmark`) are read-only
+and can be cloned and serialized.
 
 
 Document
@@ -88,6 +88,35 @@ Document
       :php:class:`Permissions`.
 
       :rtype: Permissions
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. rubric:: Navigation
+
+   .. php:method:: bookmarks() -> array
+
+      The document outline: the top-level :php:class:`Bookmark` entries, in order, each with its
+      :php:attr:`Bookmark::children`. Empty when the document has no outline.
+
+      .. code-block:: php
+
+         function toc(array $bookmarks, int $level = 0): void
+         {
+             foreach ($bookmarks as $b) {
+                 echo str_repeat('  ', $level), $b->title;
+                 if ($b->destination) {
+                     echo ' ... ', $b->destination->pageIndex + 1;
+                 }
+                 echo "\n";
+                 toc($b->children, $level + 1);
+             }
+         }
+         toc($doc->bookmarks());
+
+      A broken outline that loops, and one nested deeper than 100 levels, is cut short; see
+      :ref:`navigation`.
+
+      :rtype: Bookmark[]
+      :throws MemoryException: The outline would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Pages
@@ -867,6 +896,48 @@ WebLink
    .. php:attr:: rects
 
       :php:class:`Rect[] <Rect>`: one per line the URL covers.
+
+
+Bookmark
+--------
+
+.. php:class:: Bookmark
+
+   One entry of the outline from :php:meth:`Document::bookmarks`: a final, read-only value.
+
+   .. php:attr:: title
+
+      ``string``: the title, as UTF-8.
+
+   .. php:attr:: open
+
+      ``bool``: whether a viewer shows the children at first.
+
+   .. php:attr:: color
+
+      ``?Color``: the colour of the title, with alpha 255; ``null`` when the entry sets none, and
+      viewers then use black. PDF stores each channel from 0 to 1; it is rounded to 0 to 255.
+
+   .. php:attr:: italic
+
+      ``bool``: whether the title is shown in italics.
+
+   .. php:attr:: bold
+
+      ``bool``: whether the title is shown in bold.
+
+   .. php:attr:: destination
+
+      ``?Destination``: where the entry leads in this document; ``null`` when it leads to another
+      file, opens a URI or does nothing. See :ref:`navigation`.
+
+   .. php:attr:: action
+
+      ``?Action``: what the entry does, when it has an action rather than a plain destination.
+
+   .. php:attr:: children
+
+      :php:class:`Bookmark[] <Bookmark>`: the entries under this one, in order.
 
 
 Link

@@ -84,6 +84,17 @@ final class Document implements \Countable, \IteratorAggregate
     public function permissions(): Permissions {}
 
     /**
+     * The top level of the outline, in order, each with its children. An entry met a second time, in
+     * a broken outline that loops, is left out with the entries after it at its level, and entries
+     * nested deeper than 100 levels are left out.
+     *
+     * @return Bookmark[]
+     * @throws MemoryException when the outline would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function bookmarks(): array {}
+
+    /**
      * @throws \ValueError when $index is outside 0..pageCount()-1
      * @throws FormatException when PDFium cannot load the page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -330,6 +341,26 @@ final readonly class Action
     public ?string $filePath;
     /** Where a GoTo action leads; null for every other type. */
     public ?Destination $destination;
+
+    private function __construct() {}
+}
+
+/** One entry of the document outline, as Document::bookmarks() returns it. */
+final readonly class Bookmark
+{
+    /** The title as UTF-8. */
+    public string $title;
+    /** Whether its children are shown by default. */
+    public bool $open;
+    /** The colour of the title; null when the entry sets none, and viewers then use black. */
+    public ?Color $color;
+    public bool $italic;
+    public bool $bold;
+    /** Where the entry leads in this document; null when it leads elsewhere or nowhere. */
+    public ?Destination $destination;
+    public ?Action $action;
+    /** @var Bookmark[] */
+    public array $children;
 
     private function __construct() {}
 }

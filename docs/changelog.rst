@@ -15,6 +15,8 @@ Features:
   (two channels, gray and alpha, in a transparent PNG).
 - ``Page::openAction()`` and ``Page::closeAction()``: the actions a viewer runs when it opens or
   closes the page.
+- ``Document::bookmarks()``: the outline, as a tree of ``Bookmark`` values with their titles,
+  colours, styles and where they lead.
 - ``Page::links()`` and ``Page::linkAt()``: the page's link annotations, with where they lead.
 - Value classes ``Link``, ``Quad``, ``Destination`` (a page in this document and how to show it)
   and ``Action`` (``GoTo``, ``GoToR``, ``URI``, ``Launch`` and ``GoToE`` actions).
