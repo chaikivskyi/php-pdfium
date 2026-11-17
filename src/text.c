@@ -27,7 +27,7 @@ enum {
 enum { COLOR_SLOTS = 4 };
 enum { MATRIX_A, MATRIX_B, MATRIX_C, MATRIX_D, MATRIX_E, MATRIX_F };
 enum { MATCH_INDEX, MATCH_LENGTH, MATCH_TEXT, MATCH_RECTS };
-enum { LINK_URL, LINK_INDEX, LINK_LENGTH, LINK_RECTS };
+enum { WEB_LINK_URL, WEB_LINK_INDEX, WEB_LINK_LENGTH, WEB_LINK_RECTS };
 enum { RANGE_FIRST, RANGE_LAST, RANGE_DELTA, RANGE_STEP };
 
 typedef struct {
@@ -864,10 +864,10 @@ static const char *web_links_of(FPDF_TEXTPAGE tp, zval *return_value)
 		object_init_ex(&zl, pdfium_ce_web_link);
 		zend_object *l = Z_OBJ(zl);
 
-		ZVAL_STR(pdfium_slot(l, LINK_URL), pdfium_utf16le_to_utf8(buf, units_got(got)));
-		ZVAL_LONG(pdfium_slot(l, LINK_INDEX), start);
-		ZVAL_LONG(pdfium_slot(l, LINK_LENGTH), length);
-		rects_set(pdfium_slot(l, LINK_RECTS), tp, links, i, n);
+		ZVAL_STR(pdfium_slot(l, WEB_LINK_URL), pdfium_utf16le_to_utf8(buf, units_got(got)));
+		ZVAL_LONG(pdfium_slot(l, WEB_LINK_INDEX), start);
+		ZVAL_LONG(pdfium_slot(l, WEB_LINK_LENGTH), length);
+		rects_set(pdfium_slot(l, WEB_LINK_RECTS), tp, links, i, n);
 		add_next_index_zval(return_value, &zl);
 	}
 	if (links) {

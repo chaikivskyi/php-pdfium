@@ -103,7 +103,8 @@ Document
    .. php:method:: changingId() -> ?string
 
       The second entry of the trailer's ``/ID``, which changes each time the file is saved, as raw
-      bytes; ``null`` when the file has no ``/ID`` or the entry is empty.
+      bytes: use ``bin2hex()`` to show it. ``null`` when the file has no ``/ID`` or the entry is
+      empty.
 
       :rtype: ?string
       :throws MemoryException: The identifier would not fit under ``memory_limit``.

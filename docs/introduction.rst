@@ -108,7 +108,6 @@ Read document information
    $doc->permissions()->copy;      // false
 
    $doc->bookmarks();              // Bookmark[]: the outline, each with title, destination, children
-   $doc->page(0)->links();         // Link[]: the clickable areas, with where each one leads
 
 Work with pages
 ~~~~~~~~~~~~~~~
@@ -121,6 +120,7 @@ Work with pages
        $page->height();     // 792.0
        $page->rotation();   // 0, 90, 180 or 270
        $page->text();       // "Page 1 ..."
+       $page->links();      // Link[]: the clickable areas, with where each one leads
    }
 
    // A single page:
