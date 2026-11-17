@@ -318,7 +318,7 @@ ZEND_METHOD(Pdfium_Page, linkAt)
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	FPDF_LINK link = FPDFLink_GetLinkAtPoint(ph->page, x, y);
+	FPDF_LINK link = FPDFLink_GetLinkAtPoint(ph->page, pdfium_float_side(x), pdfium_float_side(y));
 
 	if (link) {
 		link_info li = link_info_of(ph->h->doc, link);
@@ -326,7 +326,7 @@ ZEND_METHOD(Pdfium_Page, linkAt)
 		if (link_fits(&li, 0)) {
 			link_set(return_value, ph->h->doc, FPDF_GetPageCount(ph->h->doc), link, &li);
 		} else {
-			oom = "Links need";
+			oom = "The link needs";
 		}
 	}
 	pdfium_leave_or_throw(return_value, oom);

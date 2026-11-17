@@ -124,6 +124,7 @@ zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h);
 void pdfium_page_free_obj(zend_object *obj);
 void pdfium_page_iterator_free_obj(zend_object *obj);
 double pdfium_points(float value);
+float pdfium_float_side(double value);
 const char *pdfium_rect_fault(const zval *zr, double *sides);
 zval *pdfium_slot(zend_object *obj, int index);
 void pdfium_rect_init(zval *zv, double x1, double y1, double x2, double y2);

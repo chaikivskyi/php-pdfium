@@ -29,7 +29,7 @@ var_dump(count($links[0]->quadPoints), $links[1]->quadPoints[0]->x1, $links[1]->
 var_dump($links[5]->destination->x, $links[5]->destination->y, $links[5]->destination->zoom);
 var_dump($links[5]->destination == $links[5]->action->destination);
 var_dump($doc->page(0)->linkAt(175, 710) == $links[5], $doc->page(0)->linkAt(120, 710) == $links[0]);
-var_dump($doc->page(0)->linkAt(10, 10), $doc->page(1)->links());
+var_dump($doc->page(0)->linkAt(10, 10), $doc->page(0)->linkAt(1e300, -1e300), $doc->page(1)->links());
 try { $doc->page(0)->linkAt(NAN, 0); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 try { $doc->page(0)->linkAt(0, INF); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 var_dump(unserialize(serialize($links)) == $links);
@@ -75,6 +75,7 @@ NULL
 bool(true)
 bool(true)
 bool(true)
+NULL
 NULL
 array(0) {
 }

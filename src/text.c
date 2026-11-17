@@ -147,7 +147,7 @@ zval *pdfium_slot(zend_object *obj, int index)
 	return zv;
 }
 
-static float float_side(double value)
+float pdfium_float_side(double value)
 {
 	if (zend_isnan(value)) {
 		return 0;
@@ -174,7 +174,7 @@ static double points_of(points_run *run, float value)
 
 static void rect_init(zval *zv, points_run *run, double x1, double y1, double x2, double y2)
 {
-	float fx1 = float_side(x1), fy1 = float_side(y1), fx2 = float_side(x2), fy2 = float_side(y2);
+	float fx1 = pdfium_float_side(x1), fy1 = pdfium_float_side(y1), fx2 = pdfium_float_side(x2), fy2 = pdfium_float_side(y2);
 
 	object_init_ex(zv, pdfium_ce_rect);
 	zend_object *obj = Z_OBJ_P(zv);
@@ -571,8 +571,8 @@ static placed_char *placed_chars(FPDF_TEXTPAGE tp, int count)
 
 static size_t units_in(const placed_char *chars, int count, const double *sides, unsigned short *units)
 {
-	float left = float_side(sides[RECT_LEFT]), bottom = float_side(sides[RECT_BOTTOM]);
-	float right = float_side(sides[RECT_RIGHT]), top = float_side(sides[RECT_TOP]);
+	float left = pdfium_float_side(sides[RECT_LEFT]), bottom = pdfium_float_side(sides[RECT_BOTTOM]);
+	float right = pdfium_float_side(sides[RECT_RIGHT]), top = pdfium_float_side(sides[RECT_TOP]);
 	size_t kept = 0;
 	double line = 0;
 	unsigned short spaced = 0;
@@ -966,8 +966,8 @@ ZEND_METHOD(Pdfium_TextPage, charIndexAt)
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	int index = FPDFText_GetCharIndexAtPos(this_text_page(ZEND_THIS), float_side(point[0]), float_side(point[1]),
-		float_side(point[2]), float_side(point[3]));
+	int index = FPDFText_GetCharIndexAtPos(this_text_page(ZEND_THIS), pdfium_float_side(point[0]), pdfium_float_side(point[1]),
+		pdfium_float_side(point[2]), pdfium_float_side(point[3]));
 
 	pdfium_leave();
 	if (index < 0) {

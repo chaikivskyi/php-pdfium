@@ -21,5 +21,5 @@ echo count(Pdfium\Document::fromString(nav_pdf(
 ?>
 --EXPECT--
 Links need more memory than memory_limit leaves
-Links need more memory than memory_limit leaves
+The link needs more memory than memory_limit leaves
 1
