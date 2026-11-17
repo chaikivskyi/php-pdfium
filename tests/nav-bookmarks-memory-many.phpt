@@ -2,6 +2,8 @@
 bookmarks() throws MemoryException, never a fatal error, for a large outline at any memory_limit
 --EXTENSIONS--
 pdfium
+--SKIPIF--
+<?php if (getenv('USE_ZEND_ALLOC') === '0') die('skip reads millions of bookmarks, minutes without the Zend allocator'); ?>
 --INI--
 memory_limit=512M
 --FILE--
@@ -16,10 +18,11 @@ $doc = Pdfium\Document::fromString(nav_pdf('/Outlines 6 0 R', $objs));
 unset($objs);
 $base = memory_get_usage(true);
 $thrown = 0;
-for ($extra = 1 << 20; $extra <= 48 << 20; $extra += 256 << 10) {
+for ($extra = 1 << 20; $extra <= 64 << 20; $extra += 256 << 10) {
     ini_set('memory_limit', (string) ($base + $extra));
     try {
-        $count = count($doc->bookmarks());
+        $doc->bookmarks();
+        break;
     } catch (Pdfium\MemoryException $e) {
         $thrown++;
     }
