@@ -84,17 +84,6 @@ final class Document implements \Countable, \IteratorAggregate
     public function permissions(): Permissions {}
 
     /**
-     * The top level of the outline, in order, each with its children. An entry met a second time, in
-     * a broken outline that loops, is left out with the entries after it at its level, and entries
-     * nested deeper than 100 levels are left out.
-     *
-     * @return Bookmark[]
-     * @throws MemoryException when the outline would not fit under memory_limit
-     * @throws BusyException on ZTS PHP when another thread is using PDFium
-     */
-    public function bookmarks(): array {}
-
-    /**
      * The first entry of the trailer's /ID, set when the file was created, as raw bytes; null when
      * there is none.
      *
@@ -111,6 +100,17 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function changingId(): ?string {}
+
+    /**
+     * The top level of the outline, in order, each with its children. An entry met a second time, in
+     * a broken outline that loops, is left out with the entries after it at its level, and entries
+     * nested deeper than 100 levels are left out.
+     *
+     * @return Bookmark[]
+     * @throws MemoryException when the outline would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function bookmarks(): array {}
 
     /**
      * @throws \ValueError when $index is outside 0..pageCount()-1

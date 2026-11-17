@@ -271,6 +271,44 @@ ZEND_METHOD(Pdfium_Document, permissions)
 	}
 }
 
+static void file_id(INTERNAL_FUNCTION_PARAMETERS, FPDF_FILEIDTYPE type)
+{
+	FPDF_DOCUMENT doc = this_handle(ZEND_THIS)->doc;
+	const char *oom = NULL;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	unsigned long bytes = FPDF_GetFileIdentifier(doc, type, NULL, 0);
+
+	if (bytes > 1) {
+		if (!pdfium_memory_fits(bytes)) {
+			oom = "The file identifier needs";
+		} else {
+			zend_string *s = zend_string_alloc(bytes - 1, 0);
+
+			if (FPDF_GetFileIdentifier(doc, type, ZSTR_VAL(s), bytes) == bytes) {
+				ZSTR_VAL(s)[bytes - 1] = '\0';
+				RETVAL_STR(s);
+			} else {
+				zend_string_efree(s);
+			}
+		}
+	}
+	pdfium_leave_or_throw(return_value, oom);
+}
+
+ZEND_METHOD(Pdfium_Document, permanentId)
+{
+	file_id(INTERNAL_FUNCTION_PARAM_PASSTHRU, FILEIDTYPE_PERMANENT);
+}
+
+ZEND_METHOD(Pdfium_Document, changingId)
+{
+	file_id(INTERNAL_FUNCTION_PARAM_PASSTHRU, FILEIDTYPE_CHANGING);
+}
+
 ZEND_METHOD(Pdfium_Document, page)
 {
 	zend_long index;

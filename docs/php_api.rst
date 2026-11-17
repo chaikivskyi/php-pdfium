@@ -90,6 +90,24 @@ Document
       :rtype: Permissions
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: permanentId() -> ?string
+
+      The first entry of the trailer's ``/ID``, set when the file was first written, as raw bytes:
+      use ``bin2hex()`` to show it. ``null`` when the file has no ``/ID``.
+
+      :rtype: ?string
+      :throws MemoryException: The identifier would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: changingId() -> ?string
+
+      The second entry of the trailer's ``/ID``, which changes each time the file is saved, as raw
+      bytes; ``null`` when the file has no ``/ID``.
+
+      :rtype: ?string
+      :throws MemoryException: The identifier would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. rubric:: Navigation
 
    .. php:method:: bookmarks() -> array
@@ -117,24 +135,6 @@ Document
 
       :rtype: Bookmark[]
       :throws MemoryException: The outline would not fit under ``memory_limit``.
-      :throws BusyException: ZTS only: another thread is using PDFium.
-
-   .. php:method:: permanentId() -> ?string
-
-      The first entry of the trailer's ``/ID``, set when the file was first written, as raw bytes:
-      use ``bin2hex()`` to show it. ``null`` when the file has no ``/ID``.
-
-      :rtype: ?string
-      :throws MemoryException: The identifier would not fit under ``memory_limit``.
-      :throws BusyException: ZTS only: another thread is using PDFium.
-
-   .. php:method:: changingId() -> ?string
-
-      The second entry of the trailer's ``/ID``, which changes each time the file is saved, as raw
-      bytes; ``null`` when the file has no ``/ID``.
-
-      :rtype: ?string
-      :throws MemoryException: The identifier would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Pages
