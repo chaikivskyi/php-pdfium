@@ -13,8 +13,8 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator` and
 :php:class:`Bitmap` cannot be cloned or serialized. The value classes (:php:class:`Metadata`,
 :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`, :php:class:`Color`,
-:php:class:`Matrix`, :php:class:`TextMatch` and :php:class:`WebLink`) are read-only and can be
-cloned and serialized.
+:php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`, :php:class:`Destination` and
+:php:class:`Action`) are read-only and can be cloned and serialized.
 
 
 Document
@@ -341,6 +341,24 @@ Page
 
       :rtype: TextPage
       :throws FormatException: PDFium cannot read the page's text.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. rubric:: Navigation
+
+   .. php:method:: openAction() -> ?Action
+
+      The action a viewer runs when it opens the page, or ``null``. See :ref:`navigation`.
+
+      :rtype: ?Action
+      :throws MemoryException: The action would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: closeAction() -> ?Action
+
+      The action a viewer runs when it closes the page, or ``null``.
+
+      :rtype: ?Action
+      :throws MemoryException: The action would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
 
@@ -818,6 +836,69 @@ WebLink
    .. php:attr:: rects
 
       :php:class:`Rect[] <Rect>`: one per line the URL covers.
+
+
+Destination
+-----------
+
+.. php:class:: Destination
+
+   Where a bookmark, link or action leads in this document: a final, read-only value.
+
+   .. php:attr:: pageIndex
+
+      ``int``: the 0-based index of the target page.
+
+   .. php:attr:: view
+
+      ``?string``: how the viewer fits the page: ``"XYZ"``, ``"Fit"``, ``"FitH"``, ``"FitV"``,
+      ``"FitR"``, ``"FitB"``, ``"FitBH"`` or ``"FitBV"``, as named in the PDF specification;
+      ``null`` when PDFium cannot tell.
+
+   .. php:attr:: params
+
+      ``float[]``: the view's parameters as PDFium gives them, at most four. For ``"FitH"`` it is
+      the top edge, for ``"FitR"`` the left, bottom, right and top.
+
+   .. php:attr:: x
+
+      ``?float``: for ``"XYZ"``, the left edge to show, in points; ``null`` when absent, which means
+      keep the current one, and for other views.
+
+   .. php:attr:: y
+
+      ``?float``: for ``"XYZ"``, the top edge to show, in points; ``null`` as for :php:attr:`x`.
+
+   .. php:attr:: zoom
+
+      ``?float``: for ``"XYZ"``, the zoom factor; ``null`` as for :php:attr:`x`.
+
+
+Action
+------
+
+.. php:class:: Action
+
+   What a bookmark, link or page event does: a final, read-only value.
+
+   .. php:attr:: type
+
+      ``string``: ``"GoTo"`` (a place in this document), ``"GoToR"`` (a place in another PDF file),
+      ``"URI"``, ``"Launch"`` (open a file or run an application), ``"GoToE"`` (a place in an
+      embedded PDF), or ``"Unsupported"`` for every type PDFium does not read, such as JavaScript.
+
+   .. php:attr:: uri
+
+      ``?string``: for ``"URI"``, the URI as written in the PDF. It is not checked: it may not be
+      UTF-8.
+
+   .. php:attr:: filePath
+
+      ``?string``: for ``"GoToR"`` and ``"Launch"``, the file, as UTF-8.
+
+   .. php:attr:: destination
+
+      ``?Destination``: for ``"GoTo"``, where it leads; ``null`` for every other type.
 
 
 .. _exceptions:

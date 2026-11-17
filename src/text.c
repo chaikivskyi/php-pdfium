@@ -52,7 +52,7 @@ typedef struct {
 	bool boxed;
 } placed_char;
 
-static bool slots_named(zend_class_entry *ce, const char *names)
+bool pdfium_slots_named(zend_class_entry *ce, const char *names)
 {
 	int slots = 0;
 
@@ -71,13 +71,13 @@ static bool slots_named(zend_class_entry *ce, const char *names)
 
 bool pdfium_text_slots_match(void)
 {
-	return slots_named(pdfium_ce_rect, "left bottom right top")
-		&& slots_named(pdfium_ce_color, "red green blue alpha")
-		&& slots_named(pdfium_ce_matrix, "a b c d e f")
-		&& slots_named(pdfium_ce_char, "text box looseBox x y fontSize fontName fontWeight fontFlags fillColor strokeColor"
+	return pdfium_slots_named(pdfium_ce_rect, "left bottom right top")
+		&& pdfium_slots_named(pdfium_ce_color, "red green blue alpha")
+		&& pdfium_slots_named(pdfium_ce_matrix, "a b c d e f")
+		&& pdfium_slots_named(pdfium_ce_char, "text box looseBox x y fontSize fontName fontWeight fontFlags fillColor strokeColor"
 			" angle matrix generated hyphen unicodeMapError")
-		&& slots_named(pdfium_ce_text_match, "index length text rects")
-		&& slots_named(pdfium_ce_web_link, "url index length rects");
+		&& pdfium_slots_named(pdfium_ce_text_match, "index length text rects")
+		&& pdfium_slots_named(pdfium_ce_web_link, "url index length rects");
 }
 
 ZEND_METHOD(Pdfium_Color, __construct)
@@ -139,7 +139,7 @@ ZEND_METHOD(Pdfium_Rect, __construct)
 	}
 }
 
-static zval *slot(zend_object *obj, int index)
+zval *pdfium_slot(zend_object *obj, int index)
 {
 	zval *zv = OBJ_PROP_NUM(obj, index);
 
@@ -179,10 +179,15 @@ static void rect_init(zval *zv, points_run *run, double x1, double y1, double x2
 	object_init_ex(zv, pdfium_ce_rect);
 	zend_object *obj = Z_OBJ_P(zv);
 
-	ZVAL_DOUBLE(slot(obj, RECT_LEFT), points_of(run, MIN(fx1, fx2)));
-	ZVAL_DOUBLE(slot(obj, RECT_BOTTOM), points_of(run, MIN(fy1, fy2)));
-	ZVAL_DOUBLE(slot(obj, RECT_RIGHT), points_of(run, MAX(fx1, fx2)));
-	ZVAL_DOUBLE(slot(obj, RECT_TOP), points_of(run, MAX(fy1, fy2)));
+	ZVAL_DOUBLE(pdfium_slot(obj, RECT_LEFT), points_of(run, MIN(fx1, fx2)));
+	ZVAL_DOUBLE(pdfium_slot(obj, RECT_BOTTOM), points_of(run, MIN(fy1, fy2)));
+	ZVAL_DOUBLE(pdfium_slot(obj, RECT_RIGHT), points_of(run, MAX(fx1, fx2)));
+	ZVAL_DOUBLE(pdfium_slot(obj, RECT_TOP), points_of(run, MAX(fy1, fy2)));
+}
+
+void pdfium_rect_init(zval *zv, double x1, double y1, double x2, double y2)
+{
+	rect_init(zv, NULL, x1, y1, x2, y2);
 }
 
 static bool joined_hyphen(FPDF_TEXTPAGE tp, int c)
@@ -233,7 +238,7 @@ static void color_set(zval *zv, object_run *run, FPDF_BOOL got, const unsigned i
 	}
 	object_init_ex(zv, pdfium_ce_color);
 	for (int i = 0; i < COLOR_SLOTS; i++) {
-		ZVAL_LONG(slot(Z_OBJ_P(zv), i), rgba[i]);
+		ZVAL_LONG(pdfium_slot(Z_OBJ_P(zv), i), rgba[i]);
 	}
 	run_keep(zv, run, rgba, 4 * sizeof(*rgba));
 }
@@ -250,12 +255,12 @@ static void matrix_set(zval *zv, object_run *run, FPDF_BOOL got, const FS_MATRIX
 	object_init_ex(zv, pdfium_ce_matrix);
 	zend_object *obj = Z_OBJ_P(zv);
 
-	ZVAL_DOUBLE(slot(obj, MATRIX_A), pdfium_points(m->a));
-	ZVAL_DOUBLE(slot(obj, MATRIX_B), pdfium_points(m->b));
-	ZVAL_DOUBLE(slot(obj, MATRIX_C), pdfium_points(m->c));
-	ZVAL_DOUBLE(slot(obj, MATRIX_D), pdfium_points(m->d));
-	ZVAL_DOUBLE(slot(obj, MATRIX_E), pdfium_points(m->e));
-	ZVAL_DOUBLE(slot(obj, MATRIX_F), pdfium_points(m->f));
+	ZVAL_DOUBLE(pdfium_slot(obj, MATRIX_A), pdfium_points(m->a));
+	ZVAL_DOUBLE(pdfium_slot(obj, MATRIX_B), pdfium_points(m->b));
+	ZVAL_DOUBLE(pdfium_slot(obj, MATRIX_C), pdfium_points(m->c));
+	ZVAL_DOUBLE(pdfium_slot(obj, MATRIX_D), pdfium_points(m->d));
+	ZVAL_DOUBLE(pdfium_slot(obj, MATRIX_E), pdfium_points(m->e));
+	ZVAL_DOUBLE(pdfium_slot(obj, MATRIX_F), pdfium_points(m->f));
 	run_keep(zv, run, m, sizeof(*m));
 }
 
@@ -394,7 +399,7 @@ static FPDF_TEXTPAGE enter_text_page(pdfium_page_handle *ph)
 	return tp;
 }
 
-static void leave_or_throw(zval *return_value, const char *oom)
+void pdfium_leave_or_throw(zval *return_value, const char *oom)
 {
 	pdfium_leave();
 	if (oom) {
@@ -478,17 +483,17 @@ static const char *chars_of(FPDF_TEXTPAGE tp, int from, int to, zval *return_val
 		bool hyphen = joined_hyphen(tp, i);
 		unsigned int next = i + 1 < count ? FPDFText_GetUnicode(tp, i + 1) : 0;
 
-		char_text(slot(c, CHAR_TEXT), code_point(prev, unit, next, hyphen));
+		char_text(pdfium_slot(c, CHAR_TEXT), code_point(prev, unit, next, hyphen));
 		prev = unit;
 		unit = next;
 		FPDFText_GetCharBox(tp, i, &left, &right, &bottom, &top);
-		rect_init(slot(c, CHAR_BOX), &points, left, bottom, right, top);
+		rect_init(pdfium_slot(c, CHAR_BOX), &points, left, bottom, right, top);
 		FPDFText_GetLooseCharBox(tp, i, &loose);
-		rect_init(slot(c, CHAR_LOOSE_BOX), &points, loose.left, loose.bottom, loose.right, loose.top);
+		rect_init(pdfium_slot(c, CHAR_LOOSE_BOX), &points, loose.left, loose.bottom, loose.right, loose.top);
 		FPDFText_GetCharOrigin(tp, i, &x, &y);
-		ZVAL_DOUBLE(slot(c, CHAR_X), points_of(&points, (float) x));
-		ZVAL_DOUBLE(slot(c, CHAR_Y), points_of(&points, (float) y));
-		ZVAL_DOUBLE(slot(c, CHAR_FONT_SIZE), points_of(&points, (float) FPDFText_GetFontSize(tp, i)));
+		ZVAL_DOUBLE(pdfium_slot(c, CHAR_X), points_of(&points, (float) x));
+		ZVAL_DOUBLE(pdfium_slot(c, CHAR_Y), points_of(&points, (float) y));
+		ZVAL_DOUBLE(pdfium_slot(c, CHAR_FONT_SIZE), points_of(&points, (float) FPDFText_GetFontSize(tp, i)));
 		if (len > 1) {
 			if (!font || ZSTR_LEN(font) != len - 1 || memcmp(ZSTR_VAL(font), name, len - 1)) {
 				if (font) {
@@ -496,33 +501,33 @@ static const char *chars_of(FPDF_TEXTPAGE tp, int from, int to, zval *return_val
 				}
 				font = zend_string_init(name, len - 1, 0);
 			}
-			ZVAL_STR_COPY(slot(c, CHAR_FONT_NAME), font);
+			ZVAL_STR_COPY(pdfium_slot(c, CHAR_FONT_NAME), font);
 		} else {
-			ZVAL_NULL(slot(c, CHAR_FONT_NAME));
+			ZVAL_NULL(pdfium_slot(c, CHAR_FONT_NAME));
 		}
 
 		int weight = FPDFText_GetFontWeight(tp, i);
 
 		if (weight <= 0) {
-			ZVAL_NULL(slot(c, CHAR_FONT_WEIGHT));
+			ZVAL_NULL(pdfium_slot(c, CHAR_FONT_WEIGHT));
 		} else {
-			ZVAL_LONG(slot(c, CHAR_FONT_WEIGHT), weight);
+			ZVAL_LONG(pdfium_slot(c, CHAR_FONT_WEIGHT), weight);
 		}
-		ZVAL_LONG(slot(c, CHAR_FONT_FLAGS), (uint32_t) flags);
+		ZVAL_LONG(pdfium_slot(c, CHAR_FONT_FLAGS), (uint32_t) flags);
 		got = FPDFText_GetFillColor(tp, i, &rgba[0], &rgba[1], &rgba[2], &rgba[3]);
-		color_set(slot(c, CHAR_FILL_COLOR), &fill, got, rgba);
+		color_set(pdfium_slot(c, CHAR_FILL_COLOR), &fill, got, rgba);
 		got = FPDFText_GetStrokeColor(tp, i, &rgba[0], &rgba[1], &rgba[2], &rgba[3]);
-		color_set(slot(c, CHAR_STROKE_COLOR), &stroke, got, rgba);
+		color_set(pdfium_slot(c, CHAR_STROKE_COLOR), &stroke, got, rgba);
 
 		float radians = FPDFText_GetCharAngle(tp, i);
 		double steps = radians < 0 ? 0 : (360.0 - radians * 180.0 / M_PI) * ANGLE_STEPS;
 
-		ZVAL_DOUBLE(slot(c, CHAR_ANGLE), steps < 1 || steps > 360.0 * ANGLE_STEPS - 1 ? 0 : round(steps) / ANGLE_STEPS);
+		ZVAL_DOUBLE(pdfium_slot(c, CHAR_ANGLE), steps < 1 || steps > 360.0 * ANGLE_STEPS - 1 ? 0 : round(steps) / ANGLE_STEPS);
 		got = FPDFText_GetMatrix(tp, i, &matrix);
-		matrix_set(slot(c, CHAR_MATRIX), &matrices, got, &matrix);
-		ZVAL_BOOL(slot(c, CHAR_GENERATED), FPDFText_IsGenerated(tp, i) == 1);
-		ZVAL_BOOL(slot(c, CHAR_HYPHEN), hyphen);
-		ZVAL_BOOL(slot(c, CHAR_UNICODE_MAP_ERROR), FPDFText_HasUnicodeMapError(tp, i) == 1);
+		matrix_set(pdfium_slot(c, CHAR_MATRIX), &matrices, got, &matrix);
+		ZVAL_BOOL(pdfium_slot(c, CHAR_GENERATED), FPDFText_IsGenerated(tp, i) == 1);
+		ZVAL_BOOL(pdfium_slot(c, CHAR_HYPHEN), hyphen);
+		ZVAL_BOOL(pdfium_slot(c, CHAR_UNICODE_MAP_ERROR), FPDFText_HasUnicodeMapError(tp, i) == 1);
 		add_next_index_zval(return_value, &zc);
 	}
 	if (font) {
@@ -767,10 +772,10 @@ static bool match_append(FPDF_TEXTPAGE tp, int index, int length, const unsigned
 	object_init_ex(&zm, pdfium_ce_text_match);
 	zend_object *m = Z_OBJ(zm);
 
-	ZVAL_LONG(slot(m, MATCH_INDEX), index);
-	ZVAL_LONG(slot(m, MATCH_LENGTH), length);
-	rects_set(slot(m, MATCH_RECTS), tp, NULL, 0, rects);
-	ZVAL_STR(slot(m, MATCH_TEXT), units_to_utf8(units, size));
+	ZVAL_LONG(pdfium_slot(m, MATCH_INDEX), index);
+	ZVAL_LONG(pdfium_slot(m, MATCH_LENGTH), length);
+	rects_set(pdfium_slot(m, MATCH_RECTS), tp, NULL, 0, rects);
+	ZVAL_STR(pdfium_slot(m, MATCH_TEXT), units_to_utf8(units, size));
 	efree(units);
 	add_next_index_zval(return_value, &zm);
 	return true;
@@ -859,10 +864,10 @@ static const char *web_links_of(FPDF_TEXTPAGE tp, zval *return_value)
 		object_init_ex(&zl, pdfium_ce_web_link);
 		zend_object *l = Z_OBJ(zl);
 
-		ZVAL_STR(slot(l, LINK_URL), pdfium_utf16le_to_utf8(buf, units_got(got)));
-		ZVAL_LONG(slot(l, LINK_INDEX), start);
-		ZVAL_LONG(slot(l, LINK_LENGTH), length);
-		rects_set(slot(l, LINK_RECTS), tp, links, i, n);
+		ZVAL_STR(pdfium_slot(l, LINK_URL), pdfium_utf16le_to_utf8(buf, units_got(got)));
+		ZVAL_LONG(pdfium_slot(l, LINK_INDEX), start);
+		ZVAL_LONG(pdfium_slot(l, LINK_LENGTH), length);
+		rects_set(pdfium_slot(l, LINK_RECTS), tp, links, i, n);
 		add_next_index_zval(return_value, &zl);
 	}
 	if (links) {
@@ -885,7 +890,7 @@ ZEND_METHOD(Pdfium_Page, text)
 	const char *oom = text_of(tp, return_value);
 
 	FPDFText_ClosePage(tp);
-	leave_or_throw(return_value, oom);
+	pdfium_leave_or_throw(return_value, oom);
 }
 
 ZEND_METHOD(Pdfium_TextPage, text)
@@ -894,7 +899,7 @@ ZEND_METHOD(Pdfium_TextPage, text)
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	leave_or_throw(return_value, text_of(this_text_page(ZEND_THIS), return_value));
+	pdfium_leave_or_throw(return_value, text_of(this_text_page(ZEND_THIS), return_value));
 }
 
 ZEND_METHOD(Pdfium_TextPage, charCount)
@@ -937,7 +942,7 @@ ZEND_METHOD(Pdfium_TextPage, chars)
 	}
 	int to = rest || length > count - start ? count : (int) (start + length);
 
-	leave_or_throw(return_value, chars_of(tp, (int) start, to, return_value));
+	pdfium_leave_or_throw(return_value, chars_of(tp, (int) start, to, return_value));
 }
 
 ZEND_METHOD(Pdfium_TextPage, charIndexAt)
@@ -1009,7 +1014,7 @@ ZEND_METHOD(Pdfium_TextPage, textIn)
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	leave_or_throw(return_value, texts_in(this_text_page(ZEND_THIS), sides, 1, return_value));
+	pdfium_leave_or_throw(return_value, texts_in(this_text_page(ZEND_THIS), sides, 1, return_value));
 }
 
 ZEND_METHOD(Pdfium_TextPage, textInEach)
@@ -1052,7 +1057,7 @@ ZEND_METHOD(Pdfium_TextPage, textInEach)
 	} ZEND_HASH_FOREACH_END();
 
 	if (!EG(exception) && pdfium_enter()) {
-		leave_or_throw(return_value, texts_in(this_text_page(ZEND_THIS), sides, count, texts));
+		pdfium_leave_or_throw(return_value, texts_in(this_text_page(ZEND_THIS), sides, count, texts));
 	}
 	if (EG(exception)) {
 		for (r = 0; r < count; r++) {
@@ -1132,7 +1137,7 @@ ZEND_METHOD(Pdfium_TextPage, search)
 
 	needle_units(needle, units, &count);
 	if (pdfium_enter()) {
-		leave_or_throw(return_value, search_of(this_text_page(ZEND_THIS), units, count, match_case, whole_word, overlapping,
+		pdfium_leave_or_throw(return_value, search_of(this_text_page(ZEND_THIS), units, count, match_case, whole_word, overlapping,
 			return_value));
 	}
 	efree(units);
@@ -1144,7 +1149,7 @@ ZEND_METHOD(Pdfium_TextPage, webLinks)
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	leave_or_throw(return_value, web_links_of(this_text_page(ZEND_THIS), return_value));
+	pdfium_leave_or_throw(return_value, web_links_of(this_text_page(ZEND_THIS), return_value));
 }
 
 ZEND_METHOD(Pdfium_TextPage, __construct)

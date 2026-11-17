@@ -55,6 +55,8 @@ extern zend_class_entry *pdfium_ce_matrix;
 extern zend_class_entry *pdfium_ce_char;
 extern zend_class_entry *pdfium_ce_text_match;
 extern zend_class_entry *pdfium_ce_web_link;
+extern zend_class_entry *pdfium_ce_destination;
+extern zend_class_entry *pdfium_ce_action;
 extern zend_class_entry *pdfium_ce_exception;
 extern zend_class_entry *pdfium_ce_file_exception;
 extern zend_class_entry *pdfium_ce_format_exception;
@@ -120,6 +122,16 @@ void pdfium_page_free_obj(zend_object *obj);
 void pdfium_page_iterator_free_obj(zend_object *obj);
 double pdfium_points(float value);
 const char *pdfium_rect_fault(const zval *zr, double *sides);
+zval *pdfium_slot(zend_object *obj, int index);
+void pdfium_rect_init(zval *zv, double x1, double y1, double x2, double y2);
+bool pdfium_slots_named(zend_class_entry *ce, const char *names);
+void pdfium_leave_or_throw(zval *return_value, const char *oom);
+
+bool pdfium_navigation_slots_match(void);
+void pdfium_destination_set(zval *zv, FPDF_DOCUMENT doc, FPDF_DEST dest);
+void pdfium_action_set(zval *zv, FPDF_DOCUMENT doc, FPDF_ACTION action);
+void pdfium_entry_targets(zval *dest_zv, zval *action_zv, FPDF_DOCUMENT doc, FPDF_DEST own_dest, FPDF_ACTION action);
+size_t pdfium_action_bytes(FPDF_DOCUMENT doc, FPDF_ACTION action);
 
 void pdfium_bitmap_free_obj(zend_object *obj);
 

@@ -179,6 +179,23 @@ as ``text()``, but not always: ``text()`` and ``textIn()`` leave control charact
 PDFium cannot map.
 
 
+.. _navigation:
+
+Navigation
+----------
+
+A :php:class:`Destination <Pdfium\\Destination>` is always in this document. An action that
+leads into another file (``"GoToR"``) or into an embedded file (``"GoToE"``) has no destination:
+PDFium would read its page number against this document and give the wrong page. Its
+``filePath`` says which file.
+
+An ``"URI"`` action's ``uri`` is returned exactly as the PDF stores it. PDF asks for 7-bit ASCII,
+but real files hold UTF-8 and other encodings, so check it before you use it as text.
+
+Actions PDFium does not read, such as JavaScript, named actions and form submission, have the
+type ``"Unsupported"`` and nothing else set.
+
+
 .. _memory-limit:
 
 Memory limit

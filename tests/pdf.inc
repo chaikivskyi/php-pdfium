@@ -77,3 +77,16 @@ function annot_pdf(): string
         stream_obj('0 g 0 0 30 30 re f', '/Type /XObject /Subtype /Form /BBox [0 0 30 30] '),
     ]);
 }
+
+/** Three 612x792 pages: objects 3, 4 and 5, with $pageExtra[i] in page i's dictionary; $extra are objects 6 onwards. */
+function nav_pdf(string $catalog = '', array $extra = [], array $pageExtra = ['', '', ''], string $trailer = ''): string
+{
+    $pages = [];
+    for ($i = 0; $i < 3; $i++) {
+        $pages[] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] ' . ($pageExtra[$i] ?? '') . ' >>';
+    }
+    return build_pdf(array_merge([
+        "<< /Type /Catalog /Pages 2 0 R $catalog >>",
+        '<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 >>',
+    ], $pages, $extra), $trailer);
+}

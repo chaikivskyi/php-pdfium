@@ -297,6 +297,40 @@ final readonly class WebLink
     private function __construct() {}
 }
 
+/** Where a bookmark, link or action leads in this document. */
+final readonly class Destination
+{
+    /** The 0-based index of the target page. */
+    public int $pageIndex;
+    /** "XYZ", "Fit", "FitH", "FitV", "FitR", "FitB", "FitBH" or "FitBV"; null when PDFium cannot tell. */
+    public ?string $view;
+    /** @var float[] the view's parameters as PDFium gives them, at most 4 */
+    public array $params;
+    /** The left edge to show, for an XYZ view; null when absent or for another view. */
+    public ?float $x;
+    /** The top edge to show, for an XYZ view; null when absent or for another view. */
+    public ?float $y;
+    /** The zoom factor, for an XYZ view; null when absent or for another view. */
+    public ?float $zoom;
+
+    private function __construct() {}
+}
+
+/** What a bookmark, link or page event does. */
+final readonly class Action
+{
+    /** "GoTo", "GoToR", "URI", "Launch", "GoToE", or "Unsupported" for every type PDFium does not read. */
+    public string $type;
+    /** The URI, for a URI action: the bytes as written, which may not be UTF-8. */
+    public ?string $uri;
+    /** The file, as UTF-8, for a GoToR or Launch action. */
+    public ?string $filePath;
+    /** Where a GoTo action leads; null for every other type. */
+    public ?Destination $destination;
+
+    private function __construct() {}
+}
+
 /**
  * @strict-properties
  * @not-serializable
@@ -377,6 +411,22 @@ final class Page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function textPage(): TextPage {}
+
+    /**
+     * The action run when the page is opened; null when there is none.
+     *
+     * @throws MemoryException when the action would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function openAction(): ?Action {}
+
+    /**
+     * The action run when the page is closed; null when there is none.
+     *
+     * @throws MemoryException when the action would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function closeAction(): ?Action {}
 }
 
 /**
