@@ -237,7 +237,7 @@ Rough memory needed:
   about 500 bytes per match.
 - ``webLinks()``: about 500 bytes per result.
 - ``links()``: about 2 KB per link, and the length of its URI or file path.
-- ``bookmarks()``: about 2 KB per entry, and twice the length of its title.
+- ``bookmarks()``: about 2 KB per entry, and 5 bytes per character of its title.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 
 With ``memory_limit = -1`` there are no checks.

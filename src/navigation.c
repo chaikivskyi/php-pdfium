@@ -385,7 +385,7 @@ static const char *bookmarks_read(FPDF_DOCUMENT doc, zval *return_value, HashTab
 		unsigned long title_bytes = FPDFBookmark_GetTitle(bm, NULL, 0);
 		size_t held = zend_hash_num_elements(visited);
 
-		if (!pdfium_memory_fits(BOOKMARK_BYTES + (size_t) title_bytes * 2 + 2 * held * sizeof(zval)
+		if (!pdfium_memory_fits(BOOKMARK_BYTES + (size_t) title_bytes + (size_t) title_bytes / 2 * 3 + 2 * held * sizeof(zval)
 				+ pdfium_action_bytes(doc, FPDFBookmark_GetAction(bm)))) {
 			return "Bookmarks need";
 		}
