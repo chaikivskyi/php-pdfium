@@ -78,7 +78,6 @@ function annot_pdf(): string
     ]);
 }
 
-/** Three 612x792 pages: objects 3, 4 and 5, with $pageExtra[i] in page i's dictionary; $extra are objects 6 onwards. */
 function nav_pdf(string $catalog = '', array $extra = [], array $pageExtra = ['', '', ''], string $trailer = ''): string
 {
     $pages = [];

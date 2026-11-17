@@ -5,7 +5,6 @@
 #include "php_pdfium.h"
 #include <math.h>
 #include <fpdf_doc.h>
-#include "zend_exceptions.h"
 
 #define ACTION_BYTES 1024
 #define LINK_BYTES 2048
@@ -26,6 +25,27 @@ typedef struct {
 	FPDF_BOOKMARK next;
 	zval *into;
 } bookmark_level;
+
+typedef enum { BYTES_NONE, BYTES_URI, BYTES_FILE_PATH, BYTES_FILE_ID } bytes_kind;
+
+typedef struct {
+	bytes_kind kind;
+	FPDF_DOCUMENT doc;
+	FPDF_ACTION action;
+	FPDF_FILEIDTYPE id;
+} byte_source;
+
+typedef struct {
+	FPDF_ACTION action;
+	unsigned long type;
+	byte_source src;
+	unsigned long bytes;
+} action_info;
+
+typedef struct {
+	int quads;
+	action_info action;
+} link_info;
 
 ZEND_METHOD(Pdfium_Destination, __construct)
 {
@@ -70,7 +90,7 @@ static void optional_points(zval *zv, FPDF_BOOL has, FS_FLOAT value)
 	}
 }
 
-void pdfium_destination_set(zval *zv, FPDF_DOCUMENT doc, FPDF_DEST dest)
+static void destination_set(zval *zv, FPDF_DOCUMENT doc, FPDF_DEST dest)
 {
 	static const char *views[] = {NULL, "XYZ", "Fit", "FitH", "FitV", "FitR", "FitB", "FitBH", "FitBV"};
 	int index = dest ? FPDFDest_GetDestPageIndex(doc, dest) : -1;
@@ -110,76 +130,85 @@ void pdfium_destination_set(zval *zv, FPDF_DOCUMENT doc, FPDF_DEST dest)
 	optional_points(pdfium_slot(obj, DEST_ZOOM), has_zoom, zoom);
 }
 
+static unsigned long bytes_fetch(const byte_source *src, void *buf, unsigned long len)
+{
+	switch (src->kind) {
+		case BYTES_URI:
+			return FPDFAction_GetURIPath(src->doc, src->action, buf, len);
+		case BYTES_FILE_PATH:
+			return FPDFAction_GetFilePath(src->action, buf, len);
+		case BYTES_FILE_ID:
+			return FPDF_GetFileIdentifier(src->doc, src->id, buf, len);
+		default:
+			return 0;
+	}
+}
+
+static void bytes_set(zval *zv, const byte_source *src, unsigned long bytes)
+{
+	ZVAL_NULL(zv);
+	if (bytes <= 1) {
+		return;
+	}
+	zend_string *s = zend_string_alloc(bytes - 1, 0);
+
+	if (bytes_fetch(src, ZSTR_VAL(s), bytes) != bytes) {
+		zend_string_efree(s);
+		return;
+	}
+	ZSTR_VAL(s)[bytes - 1] = '\0';
+	ZVAL_STR(zv, s);
+}
+
 static bool has_file_path(unsigned long type)
 {
 	return type == PDFACTION_REMOTEGOTO || type == PDFACTION_LAUNCH || type == PDFACTION_EMBEDDEDGOTO;
 }
 
-size_t pdfium_action_bytes(FPDF_DOCUMENT doc, FPDF_ACTION action)
+static action_info action_info_of(FPDF_DOCUMENT doc, FPDF_ACTION action)
 {
+	action_info a = {action, PDFACTION_UNSUPPORTED, {BYTES_NONE, doc, action, 0}, 0};
+
 	if (!action) {
-		return 0;
+		return a;
 	}
-	unsigned long type = FPDFAction_GetType(action);
-
-	if (type == PDFACTION_URI) {
-		return FPDFAction_GetURIPath(doc, action, NULL, 0);
+	a.type = FPDFAction_GetType(action);
+	if (a.type == PDFACTION_URI) {
+		a.src.kind = BYTES_URI;
+	} else if (has_file_path(a.type)) {
+		a.src.kind = BYTES_FILE_PATH;
 	}
-	return has_file_path(type) ? FPDFAction_GetFilePath(action, NULL, 0) : 0;
+	a.bytes = bytes_fetch(&a.src, NULL, 0);
+	return a;
 }
 
-static void bytes_set(zval *zv, unsigned long length, bool uri, FPDF_DOCUMENT doc, FPDF_ACTION action)
-{
-	if (length <= 1) {
-		ZVAL_NULL(zv);
-		return;
-	}
-	zend_string *s = zend_string_alloc(length, 0);
-
-	if (uri) {
-		FPDFAction_GetURIPath(doc, action, ZSTR_VAL(s), length);
-	} else {
-		FPDFAction_GetFilePath(action, ZSTR_VAL(s), length);
-	}
-	ZSTR_LEN(s) = length - 1;
-	ZSTR_VAL(s)[ZSTR_LEN(s)] = '\0';
-	ZVAL_STR(zv, s);
-}
-
-void pdfium_action_set(zval *zv, FPDF_DOCUMENT doc, FPDF_ACTION action)
+static void action_set(zval *zv, FPDF_DOCUMENT doc, const action_info *a)
 {
 	static const char *types[] = {"Unsupported", "GoTo", "GoToR", "URI", "Launch", "GoToE"};
 
-	if (!action) {
+	if (!a->action) {
 		ZVAL_NULL(zv);
 		return;
-	}
-	unsigned long type = FPDFAction_GetType(action);
-
-	if (type >= sizeof(types) / sizeof(types[0])) {
-		type = PDFACTION_UNSUPPORTED;
 	}
 	object_init_ex(zv, pdfium_ce_action);
 	zend_object *obj = Z_OBJ_P(zv);
 
-	ZVAL_STRING(pdfium_slot(obj, ACTION_TYPE), types[type]);
-	bytes_set(pdfium_slot(obj, ACTION_URI), type == PDFACTION_URI ? FPDFAction_GetURIPath(doc, action, NULL, 0) : 0,
-		true, doc, action);
-	bytes_set(pdfium_slot(obj, ACTION_FILE_PATH), has_file_path(type) ? FPDFAction_GetFilePath(action, NULL, 0) : 0,
-		false, doc, action);
-	if (type == PDFACTION_GOTO) {
-		pdfium_destination_set(pdfium_slot(obj, ACTION_DESTINATION), doc, FPDFAction_GetDest(doc, action));
+	ZVAL_STRING(pdfium_slot(obj, ACTION_TYPE), a->type < sizeof(types) / sizeof(types[0]) ? types[a->type] : types[0]);
+	bytes_set(pdfium_slot(obj, ACTION_URI), &a->src, a->type == PDFACTION_URI ? a->bytes : 0);
+	bytes_set(pdfium_slot(obj, ACTION_FILE_PATH), &a->src, has_file_path(a->type) ? a->bytes : 0);
+	if (a->type == PDFACTION_GOTO) {
+		destination_set(pdfium_slot(obj, ACTION_DESTINATION), doc, FPDFAction_GetDest(doc, a->action));
 	} else {
 		ZVAL_NULL(pdfium_slot(obj, ACTION_DESTINATION));
 	}
 }
 
-void pdfium_entry_targets(zval *dest_zv, zval *action_zv, FPDF_DOCUMENT doc, FPDF_DEST own_dest, FPDF_ACTION action)
+static void entry_targets(zval *dest_zv, zval *action_zv, FPDF_DOCUMENT doc, FPDF_DEST own_dest, const action_info *a)
 {
-	pdfium_action_set(action_zv, doc, action);
-	if (!action) {
-		pdfium_destination_set(dest_zv, doc, own_dest);
-	} else if (Z_TYPE_P(action_zv) == IS_OBJECT && FPDFAction_GetType(action) == PDFACTION_GOTO) {
+	action_set(action_zv, doc, a);
+	if (!a->action) {
+		destination_set(dest_zv, doc, own_dest);
+	} else if (a->type == PDFACTION_GOTO) {
 		ZVAL_COPY(dest_zv, pdfium_slot(Z_OBJ_P(action_zv), ACTION_DESTINATION));
 	} else {
 		ZVAL_NULL(dest_zv);
@@ -195,10 +224,10 @@ static void page_action(INTERNAL_FUNCTION_PARAMETERS, int which)
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	FPDF_ACTION action = FPDF_GetPageAAction(ph->page, which);
+	action_info a = action_info_of(ph->h->doc, FPDF_GetPageAAction(ph->page, which));
 
-	if (pdfium_memory_fits(ACTION_BYTES + pdfium_action_bytes(ph->h->doc, action))) {
-		pdfium_action_set(return_value, ph->h->doc, action);
+	if (pdfium_memory_fits(ACTION_BYTES + (size_t) a.bytes)) {
+		action_set(return_value, ph->h->doc, &a);
 	} else {
 		oom = "The action needs";
 	}
@@ -215,18 +244,16 @@ ZEND_METHOD(Pdfium_Page, closeAction)
 	page_action(INTERNAL_FUNCTION_PARAM_PASSTHRU, FPDFPAGE_AACTION_CLOSE);
 }
 
-static bool link_fits(FPDF_DOCUMENT doc, FPDF_LINK link, uint32_t held)
+static bool link_fits(link_info *li, FPDF_DOCUMENT doc, FPDF_LINK link, uint32_t held)
 {
-	size_t quads = (size_t) MAX(FPDFLink_CountQuadPoints(link), 0);
-
-	return pdfium_memory_fits(LINK_BYTES + quads * QUAD_BYTES + 2 * (size_t) held * sizeof(zval)
-		+ pdfium_action_bytes(doc, FPDFLink_GetAction(link)));
+	li->quads = MAX(FPDFLink_CountQuadPoints(link), 0);
+	li->action = action_info_of(doc, FPDFLink_GetAction(link));
+	return pdfium_memory_fits(LINK_BYTES + (size_t) li->quads * QUAD_BYTES + 2 * (size_t) held * sizeof(zval)
+		+ (size_t) li->action.bytes);
 }
 
-static void quad_points_set(zval *zv, FPDF_LINK link)
+static void quad_points_set(zval *zv, FPDF_LINK link, int count)
 {
-	int count = MAX(FPDFLink_CountQuadPoints(link), 0);
-
 	array_init_size(zv, (uint32_t) count);
 	for (int i = 0; i < count; i++) {
 		FS_QUADPOINTSF q;
@@ -245,7 +272,7 @@ static void quad_points_set(zval *zv, FPDF_LINK link)
 	}
 }
 
-static void link_set(zval *zv, FPDF_DOCUMENT doc, FPDF_LINK link)
+static void link_set(zval *zv, FPDF_DOCUMENT doc, FPDF_LINK link, const link_info *li)
 {
 	FS_RECTF r = {0};
 
@@ -254,9 +281,9 @@ static void link_set(zval *zv, FPDF_DOCUMENT doc, FPDF_LINK link)
 	zend_object *obj = Z_OBJ_P(zv);
 
 	pdfium_rect_init(pdfium_slot(obj, LINK_RECT), r.left, r.bottom, r.right, r.top);
-	quad_points_set(pdfium_slot(obj, LINK_QUAD_POINTS), link);
-	pdfium_entry_targets(pdfium_slot(obj, LINK_DESTINATION), pdfium_slot(obj, LINK_ACTION), doc,
-		FPDFLink_GetDest(doc, link), FPDFLink_GetAction(link));
+	quad_points_set(pdfium_slot(obj, LINK_QUAD_POINTS), link, li->quads);
+	entry_targets(pdfium_slot(obj, LINK_DESTINATION), pdfium_slot(obj, LINK_ACTION), doc,
+		li->action.action ? NULL : FPDFLink_GetDest(doc, link), &li->action);
 }
 
 ZEND_METHOD(Pdfium_Page, links)
@@ -272,13 +299,14 @@ ZEND_METHOD(Pdfium_Page, links)
 	}
 	array_init(return_value);
 	while (FPDFLink_Enumerate(ph->page, &pos, &link)) {
+		link_info li;
 		zval zl;
 
-		if (!link_fits(ph->h->doc, link, zend_hash_num_elements(Z_ARRVAL_P(return_value)))) {
+		if (!link_fits(&li, ph->h->doc, link, zend_hash_num_elements(Z_ARRVAL_P(return_value)))) {
 			oom = "Links need";
 			break;
 		}
-		link_set(&zl, ph->h->doc, link);
+		link_set(&zl, ph->h->doc, link, &li);
 		add_next_index_zval(return_value, &zl);
 	}
 	pdfium_leave_or_throw(return_value, oom);
@@ -303,9 +331,10 @@ ZEND_METHOD(Pdfium_Page, linkAt)
 		RETURN_THROWS();
 	}
 	FPDF_LINK link = FPDFLink_GetLinkAtPoint(ph->page, x, y);
+	link_info li;
 
-	if (link && link_fits(ph->h->doc, link, 0)) {
-		link_set(return_value, ph->h->doc, link);
+	if (link && link_fits(&li, ph->h->doc, link, 0)) {
+		link_set(return_value, ph->h->doc, link, &li);
 	} else if (link) {
 		oom = "Links need";
 	}
@@ -348,7 +377,8 @@ static void bookmark_title_set(zval *zv, FPDF_BOOKMARK bm, unsigned long bytes)
 	efree(units);
 }
 
-static zend_object *bookmark_append(zval *into, FPDF_DOCUMENT doc, FPDF_BOOKMARK bm, unsigned long title_bytes)
+static zend_object *bookmark_append(zval *into, FPDF_DOCUMENT doc, FPDF_BOOKMARK bm, unsigned long title_bytes,
+	const action_info *a)
 {
 	zval zb;
 	int style = FPDFBookmark_GetStyle(bm);
@@ -361,8 +391,8 @@ static zend_object *bookmark_append(zval *into, FPDF_DOCUMENT doc, FPDF_BOOKMARK
 	bookmark_color_set(pdfium_slot(obj, BOOKMARK_COLOR), bm);
 	ZVAL_BOOL(pdfium_slot(obj, BOOKMARK_ITALIC), style & 1);
 	ZVAL_BOOL(pdfium_slot(obj, BOOKMARK_BOLD), style & 2);
-	pdfium_entry_targets(pdfium_slot(obj, BOOKMARK_DESTINATION), pdfium_slot(obj, BOOKMARK_ACTION), doc,
-		FPDFBookmark_GetDest(doc, bm), FPDFBookmark_GetAction(bm));
+	entry_targets(pdfium_slot(obj, BOOKMARK_DESTINATION), pdfium_slot(obj, BOOKMARK_ACTION), doc,
+		a->action ? NULL : FPDFBookmark_GetDest(doc, bm), a);
 	array_init(pdfium_slot(obj, BOOKMARK_CHILDREN));
 	add_next_index_zval(into, &zb);
 	return obj;
@@ -384,14 +414,14 @@ static const char *bookmarks_read(FPDF_DOCUMENT doc, zval *return_value, HashTab
 		}
 		unsigned long title_bytes = FPDFBookmark_GetTitle(bm, NULL, 0);
 		size_t held = zend_hash_num_elements(visited);
+		action_info a = action_info_of(doc, FPDFBookmark_GetAction(bm));
 
 		if (!pdfium_memory_fits(BOOKMARK_BYTES + (size_t) title_bytes + (size_t) title_bytes / 2 * 3
-				+ held * (2 * sizeof(zval) + 2 * (sizeof(Bucket) + 2 * sizeof(uint32_t)))
-				+ pdfium_action_bytes(doc, FPDFBookmark_GetAction(bm)))) {
+				+ held * (2 * sizeof(zval) + 2 * (sizeof(Bucket) + 2 * sizeof(uint32_t))) + (size_t) a.bytes)) {
 			return "Bookmarks need";
 		}
 		zend_hash_index_add_empty_element(visited, (zend_ulong) (uintptr_t) bm);
-		zend_object *obj = bookmark_append(level->into, doc, bm, title_bytes);
+		zend_object *obj = bookmark_append(level->into, doc, bm, title_bytes, &a);
 
 		level->next = FPDFBookmark_GetNextSibling(doc, bm);
 		if (depth < BOOKMARK_DEPTH) {
@@ -425,27 +455,21 @@ ZEND_METHOD(Pdfium_Document, bookmarks)
 static void file_id(INTERNAL_FUNCTION_PARAMETERS, FPDF_FILEIDTYPE type)
 {
 	pdfium_doc_handle *h = pdfium_document_from_obj(Z_OBJ_P(ZEND_THIS))->h;
+	const char *oom = NULL;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	unsigned long bytes = FPDF_GetFileIdentifier(h->doc, type, NULL, 0);
+	byte_source src = {BYTES_FILE_ID, h->doc, NULL, type};
+	unsigned long bytes = bytes_fetch(&src, NULL, 0);
 
 	if (bytes > 1 && !pdfium_memory_fits(bytes)) {
-		pdfium_leave();
-		zend_throw_exception(pdfium_ce_memory_exception, "The file identifier needs more memory than memory_limit leaves", 0);
-		RETURN_THROWS();
+		oom = "The file identifier needs";
+	} else {
+		bytes_set(return_value, &src, bytes);
 	}
-	if (bytes > 1) {
-		zend_string *s = zend_string_alloc(bytes, 0);
-
-		FPDF_GetFileIdentifier(h->doc, type, ZSTR_VAL(s), bytes);
-		ZSTR_LEN(s) = bytes - 1;
-		ZSTR_VAL(s)[ZSTR_LEN(s)] = '\0';
-		RETVAL_STR(s);
-	}
-	pdfium_leave();
+	pdfium_leave_or_throw(return_value, oom);
 }
 
 ZEND_METHOD(Pdfium_Document, permanentId)

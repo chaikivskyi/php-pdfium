@@ -131,10 +131,6 @@ bool pdfium_slots_named(zend_class_entry *ce, const char *names);
 void pdfium_leave_or_throw(zval *return_value, const char *oom);
 
 bool pdfium_navigation_slots_match(void);
-void pdfium_destination_set(zval *zv, FPDF_DOCUMENT doc, FPDF_DEST dest);
-void pdfium_action_set(zval *zv, FPDF_DOCUMENT doc, FPDF_ACTION action);
-void pdfium_entry_targets(zval *dest_zv, zval *action_zv, FPDF_DOCUMENT doc, FPDF_DEST own_dest, FPDF_ACTION action);
-size_t pdfium_action_bytes(FPDF_DOCUMENT doc, FPDF_ACTION action);
 
 void pdfium_bitmap_free_obj(zend_object *obj);
 
