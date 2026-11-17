@@ -14,7 +14,11 @@ $off = png_decode($page->render(dpi: 72, annotations: false)->toPng());
 var_dump(png_pixel($on, 25, 25) === [0, 0, 0]);
 var_dump(png_pixel($off, 25, 25) === [255, 255, 255]);
 
-$saved = fn($d) => preg_replace('~/ID\s*\[[^\]]*\]~', '', $d->toString());
+$saved = function ($d) {
+    $s = $d->toString();
+    $i = strrpos($s, '/ID');
+    return substr($s, 0, $i) . substr($s, strpos($s, ']', $i) + 1);
+};
 $doc = Pdfium\Document::fromFile($f . 'form.pdf');
 $before = $saved($doc);
 $plain = $doc->page(0)->render(dpi: 72, annotations: false)->toPng();
