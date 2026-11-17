@@ -39,6 +39,20 @@ $embedded = Pdfium\Document::fromString(nav_pdf(
     pageExtra: ['/Annots [6 0 R]', '', ''],
 ))->page(0)->links()[0];
 var_dump($embedded->action->type, $embedded->action->filePath, $embedded->action->destination, $embedded->destination);
+$numbered = Pdfium\Document::fromString(nav_pdf(
+    extra: [
+        '<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /Dest [2 /Fit] >>',
+        '<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /Dest [99 /Fit] >>',
+        '<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /A << /S /GoTo /D [3 /Fit] >> >>',
+    ],
+    pageExtra: ['/Annots [6 0 R 7 0 R 8 0 R]', '', ''],
+))->page(0)->links();
+var_dump($numbered[0]->destination->pageIndex, $numbered[1]->destination, $numbered[2]->destination, $numbered[2]->action->destination);
+var_dump(Pdfium\Document::fromString(nav_pdf(
+    '/URI << /Base (https://example.com/dir/) >>',
+    ['<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /A << /S /URI /URI (page.html) >> >>'],
+    ['/Annots [6 0 R]', '', ''],
+))->page(0)->links()[0]->action->uri);
 var_dump(Pdfium\Document::fromString(nav_pdf(
     extra: ['<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /A << /S /GoToE /F (outer.pdf) /D [0 /Fit] /T << /R /C /N (embedded.pdf) >> >> >>'],
     pageExtra: ['/Annots [6 0 R]', '', ''],
@@ -71,4 +85,9 @@ string(5) "GoToE"
 NULL
 NULL
 NULL
+int(2)
+NULL
+NULL
+NULL
+string(33) "https://example.com/dir/page.html"
 string(9) "outer.pdf"

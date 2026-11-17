@@ -13,7 +13,6 @@ Features:
   output; JPEG is drawn on white.
 - ``Page::render()`` option ``grayscale: true``: a gray image, with one-channel PNG and JPEG output
   (two channels, gray and alpha, in a transparent PNG).
-- ``Document::pageLabel()``: a page's label, such as ``iv`` or ``A-3``.
 - ``Document::permanentId()`` and ``Document::changingId()``: the two entries of the file's ``/ID``.
 - ``Page::openAction()`` and ``Page::closeAction()``: the actions a viewer runs when it opens or
   closes the page.

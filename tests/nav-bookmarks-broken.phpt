@@ -30,7 +30,10 @@ while ($deepest->children) {
     $deepest = $deepest->children[0];
 }
 echo $deepest->title, "\n";
-var_dump(strlen(serialize($b)) > 0);
+ob_start();
+var_dump($b);
+print_r($b);
+var_dump(strlen(ob_get_clean()) > 0, unserialize(serialize($b)) == $b);
 var_dump($deepest);
 unset($b, $deepest);
 echo "done\n";
@@ -39,6 +42,7 @@ echo "done\n";
 A,B
 A[B]
 L100
+bool(true)
 bool(true)
 object(Pdfium\Bookmark)#%d (8) {
   ["title"]=>

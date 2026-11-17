@@ -9,9 +9,13 @@ $doc = Pdfium\Document::fromString(nav_pdf(trailer: '/ID [<0123456789abcdef> <fe
 var_dump(bin2hex($doc->permanentId()), bin2hex($doc->changingId()));
 $none = Pdfium\Document::fromString(nav_pdf());
 var_dump($none->permanentId(), $none->changingId());
+$empty = Pdfium\Document::fromString(nav_pdf(trailer: '/ID [<> <>] '));
+var_dump($empty->permanentId(), $empty->changingId());
 ?>
 --EXPECT--
 string(16) "0123456789abcdef"
 string(16) "fedcba9876543210"
+NULL
+NULL
 NULL
 NULL

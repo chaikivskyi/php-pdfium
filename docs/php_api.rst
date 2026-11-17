@@ -119,18 +119,6 @@ Document
       :throws MemoryException: The outline would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
-   .. php:method:: pageLabel(int $index) -> ?string
-
-      The label a viewer shows for the page instead of its number, such as ``"iv"`` or ``"A-3"``,
-      as UTF-8; ``null`` when the document has no page labels or the label is empty. No page is
-      loaded.
-
-      :param int $index: The 0-based page index.
-      :rtype: ?string
-      :throws \\ValueError: ``$index`` is outside ``0`` .. ``pageCount() - 1``.
-      :throws MemoryException: The label would not fit under ``memory_limit``.
-      :throws BusyException: ZTS only: another thread is using PDFium.
-
    .. php:method:: permanentId() -> ?string
 
       The first entry of the trailer's ``/ID``, set when the file was first written, as raw bytes:
@@ -1069,8 +1057,8 @@ Action
 
    .. php:attr:: uri
 
-      ``?string``: for ``"URI"``, the URI as written in the PDF. It is not checked: it may not be
-      UTF-8.
+      ``?string``: for ``"URI"``, the URI as written in the PDF, with the document's base URI in
+      front when it is relative and the document sets one. It is not checked: it may not be UTF-8.
 
    .. php:attr:: filePath
 

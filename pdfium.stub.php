@@ -95,16 +95,6 @@ final class Document implements \Countable, \IteratorAggregate
     public function bookmarks(): array {}
 
     /**
-     * The page's label as UTF-8, such as "iv" or "A-3"; null when the document has no page labels or
-     * the label is empty. No page is loaded.
-     *
-     * @throws \ValueError when $index is outside 0..pageCount()-1
-     * @throws MemoryException when the label would not fit under memory_limit
-     * @throws BusyException on ZTS PHP when another thread is using PDFium
-     */
-    public function pageLabel(int $index): ?string {}
-
-    /**
      * The first entry of the trailer's /ID, set when the file was created, as raw bytes; null when
      * there is none.
      *
@@ -360,7 +350,10 @@ final readonly class Action
 {
     /** "GoTo", "GoToR", "URI", "Launch", "GoToE", or "Unsupported" for every type PDFium does not read. */
     public string $type;
-    /** The URI, for a URI action: the bytes as written, which may not be UTF-8. */
+    /**
+     * The URI, for a URI action: the bytes as written, which may not be UTF-8, with the document's
+     * base URI in front when it is relative and the document sets one.
+     */
     public ?string $uri;
     /**
      * The file, as UTF-8, for a GoToR or Launch action, and for a GoToE action the PDF file that holds

@@ -206,12 +206,11 @@ PDFium would read its page number against this document and give the wrong page.
 ``filePath`` says which file; for ``"GoToE"``, it is the PDF file that holds the embedded one,
 ``null`` when that is this document.
 
-An ``"URI"`` action's ``uri`` is returned exactly as the PDF stores it. PDF asks for 7-bit ASCII,
-but real files hold UTF-8 and other encodings, so check it before you use it as text.
+A ``"URI"`` action's ``uri`` is returned as the PDF stores it, except that a relative URI gets the
+document's base URI in front, when the document sets one. PDF asks for 7-bit ASCII, but real files
+hold UTF-8 and other encodings, so check it before you use it as text.
 
-Page labels follow the document's label ranges. A page before the first range still gets a label
-from PDFium: its page number, counting from 1, so that page 0 is ``"1"``. An empty label, from a
-range with neither a style nor a prefix, is ``null``.
+A destination whose page does not exist in this document is ``null``.
 
 Actions PDFium does not read, such as JavaScript, named actions and form submission, have the
 type ``"Unsupported"`` and nothing else set.

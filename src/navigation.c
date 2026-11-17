@@ -75,7 +75,7 @@ void pdfium_destination_set(zval *zv, FPDF_DOCUMENT doc, FPDF_DEST dest)
 	static const char *views[] = {NULL, "XYZ", "Fit", "FitH", "FitV", "FitR", "FitB", "FitBH", "FitBV"};
 	int index = dest ? FPDFDest_GetDestPageIndex(doc, dest) : -1;
 
-	if (index < 0) {
+	if (index < 0 || index >= FPDF_GetPageCount(doc)) {
 		ZVAL_NULL(zv);
 		return;
 	}
@@ -385,7 +385,8 @@ static const char *bookmarks_read(FPDF_DOCUMENT doc, zval *return_value, HashTab
 		unsigned long title_bytes = FPDFBookmark_GetTitle(bm, NULL, 0);
 		size_t held = zend_hash_num_elements(visited);
 
-		if (!pdfium_memory_fits(BOOKMARK_BYTES + (size_t) title_bytes + (size_t) title_bytes / 2 * 3 + 2 * held * sizeof(zval)
+		if (!pdfium_memory_fits(BOOKMARK_BYTES + (size_t) title_bytes + (size_t) title_bytes / 2 * 3
+				+ held * (2 * sizeof(zval) + 2 * (sizeof(Bucket) + 2 * sizeof(uint32_t)))
 				+ pdfium_action_bytes(doc, FPDFBookmark_GetAction(bm)))) {
 			return "Bookmarks need";
 		}
@@ -421,56 +422,6 @@ ZEND_METHOD(Pdfium_Document, bookmarks)
 	pdfium_leave_or_throw(return_value, oom);
 }
 
-ZEND_METHOD(Pdfium_Document, pageLabel)
-{
-	pdfium_doc_handle *h = pdfium_document_from_obj(Z_OBJ_P(ZEND_THIS))->h;
-	unsigned short *units = NULL;
-	unsigned long bytes = 0;
-	zend_long index;
-
-	ZEND_PARSE_PARAMETERS_START(1, 1)
-		Z_PARAM_LONG(index)
-	ZEND_PARSE_PARAMETERS_END();
-
-	if (!pdfium_enter()) {
-		RETURN_THROWS();
-	}
-	int count = FPDF_GetPageCount(h->doc);
-
-	if (index < 0 || index >= count) {
-		pdfium_leave();
-		if (!count) {
-			zend_argument_value_error(1, "must be a page index, but the document has no pages");
-		} else {
-			zend_argument_value_error(1, "must be between 0 and %d", count - 1);
-		}
-		RETURN_THROWS();
-	}
-	bytes = FPDF_GetPageLabel(h->doc, (int) index, NULL, 0);
-	if (bytes > 2 && !pdfium_memory_fits((size_t) bytes * 3)) {
-		pdfium_leave();
-		zend_throw_exception(pdfium_ce_memory_exception, "The page label needs more memory than memory_limit leaves", 0);
-		RETURN_THROWS();
-	}
-	if (bytes > 2) {
-		units = emalloc(bytes);
-		FPDF_GetPageLabel(h->doc, (int) index, units, bytes);
-	}
-	pdfium_leave();
-	if (!units) {
-		RETURN_NULL();
-	}
-	size_t n = 0;
-
-	while (n < bytes / 2 && units[n]) {
-		n++;
-	}
-	if (n) {
-		RETVAL_STR(pdfium_utf16le_to_utf8(units, n));
-	}
-	efree(units);
-}
-
 static void file_id(INTERNAL_FUNCTION_PARAMETERS, FPDF_FILEIDTYPE type)
 {
 	pdfium_doc_handle *h = pdfium_document_from_obj(Z_OBJ_P(ZEND_THIS))->h;
@@ -481,12 +432,12 @@ static void file_id(INTERNAL_FUNCTION_PARAMETERS, FPDF_FILEIDTYPE type)
 	}
 	unsigned long bytes = FPDF_GetFileIdentifier(h->doc, type, NULL, 0);
 
-	if (bytes && !pdfium_memory_fits(bytes)) {
+	if (bytes > 1 && !pdfium_memory_fits(bytes)) {
 		pdfium_leave();
 		zend_throw_exception(pdfium_ce_memory_exception, "The file identifier needs more memory than memory_limit leaves", 0);
 		RETURN_THROWS();
 	}
-	if (bytes) {
+	if (bytes > 1) {
 		zend_string *s = zend_string_alloc(bytes, 0);
 
 		FPDF_GetFileIdentifier(h->doc, type, ZSTR_VAL(s), bytes);
