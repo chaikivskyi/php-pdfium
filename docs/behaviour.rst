@@ -235,7 +235,8 @@ Rough memory needed:
 - ``search()``: about 8 bytes per character on the page, 10 bytes per byte of the needle, and
   about 500 bytes per match.
 - ``webLinks()``: about 500 bytes per result.
-- ``links()``: about 2 KB per link, and the length of its URI or file path.
+- ``links()``: about 2 KB per link, 256 bytes per quad point, and the length of its URI or file
+  path.
 - ``bookmarks()``: about 2 KB per entry, and 5 bytes per character of its title.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 

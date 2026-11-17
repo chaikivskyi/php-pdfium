@@ -36,7 +36,6 @@ typedef struct {
 } byte_source;
 
 typedef struct {
-	FPDF_ACTION action;
 	unsigned long type;
 	byte_source src;
 	unsigned long bytes;
@@ -90,12 +89,12 @@ static void optional_points(zval *zv, FPDF_BOOL has, FS_FLOAT value)
 	}
 }
 
-static void destination_set(zval *zv, FPDF_DOCUMENT doc, FPDF_DEST dest)
+static void destination_set(zval *zv, FPDF_DOCUMENT doc, int pages, FPDF_DEST dest)
 {
 	static const char *views[] = {NULL, "XYZ", "Fit", "FitH", "FitV", "FitR", "FitB", "FitBH", "FitBV"};
 	int index = dest ? FPDFDest_GetDestPageIndex(doc, dest) : -1;
 
-	if (index < 0 || index >= FPDF_GetPageCount(doc)) {
+	if (index < 0 || index >= pages) {
 		ZVAL_NULL(zv);
 		return;
 	}
@@ -167,7 +166,7 @@ static bool has_file_path(unsigned long type)
 
 static action_info action_info_of(FPDF_DOCUMENT doc, FPDF_ACTION action)
 {
-	action_info a = {action, PDFACTION_UNSUPPORTED, {BYTES_NONE, doc, action, 0}, 0};
+	action_info a = {PDFACTION_UNSUPPORTED, {BYTES_NONE, doc, action, 0}, 0};
 
 	if (!action) {
 		return a;
@@ -182,11 +181,11 @@ static action_info action_info_of(FPDF_DOCUMENT doc, FPDF_ACTION action)
 	return a;
 }
 
-static void action_set(zval *zv, FPDF_DOCUMENT doc, const action_info *a)
+static void action_set(zval *zv, int pages, const action_info *a)
 {
 	static const char *types[] = {"Unsupported", "GoTo", "GoToR", "URI", "Launch", "GoToE"};
 
-	if (!a->action) {
+	if (!a->src.action) {
 		ZVAL_NULL(zv);
 		return;
 	}
@@ -194,20 +193,21 @@ static void action_set(zval *zv, FPDF_DOCUMENT doc, const action_info *a)
 	zend_object *obj = Z_OBJ_P(zv);
 
 	ZVAL_STRING(pdfium_slot(obj, ACTION_TYPE), a->type < sizeof(types) / sizeof(types[0]) ? types[a->type] : types[0]);
-	bytes_set(pdfium_slot(obj, ACTION_URI), &a->src, a->type == PDFACTION_URI ? a->bytes : 0);
-	bytes_set(pdfium_slot(obj, ACTION_FILE_PATH), &a->src, has_file_path(a->type) ? a->bytes : 0);
+	bytes_set(pdfium_slot(obj, ACTION_URI), &a->src, a->src.kind == BYTES_URI ? a->bytes : 0);
+	bytes_set(pdfium_slot(obj, ACTION_FILE_PATH), &a->src, a->src.kind == BYTES_FILE_PATH ? a->bytes : 0);
 	if (a->type == PDFACTION_GOTO) {
-		destination_set(pdfium_slot(obj, ACTION_DESTINATION), doc, FPDFAction_GetDest(doc, a->action));
+		destination_set(pdfium_slot(obj, ACTION_DESTINATION), a->src.doc, pages,
+			FPDFAction_GetDest(a->src.doc, a->src.action));
 	} else {
 		ZVAL_NULL(pdfium_slot(obj, ACTION_DESTINATION));
 	}
 }
 
-static void entry_targets(zval *dest_zv, zval *action_zv, FPDF_DOCUMENT doc, FPDF_DEST own_dest, const action_info *a)
+static void entry_targets(zval *dest_zv, zval *action_zv, int pages, FPDF_DEST own_dest, const action_info *a)
 {
-	action_set(action_zv, doc, a);
-	if (!a->action) {
-		destination_set(dest_zv, doc, own_dest);
+	action_set(action_zv, pages, a);
+	if (!a->src.action) {
+		destination_set(dest_zv, a->src.doc, pages, own_dest);
 	} else if (a->type == PDFACTION_GOTO) {
 		ZVAL_COPY(dest_zv, pdfium_slot(Z_OBJ_P(action_zv), ACTION_DESTINATION));
 	} else {
@@ -227,7 +227,7 @@ static void page_action(INTERNAL_FUNCTION_PARAMETERS, int which)
 	action_info a = action_info_of(ph->h->doc, FPDF_GetPageAAction(ph->page, which));
 
 	if (pdfium_memory_fits(ACTION_BYTES + (size_t) a.bytes)) {
-		action_set(return_value, ph->h->doc, &a);
+		action_set(return_value, FPDF_GetPageCount(ph->h->doc), &a);
 	} else {
 		oom = "The action needs";
 	}
@@ -244,10 +244,15 @@ ZEND_METHOD(Pdfium_Page, closeAction)
 	page_action(INTERNAL_FUNCTION_PARAM_PASSTHRU, FPDFPAGE_AACTION_CLOSE);
 }
 
-static bool link_fits(link_info *li, FPDF_DOCUMENT doc, FPDF_LINK link, uint32_t held)
+static link_info link_info_of(FPDF_DOCUMENT doc, FPDF_LINK link)
 {
-	li->quads = MAX(FPDFLink_CountQuadPoints(link), 0);
-	li->action = action_info_of(doc, FPDFLink_GetAction(link));
+	link_info li = {MAX(FPDFLink_CountQuadPoints(link), 0), action_info_of(doc, FPDFLink_GetAction(link))};
+
+	return li;
+}
+
+static bool link_fits(const link_info *li, uint32_t held)
+{
 	return pdfium_memory_fits(LINK_BYTES + (size_t) li->quads * QUAD_BYTES + 2 * (size_t) held * sizeof(zval)
 		+ (size_t) li->action.bytes);
 }
@@ -272,7 +277,7 @@ static void quad_points_set(zval *zv, FPDF_LINK link, int count)
 	}
 }
 
-static void link_set(zval *zv, FPDF_DOCUMENT doc, FPDF_LINK link, const link_info *li)
+static void link_set(zval *zv, FPDF_DOCUMENT doc, int pages, FPDF_LINK link, const link_info *li)
 {
 	FS_RECTF r = {0};
 
@@ -282,8 +287,8 @@ static void link_set(zval *zv, FPDF_DOCUMENT doc, FPDF_LINK link, const link_inf
 
 	pdfium_rect_init(pdfium_slot(obj, LINK_RECT), r.left, r.bottom, r.right, r.top);
 	quad_points_set(pdfium_slot(obj, LINK_QUAD_POINTS), link, li->quads);
-	entry_targets(pdfium_slot(obj, LINK_DESTINATION), pdfium_slot(obj, LINK_ACTION), doc,
-		li->action.action ? NULL : FPDFLink_GetDest(doc, link), &li->action);
+	entry_targets(pdfium_slot(obj, LINK_DESTINATION), pdfium_slot(obj, LINK_ACTION), pages,
+		li->action.src.action ? NULL : FPDFLink_GetDest(doc, link), &li->action);
 }
 
 ZEND_METHOD(Pdfium_Page, links)
@@ -297,16 +302,18 @@ ZEND_METHOD(Pdfium_Page, links)
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
+	int pages = FPDF_GetPageCount(ph->h->doc);
+
 	array_init(return_value);
 	while (FPDFLink_Enumerate(ph->page, &pos, &link)) {
-		link_info li;
+		link_info li = link_info_of(ph->h->doc, link);
 		zval zl;
 
-		if (!link_fits(&li, ph->h->doc, link, zend_hash_num_elements(Z_ARRVAL_P(return_value)))) {
+		if (!link_fits(&li, zend_hash_num_elements(Z_ARRVAL_P(return_value)))) {
 			oom = "Links need";
 			break;
 		}
-		link_set(&zl, ph->h->doc, link, &li);
+		link_set(&zl, ph->h->doc, pages, link, &li);
 		add_next_index_zval(return_value, &zl);
 	}
 	pdfium_leave_or_throw(return_value, oom);
@@ -331,12 +338,15 @@ ZEND_METHOD(Pdfium_Page, linkAt)
 		RETURN_THROWS();
 	}
 	FPDF_LINK link = FPDFLink_GetLinkAtPoint(ph->page, x, y);
-	link_info li;
 
-	if (link && link_fits(&li, ph->h->doc, link, 0)) {
-		link_set(return_value, ph->h->doc, link, &li);
-	} else if (link) {
-		oom = "Links need";
+	if (link) {
+		link_info li = link_info_of(ph->h->doc, link);
+
+		if (link_fits(&li, 0)) {
+			link_set(return_value, ph->h->doc, FPDF_GetPageCount(ph->h->doc), link, &li);
+		} else {
+			oom = "Links need";
+		}
 	}
 	pdfium_leave_or_throw(return_value, oom);
 }
@@ -377,8 +387,8 @@ static void bookmark_title_set(zval *zv, FPDF_BOOKMARK bm, unsigned long bytes)
 	efree(units);
 }
 
-static zend_object *bookmark_append(zval *into, FPDF_DOCUMENT doc, FPDF_BOOKMARK bm, unsigned long title_bytes,
-	const action_info *a)
+static zend_object *bookmark_append(zval *into, FPDF_DOCUMENT doc, int pages, FPDF_BOOKMARK bm,
+	unsigned long title_bytes, const action_info *a)
 {
 	zval zb;
 	int style = FPDFBookmark_GetStyle(bm);
@@ -391,8 +401,8 @@ static zend_object *bookmark_append(zval *into, FPDF_DOCUMENT doc, FPDF_BOOKMARK
 	bookmark_color_set(pdfium_slot(obj, BOOKMARK_COLOR), bm);
 	ZVAL_BOOL(pdfium_slot(obj, BOOKMARK_ITALIC), style & 1);
 	ZVAL_BOOL(pdfium_slot(obj, BOOKMARK_BOLD), style & 2);
-	entry_targets(pdfium_slot(obj, BOOKMARK_DESTINATION), pdfium_slot(obj, BOOKMARK_ACTION), doc,
-		a->action ? NULL : FPDFBookmark_GetDest(doc, bm), a);
+	entry_targets(pdfium_slot(obj, BOOKMARK_DESTINATION), pdfium_slot(obj, BOOKMARK_ACTION), pages,
+		a->src.action ? NULL : FPDFBookmark_GetDest(doc, bm), a);
 	array_init(pdfium_slot(obj, BOOKMARK_CHILDREN));
 	add_next_index_zval(into, &zb);
 	return obj;
@@ -400,7 +410,7 @@ static zend_object *bookmark_append(zval *into, FPDF_DOCUMENT doc, FPDF_BOOKMARK
 
 static const char *bookmarks_read(FPDF_DOCUMENT doc, zval *return_value, HashTable *visited, bookmark_level *levels)
 {
-	int depth = 1;
+	int depth = 1, pages = FPDF_GetPageCount(doc);
 
 	levels[0].next = FPDFBookmark_GetFirstChild(doc, NULL);
 	levels[0].into = return_value;
@@ -421,7 +431,7 @@ static const char *bookmarks_read(FPDF_DOCUMENT doc, zval *return_value, HashTab
 			return "Bookmarks need";
 		}
 		zend_hash_index_add_empty_element(visited, (zend_ulong) (uintptr_t) bm);
-		zend_object *obj = bookmark_append(level->into, doc, bm, title_bytes, &a);
+		zend_object *obj = bookmark_append(level->into, doc, pages, bm, title_bytes, &a);
 
 		level->next = FPDFBookmark_GetNextSibling(doc, bm);
 		if (depth < BOOKMARK_DEPTH) {
