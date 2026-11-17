@@ -13,8 +13,9 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator` and
 :php:class:`Bitmap` cannot be cloned or serialized. The value classes (:php:class:`Metadata`,
 :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`, :php:class:`Color`,
-:php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`, :php:class:`Destination` and
-:php:class:`Action`) are read-only and can be cloned and serialized.
+:php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`, :php:class:`Destination`,
+:php:class:`Action`, :php:class:`Link` and :php:class:`Quad`) are read-only and can be cloned and
+serialized.
 
 
 Document
@@ -359,6 +360,36 @@ Page
 
       :rtype: ?Action
       :throws MemoryException: The action would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: links() -> array
+
+      The page's link annotations, as :php:class:`Link` objects, back to front. These are the
+      areas a viewer makes clickable; URLs that are only written in the text are in
+      :php:meth:`TextPage::webLinks`.
+
+      .. code-block:: php
+
+         foreach ($page->links() as $link) {
+             if ($link->action?->type === 'URI') {
+                 echo $link->action->uri, "\n";
+             } elseif ($link->destination) {
+                 echo 'page ', $link->destination->pageIndex + 1, "\n";
+             }
+         }
+
+      :rtype: Link[]
+      :throws MemoryException: The links would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: linkAt(float $x, float $y) -> ?Link
+
+      The topmost link annotation at a point, or ``null``. The point is in points, as
+      :php:class:`TextPage` gives positions.
+
+      :rtype: ?Link
+      :throws \\ValueError: ``$x`` or ``$y`` is not finite.
+      :throws MemoryException: The link would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
 
@@ -838,6 +869,54 @@ WebLink
       :php:class:`Rect[] <Rect>`: one per line the URL covers.
 
 
+Link
+----
+
+.. php:class:: Link
+
+   One link annotation from :php:meth:`Page::links` or :php:meth:`Page::linkAt`: a final,
+   read-only value.
+
+   .. php:attr:: rect
+
+      :php:class:`Rect`: the annotation's rectangle.
+
+   .. php:attr:: quadPoints
+
+      :php:class:`Quad[] <Quad>`: the areas that activate the link, when the annotation gives them,
+      such as one per line of a link that wraps; empty otherwise, and then :php:attr:`rect` is the
+      area.
+
+   .. php:attr:: destination
+
+      ``?Destination``: where the link leads in this document; ``null`` when it leads to another
+      file, opens a URI or does nothing. See :ref:`navigation`.
+
+   .. php:attr:: action
+
+      ``?Action``: what the link does, when it has an action rather than a plain destination.
+
+
+Quad
+----
+
+.. php:class:: Quad
+
+   The four corners of a quadrilateral, in points: a final, read-only value.
+
+   .. php:attr:: x1
+
+      ``float``: the corners, as ``x1``, ``y1`` to ``x4``, ``y4``, in the order the PDF gives them.
+
+   .. php:attr:: y1
+   .. php:attr:: x2
+   .. php:attr:: y2
+   .. php:attr:: x3
+   .. php:attr:: y3
+   .. php:attr:: x4
+   .. php:attr:: y4
+
+
 Destination
 -----------
 
@@ -894,7 +973,8 @@ Action
 
    .. php:attr:: filePath
 
-      ``?string``: for ``"GoToR"`` and ``"Launch"``, the file, as UTF-8.
+      ``?string``: the file, as UTF-8, for ``"GoToR"`` and ``"Launch"``; for ``"GoToE"``, the PDF
+      file that holds the embedded one, ``null`` when that is this document.
 
    .. php:attr:: destination
 

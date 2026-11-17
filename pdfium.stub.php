@@ -323,10 +323,42 @@ final readonly class Action
     public string $type;
     /** The URI, for a URI action: the bytes as written, which may not be UTF-8. */
     public ?string $uri;
-    /** The file, as UTF-8, for a GoToR or Launch action. */
+    /**
+     * The file, as UTF-8, for a GoToR or Launch action, and for a GoToE action the PDF file that holds
+     * the embedded one; null when the action names none.
+     */
     public ?string $filePath;
     /** Where a GoTo action leads; null for every other type. */
     public ?Destination $destination;
+
+    private function __construct() {}
+}
+
+/** A link annotation on a page, as Page::links() returns it. Coordinates are in points, as TextPage gives them. */
+final readonly class Link
+{
+    /** The annotation's rectangle. */
+    public Rect $rect;
+    /** @var Quad[] the areas that activate the link; empty when the annotation has none */
+    public array $quadPoints;
+    /** Where the link leads in this document; null when it leads elsewhere or nowhere. */
+    public ?Destination $destination;
+    public ?Action $action;
+
+    private function __construct() {}
+}
+
+/** The four corners of a quadrilateral, in points. */
+final readonly class Quad
+{
+    public float $x1;
+    public float $y1;
+    public float $x2;
+    public float $y2;
+    public float $x3;
+    public float $y3;
+    public float $x4;
+    public float $y4;
 
     private function __construct() {}
 }
@@ -427,6 +459,24 @@ final class Page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function closeAction(): ?Action {}
+
+    /**
+     * The page's link annotations, in the page's annotation order: back to front.
+     *
+     * @return Link[]
+     * @throws MemoryException when the links would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function links(): array {}
+
+    /**
+     * The topmost link annotation at this point, in points as TextPage gives them; null when there is none.
+     *
+     * @throws \ValueError when $x or $y is not finite
+     * @throws MemoryException when the link would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function linkAt(float $x, float $y): ?Link {}
 }
 
 /**

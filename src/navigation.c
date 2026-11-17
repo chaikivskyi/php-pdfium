@@ -7,9 +7,12 @@
 #include "zend_exceptions.h"
 
 #define ACTION_BYTES 1024
+#define LINK_BYTES 2048
+#define QUAD_BYTES 256
 
 enum { DEST_PAGE_INDEX, DEST_VIEW, DEST_PARAMS, DEST_X, DEST_Y, DEST_ZOOM };
 enum { ACTION_TYPE, ACTION_URI, ACTION_FILE_PATH, ACTION_DESTINATION };
+enum { LINK_RECT, LINK_QUAD_POINTS, LINK_DESTINATION, LINK_ACTION };
 
 ZEND_METHOD(Pdfium_Destination, __construct)
 {
@@ -21,10 +24,22 @@ ZEND_METHOD(Pdfium_Action, __construct)
 	ZEND_PARSE_PARAMETERS_NONE();
 }
 
+ZEND_METHOD(Pdfium_Link, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+ZEND_METHOD(Pdfium_Quad, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
 bool pdfium_navigation_slots_match(void)
 {
 	return pdfium_slots_named(pdfium_ce_destination, "pageIndex view params x y zoom")
-		&& pdfium_slots_named(pdfium_ce_action, "type uri filePath destination");
+		&& pdfium_slots_named(pdfium_ce_action, "type uri filePath destination")
+		&& pdfium_slots_named(pdfium_ce_link, "rect quadPoints destination action")
+		&& pdfium_slots_named(pdfium_ce_quad, "x1 y1 x2 y2 x3 y3 x4 y4");
 }
 
 static void optional_points(zval *zv, FPDF_BOOL has, FS_FLOAT value)
@@ -96,7 +111,7 @@ size_t pdfium_action_bytes(FPDF_DOCUMENT doc, FPDF_ACTION action)
 
 static void bytes_set(zval *zv, unsigned long length, bool uri, FPDF_DOCUMENT doc, FPDF_ACTION action)
 {
-	if (!length) {
+	if (length <= 1) {
 		ZVAL_NULL(zv);
 		return;
 	}
@@ -179,4 +194,101 @@ ZEND_METHOD(Pdfium_Page, openAction)
 ZEND_METHOD(Pdfium_Page, closeAction)
 {
 	page_action(INTERNAL_FUNCTION_PARAM_PASSTHRU, FPDFPAGE_AACTION_CLOSE);
+}
+
+static bool link_fits(FPDF_DOCUMENT doc, FPDF_LINK link, uint32_t held)
+{
+	size_t quads = (size_t) MAX(FPDFLink_CountQuadPoints(link), 0);
+
+	return pdfium_memory_fits(LINK_BYTES + quads * QUAD_BYTES + 2 * (size_t) held * sizeof(zval)
+		+ pdfium_action_bytes(doc, FPDFLink_GetAction(link)));
+}
+
+static void quad_points_set(zval *zv, FPDF_LINK link)
+{
+	int count = MAX(FPDFLink_CountQuadPoints(link), 0);
+
+	array_init_size(zv, (uint32_t) count);
+	for (int i = 0; i < count; i++) {
+		FS_QUADPOINTSF q;
+		zval zq;
+
+		if (!FPDFLink_GetQuadPoints(link, i, &q)) {
+			continue;
+		}
+		float corners[] = {q.x1, q.y1, q.x2, q.y2, q.x3, q.y3, q.x4, q.y4};
+
+		object_init_ex(&zq, pdfium_ce_quad);
+		for (int c = 0; c < 8; c++) {
+			ZVAL_DOUBLE(pdfium_slot(Z_OBJ(zq), c), pdfium_points(corners[c]));
+		}
+		add_next_index_zval(zv, &zq);
+	}
+}
+
+static void link_set(zval *zv, FPDF_DOCUMENT doc, FPDF_LINK link)
+{
+	FS_RECTF r = {0};
+
+	FPDFLink_GetAnnotRect(link, &r);
+	object_init_ex(zv, pdfium_ce_link);
+	zend_object *obj = Z_OBJ_P(zv);
+
+	pdfium_rect_init(pdfium_slot(obj, LINK_RECT), r.left, r.bottom, r.right, r.top);
+	quad_points_set(pdfium_slot(obj, LINK_QUAD_POINTS), link);
+	pdfium_entry_targets(pdfium_slot(obj, LINK_DESTINATION), pdfium_slot(obj, LINK_ACTION), doc,
+		FPDFLink_GetDest(doc, link), FPDFLink_GetAction(link));
+}
+
+ZEND_METHOD(Pdfium_Page, links)
+{
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+	const char *oom = NULL;
+	FPDF_LINK link;
+	int pos = 0;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	array_init(return_value);
+	while (FPDFLink_Enumerate(ph->page, &pos, &link)) {
+		zval zl;
+
+		if (!link_fits(ph->h->doc, link, zend_hash_num_elements(Z_ARRVAL_P(return_value)))) {
+			oom = "Links need";
+			break;
+		}
+		link_set(&zl, ph->h->doc, link);
+		add_next_index_zval(return_value, &zl);
+	}
+	pdfium_leave_or_throw(return_value, oom);
+}
+
+ZEND_METHOD(Pdfium_Page, linkAt)
+{
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+	const char *oom = NULL;
+	double x, y;
+
+	ZEND_PARSE_PARAMETERS_START(2, 2)
+		Z_PARAM_DOUBLE(x)
+		Z_PARAM_DOUBLE(y)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!zend_finite(x) || !zend_finite(y)) {
+		zend_argument_value_error(zend_finite(x) ? 2 : 1, "must be finite");
+		RETURN_THROWS();
+	}
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	FPDF_LINK link = FPDFLink_GetLinkAtPoint(ph->page, x, y);
+
+	if (link && link_fits(ph->h->doc, link, 0)) {
+		link_set(return_value, ph->h->doc, link);
+	} else if (link) {
+		oom = "Links need";
+	}
+	pdfium_leave_or_throw(return_value, oom);
 }

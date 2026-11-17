@@ -15,8 +15,9 @@ Features:
   (two channels, gray and alpha, in a transparent PNG).
 - ``Page::openAction()`` and ``Page::closeAction()``: the actions a viewer runs when it opens or
   closes the page.
-- Value classes ``Destination`` (a page in this document and how to show it) and ``Action``
-  (``GoTo``, ``GoToR``, ``URI``, ``Launch`` and ``GoToE`` actions).
+- ``Page::links()`` and ``Page::linkAt()``: the page's link annotations, with where they lead.
+- Value classes ``Link``, ``Quad``, ``Destination`` (a page in this document and how to show it)
+  and ``Action`` (``GoTo``, ``GoToR``, ``URI``, ``Launch`` and ``GoToE`` actions).
 
 v0.2.0 (2026-11-15)
 -------------------

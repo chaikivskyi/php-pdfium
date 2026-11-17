@@ -4,7 +4,7 @@ Document, Page, PageIterator and Bitmap cannot be created except through the API
 pdfium
 --FILE--
 <?php
-foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Metadata', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Destination', 'Action', 'Rect'] as $c) {
+foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Metadata', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Destination', 'Action', 'Link', 'Quad', 'Rect'] as $c) {
     $fq = "Pdfium\\$c";
     $r = new ReflectionClass($fq);
     echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true),
@@ -72,6 +72,14 @@ Destination final=true cloneable=true instantiable=false abstract=false
   created
   created
 Action final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
+Link final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
+Quad final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created

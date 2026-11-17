@@ -23,6 +23,8 @@ zend_class_entry *pdfium_ce_text_match;
 zend_class_entry *pdfium_ce_web_link;
 zend_class_entry *pdfium_ce_destination;
 zend_class_entry *pdfium_ce_action;
+zend_class_entry *pdfium_ce_link;
+zend_class_entry *pdfium_ce_quad;
 zend_class_entry *pdfium_ce_exception;
 zend_class_entry *pdfium_ce_file_exception;
 zend_class_entry *pdfium_ce_format_exception;
@@ -112,6 +114,8 @@ PHP_MINIT_FUNCTION(pdfium)
 	pdfium_ce_web_link = register_class_Pdfium_WebLink();
 	pdfium_ce_destination = register_class_Pdfium_Destination();
 	pdfium_ce_action = register_class_Pdfium_Action();
+	pdfium_ce_link = register_class_Pdfium_Link();
+	pdfium_ce_quad = register_class_Pdfium_Quad();
 
 	/* Before Document: its getIterator() return type narrows IteratorAggregate's to PageIterator. */
 	init_handlers(&page_iterator_handlers, XtOffsetOf(pdfium_page_iterator, std), pdfium_page_iterator_free_obj);

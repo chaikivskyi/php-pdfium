@@ -184,10 +184,22 @@ PDFium cannot map.
 Navigation
 ----------
 
+Link annotations are the areas a viewer makes clickable. Their coordinates are in points, as for
+:ref:`text positions <text-positions>`, without the page's rotation. ``links()`` lists them back to
+front, as the page stores them, and ``linkAt()`` gives the one in front. A URL that is only
+written in the text, with no annotation, is not a link annotation; ``TextPage::webLinks()`` finds
+those.
+
+A bookmark or link leads either to a destination or through an action. Its ``destination`` is
+where it leads in this document: its own destination, or that of its ``"GoTo"`` action, so for a
+``"GoTo"`` action the same destination appears twice. With any other action, ``destination`` is
+``null``.
+
 A :php:class:`Destination <Pdfium\\Destination>` is always in this document. An action that
 leads into another file (``"GoToR"``) or into an embedded file (``"GoToE"``) has no destination:
 PDFium would read its page number against this document and give the wrong page. Its
-``filePath`` says which file.
+``filePath`` says which file; for ``"GoToE"``, it is the PDF file that holds the embedded one,
+``null`` when that is this document.
 
 An ``"URI"`` action's ``uri`` is returned exactly as the PDF stores it. PDF asks for 7-bit ASCII,
 but real files hold UTF-8 and other encodings, so check it before you use it as text.
@@ -215,6 +227,7 @@ Rough memory needed:
 - ``search()``: about 8 bytes per character on the page, 10 bytes per byte of the needle, and
   about 500 bytes per match.
 - ``webLinks()``: about 500 bytes per result.
+- ``links()``: about 2 KB per link, and the length of its URI or file path.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 
 With ``memory_limit = -1`` there are no checks.

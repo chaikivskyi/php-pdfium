@@ -57,6 +57,8 @@ extern zend_class_entry *pdfium_ce_text_match;
 extern zend_class_entry *pdfium_ce_web_link;
 extern zend_class_entry *pdfium_ce_destination;
 extern zend_class_entry *pdfium_ce_action;
+extern zend_class_entry *pdfium_ce_link;
+extern zend_class_entry *pdfium_ce_quad;
 extern zend_class_entry *pdfium_ce_exception;
 extern zend_class_entry *pdfium_ce_file_exception;
 extern zend_class_entry *pdfium_ce_format_exception;
