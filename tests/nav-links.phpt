@@ -62,6 +62,18 @@ $bare = Pdfium\Document::fromString(nav_pdf(
     pageExtra: ['/Annots [6 0 R]', '', ''],
 ))->page(0)->links()[0];
 var_dump($bare->destination, $bare->action);
+$named = Pdfium\Document::fromString(nav_pdf(
+    '/Names << /Dests << /Names [(chap2) [4 0 R /FitH 300] (gone) [99 /Fit]] >> >>',
+    [
+        '<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /Dest (chap2) >>',
+        '<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /A << /S /GoTo /D (chap2) >> >>',
+        '<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /Dest (gone) >>',
+        '<< /Type /Annot /Subtype /Link /Rect [0 0 10 10] /Dest (missing) >>',
+    ],
+    ['/Annots [6 0 R 7 0 R 8 0 R 9 0 R]', '', ''],
+))->page(0)->links();
+var_dump($named[0]->destination->pageIndex, $named[0]->destination->view, $named[0]->destination->params);
+var_dump($named[1]->action->destination == $named[0]->destination, $named[2]->destination, $named[3]->destination);
 ?>
 --EXPECT--
 6
@@ -97,5 +109,14 @@ NULL
 NULL
 string(33) "https://example.com/dir/page.html"
 string(9) "outer.pdf"
+NULL
+NULL
+int(1)
+string(4) "FitH"
+array(1) {
+  [0]=>
+  float(300)
+}
+bool(true)
 NULL
 NULL

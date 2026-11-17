@@ -368,7 +368,7 @@ static void bookmark_title_set(zval *zv, FPDF_BOOKMARK bm, unsigned long bytes)
 	efree(units);
 }
 
-static bool bookmark_fits(unsigned long title_bytes, uint32_t held, const action_info *a)
+static bool bookmark_fits(unsigned long title_bytes, const action_info *a, uint32_t held)
 {
 	return pdfium_memory_fits(BOOKMARK_BYTES + (size_t) title_bytes + (size_t) title_bytes / 2 * 3
 		+ (size_t) held * (2 * sizeof(zval) + 2 * (sizeof(Bucket) + 2 * sizeof(uint32_t))) + (size_t) a->bytes);
@@ -412,7 +412,7 @@ static const char *bookmarks_of(FPDF_DOCUMENT doc, zval *return_value, HashTable
 		unsigned long title_bytes = FPDFBookmark_GetTitle(bm, NULL, 0);
 		action_info a = action_read(doc, FPDFBookmark_GetAction(bm));
 
-		if (!bookmark_fits(title_bytes, zend_hash_num_elements(visited), &a)) {
+		if (!bookmark_fits(title_bytes, &a, zend_hash_num_elements(visited))) {
 			return "Bookmarks need";
 		}
 		zend_hash_index_add_empty_element(visited, (zend_ulong) (uintptr_t) bm);
