@@ -235,9 +235,12 @@ Rough memory needed:
 - ``search()``: about 8 bytes per character on the page, 10 bytes per byte of the needle, and
   about 500 bytes per match.
 - ``webLinks()``: about 500 bytes per result.
-- ``links()``: about 2 KB per link, 256 bytes per quad point, and the length of its URI or file
-  path.
-- ``bookmarks()``: about 2 KB per entry, and 5 bytes per character of its title.
+- ``links()`` and ``linkAt()``: about 2 KB per link, 256 bytes per :php:class:`Quad
+  <Pdfium\\Quad>`, and the length of its URI or file path.
+- ``openAction()`` and ``closeAction()``: about 1 KB, and the length of the URI or file path.
+- ``bookmarks()``: about 2 KB per entry, 5 bytes per character of its title, and the length of
+  its URI or file path.
+- ``permanentId()`` and ``changingId()``: the length of the identifier.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 
 With ``memory_limit = -1`` there are no checks.

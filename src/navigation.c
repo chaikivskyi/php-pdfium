@@ -12,14 +12,15 @@
 #define BOOKMARK_BYTES 2048
 #define BOOKMARK_DEPTH 100
 
-enum { DEST_PAGE_INDEX, DEST_VIEW, DEST_PARAMS, DEST_X, DEST_Y, DEST_ZOOM };
-enum { ACTION_TYPE, ACTION_URI, ACTION_FILE_PATH, ACTION_DESTINATION };
-enum { LINK_RECT, LINK_QUAD_POINTS, LINK_DESTINATION, LINK_ACTION };
 enum {
 	BOOKMARK_TITLE, BOOKMARK_OPEN, BOOKMARK_COLOR, BOOKMARK_ITALIC, BOOKMARK_BOLD, BOOKMARK_DESTINATION, BOOKMARK_ACTION,
 	BOOKMARK_CHILDREN,
 };
+enum { LINK_RECT, LINK_QUAD_POINTS, LINK_DESTINATION, LINK_ACTION };
+enum { DEST_PAGE_INDEX, DEST_VIEW, DEST_PARAMS, DEST_X, DEST_Y, DEST_ZOOM };
+enum { ACTION_TYPE, ACTION_URI, ACTION_FILE_PATH, ACTION_DESTINATION };
 enum { COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_ALPHA };
+enum { STYLE_ITALIC = 1, STYLE_BOLD = 2 };
 
 typedef struct {
 	FPDF_BOOKMARK next;
@@ -38,12 +39,7 @@ typedef struct {
 	action_info action;
 } link_info;
 
-ZEND_METHOD(Pdfium_Destination, __construct)
-{
-	ZEND_PARSE_PARAMETERS_NONE();
-}
-
-ZEND_METHOD(Pdfium_Action, __construct)
+ZEND_METHOD(Pdfium_Bookmark, __construct)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
 }
@@ -58,18 +54,23 @@ ZEND_METHOD(Pdfium_Quad, __construct)
 	ZEND_PARSE_PARAMETERS_NONE();
 }
 
-ZEND_METHOD(Pdfium_Bookmark, __construct)
+ZEND_METHOD(Pdfium_Destination, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+ZEND_METHOD(Pdfium_Action, __construct)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
 }
 
 bool pdfium_navigation_slots_match(void)
 {
-	return pdfium_slots_named(pdfium_ce_destination, "pageIndex view params x y zoom")
-		&& pdfium_slots_named(pdfium_ce_action, "type uri filePath destination")
+	return pdfium_slots_named(pdfium_ce_bookmark, "title open color italic bold destination action children")
 		&& pdfium_slots_named(pdfium_ce_link, "rect quadPoints destination action")
 		&& pdfium_slots_named(pdfium_ce_quad, "x1 y1 x2 y2 x3 y3 x4 y4")
-		&& pdfium_slots_named(pdfium_ce_bookmark, "title open color italic bold destination action children");
+		&& pdfium_slots_named(pdfium_ce_destination, "pageIndex view params x y zoom")
+		&& pdfium_slots_named(pdfium_ce_action, "type uri filePath destination");
 }
 
 static void optional_points(zval *zv, FPDF_BOOL has, FS_FLOAT value)
@@ -152,7 +153,7 @@ static void action_bytes_set(zval *zv, const action_info *a, bool applies)
 	ZVAL_STR(zv, s);
 }
 
-static action_info action_info_of(FPDF_DOCUMENT doc, FPDF_ACTION action)
+static action_info action_read(FPDF_DOCUMENT doc, FPDF_ACTION action)
 {
 	action_info a = {doc, action, PDFACTION_UNSUPPORTED, 0};
 
@@ -184,7 +185,7 @@ static void action_set(zval *zv, int pages, const action_info *a)
 	}
 }
 
-static void entry_targets(zval *dest_zv, zval *action_zv, int pages, FPDF_DEST own_dest, const action_info *a)
+static void targets_set(zval *dest_zv, zval *action_zv, int pages, FPDF_DEST own_dest, const action_info *a)
 {
 	action_set(action_zv, pages, a);
 	if (!a->action) {
@@ -205,7 +206,7 @@ static void page_action(INTERNAL_FUNCTION_PARAMETERS, int which)
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	action_info a = action_info_of(ph->h->doc, FPDF_GetPageAAction(ph->page, which));
+	action_info a = action_read(ph->h->doc, FPDF_GetPageAAction(ph->page, which));
 
 	if (pdfium_memory_fits(ACTION_BYTES + (size_t) a.bytes)) {
 		action_set(return_value, FPDF_GetPageCount(ph->h->doc), &a);
@@ -225,9 +226,9 @@ ZEND_METHOD(Pdfium_Page, closeAction)
 	page_action(INTERNAL_FUNCTION_PARAM_PASSTHRU, FPDFPAGE_AACTION_CLOSE);
 }
 
-static link_info link_info_of(FPDF_DOCUMENT doc, FPDF_LINK link)
+static link_info link_read(FPDF_DOCUMENT doc, FPDF_LINK link)
 {
-	link_info li = {MAX(FPDFLink_CountQuadPoints(link), 0), action_info_of(doc, FPDFLink_GetAction(link))};
+	link_info li = {MAX(FPDFLink_CountQuadPoints(link), 0), action_read(doc, FPDFLink_GetAction(link))};
 
 	return li;
 }
@@ -268,7 +269,7 @@ static void link_set(zval *zv, FPDF_DOCUMENT doc, int pages, FPDF_LINK link, con
 
 	pdfium_rect_init(pdfium_slot(obj, LINK_RECT), r.left, r.bottom, r.right, r.top);
 	quad_points_set(pdfium_slot(obj, LINK_QUAD_POINTS), link, li->quads);
-	entry_targets(pdfium_slot(obj, LINK_DESTINATION), pdfium_slot(obj, LINK_ACTION), pages,
+	targets_set(pdfium_slot(obj, LINK_DESTINATION), pdfium_slot(obj, LINK_ACTION), pages,
 		li->action.action ? NULL : FPDFLink_GetDest(doc, link), &li->action);
 }
 
@@ -287,7 +288,7 @@ ZEND_METHOD(Pdfium_Page, links)
 
 	array_init(return_value);
 	while (FPDFLink_Enumerate(ph->page, &pos, &link)) {
-		link_info li = link_info_of(ph->h->doc, link);
+		link_info li = link_read(ph->h->doc, link);
 		zval zl;
 
 		if (!link_fits(&li, zend_hash_num_elements(Z_ARRVAL_P(return_value)))) {
@@ -321,7 +322,7 @@ ZEND_METHOD(Pdfium_Page, linkAt)
 	FPDF_LINK link = FPDFLink_GetLinkAtPoint(ph->page, pdfium_float_side(x), pdfium_float_side(y));
 
 	if (link) {
-		link_info li = link_info_of(ph->h->doc, link);
+		link_info li = link_read(ph->h->doc, link);
 
 		if (link_fits(&li, 0)) {
 			link_set(return_value, ph->h->doc, FPDF_GetPageCount(ph->h->doc), link, &li);
@@ -368,6 +369,12 @@ static void bookmark_title_set(zval *zv, FPDF_BOOKMARK bm, unsigned long bytes)
 	efree(units);
 }
 
+static bool bookmark_fits(unsigned long title_bytes, uint32_t held, const action_info *a)
+{
+	return pdfium_memory_fits(BOOKMARK_BYTES + (size_t) title_bytes + (size_t) title_bytes / 2 * 3
+		+ (size_t) held * (2 * sizeof(zval) + 2 * (sizeof(Bucket) + 2 * sizeof(uint32_t))) + (size_t) a->bytes);
+}
+
 static zend_object *bookmark_append(zval *into, FPDF_DOCUMENT doc, int pages, FPDF_BOOKMARK bm,
 	unsigned long title_bytes, const action_info *a)
 {
@@ -380,16 +387,16 @@ static zend_object *bookmark_append(zval *into, FPDF_DOCUMENT doc, int pages, FP
 	bookmark_title_set(pdfium_slot(obj, BOOKMARK_TITLE), bm, title_bytes);
 	ZVAL_BOOL(pdfium_slot(obj, BOOKMARK_OPEN), FPDFBookmark_GetCount(bm) > 0);
 	bookmark_color_set(pdfium_slot(obj, BOOKMARK_COLOR), bm);
-	ZVAL_BOOL(pdfium_slot(obj, BOOKMARK_ITALIC), style & 1);
-	ZVAL_BOOL(pdfium_slot(obj, BOOKMARK_BOLD), style & 2);
-	entry_targets(pdfium_slot(obj, BOOKMARK_DESTINATION), pdfium_slot(obj, BOOKMARK_ACTION), pages,
+	ZVAL_BOOL(pdfium_slot(obj, BOOKMARK_ITALIC), style & STYLE_ITALIC);
+	ZVAL_BOOL(pdfium_slot(obj, BOOKMARK_BOLD), style & STYLE_BOLD);
+	targets_set(pdfium_slot(obj, BOOKMARK_DESTINATION), pdfium_slot(obj, BOOKMARK_ACTION), pages,
 		a->action ? NULL : FPDFBookmark_GetDest(doc, bm), a);
 	array_init(pdfium_slot(obj, BOOKMARK_CHILDREN));
 	add_next_index_zval(into, &zb);
 	return obj;
 }
 
-static const char *bookmarks_read(FPDF_DOCUMENT doc, zval *return_value, HashTable *visited, bookmark_level *levels)
+static const char *bookmarks_of(FPDF_DOCUMENT doc, zval *return_value, HashTable *visited, bookmark_level *levels)
 {
 	int depth = 1, pages = FPDF_GetPageCount(doc);
 
@@ -404,11 +411,9 @@ static const char *bookmarks_read(FPDF_DOCUMENT doc, zval *return_value, HashTab
 			continue;
 		}
 		unsigned long title_bytes = FPDFBookmark_GetTitle(bm, NULL, 0);
-		size_t held = zend_hash_num_elements(visited);
-		action_info a = action_info_of(doc, FPDFBookmark_GetAction(bm));
+		action_info a = action_read(doc, FPDFBookmark_GetAction(bm));
 
-		if (!pdfium_memory_fits(BOOKMARK_BYTES + (size_t) title_bytes + (size_t) title_bytes / 2 * 3
-				+ held * (2 * sizeof(zval) + 2 * (sizeof(Bucket) + 2 * sizeof(uint32_t))) + (size_t) a.bytes)) {
+		if (!bookmark_fits(title_bytes, zend_hash_num_elements(visited), &a)) {
 			return "Bookmarks need";
 		}
 		zend_hash_index_add_empty_element(visited, (zend_ulong) (uintptr_t) bm);
@@ -426,7 +431,7 @@ static const char *bookmarks_read(FPDF_DOCUMENT doc, zval *return_value, HashTab
 
 ZEND_METHOD(Pdfium_Document, bookmarks)
 {
-	pdfium_doc_handle *h = pdfium_document_from_obj(Z_OBJ_P(ZEND_THIS))->h;
+	pdfium_doc_handle *h = pdfium_this_document(ZEND_THIS);
 	bookmark_level levels[BOOKMARK_DEPTH];
 	HashTable visited;
 
@@ -437,7 +442,7 @@ ZEND_METHOD(Pdfium_Document, bookmarks)
 	zend_hash_init(&visited, 8, NULL, NULL, 0);
 	array_init(return_value);
 
-	const char *oom = bookmarks_read(h->doc, return_value, &visited, levels);
+	const char *oom = bookmarks_of(h->doc, return_value, &visited, levels);
 
 	zend_hash_destroy(&visited);
 	pdfium_leave_or_throw(return_value, oom);

@@ -326,46 +326,6 @@ final readonly class WebLink
     private function __construct() {}
 }
 
-/** Where a bookmark, link or action leads in this document. */
-final readonly class Destination
-{
-    /** The 0-based index of the target page. */
-    public int $pageIndex;
-    /** "XYZ", "Fit", "FitH", "FitV", "FitR", "FitB", "FitBH" or "FitBV"; null when PDFium cannot tell. */
-    public ?string $view;
-    /** @var float[] the view's parameters as PDFium gives them, at most 4 */
-    public array $params;
-    /** The left edge to show, for an XYZ view; null when absent or for another view. */
-    public ?float $x;
-    /** The top edge to show, for an XYZ view; null when absent or for another view. */
-    public ?float $y;
-    /** The zoom factor, for an XYZ view; null when absent or for another view. */
-    public ?float $zoom;
-
-    private function __construct() {}
-}
-
-/** What a bookmark, link or page event does. */
-final readonly class Action
-{
-    /** "GoTo", "GoToR", "URI", "Launch", "GoToE", or "Unsupported" for every type PDFium does not read. */
-    public string $type;
-    /**
-     * The URI, for a URI action: the bytes as written, which may not be UTF-8, with the document's
-     * base URI in front when it is relative and the document sets one.
-     */
-    public ?string $uri;
-    /**
-     * The file, as UTF-8, for a GoToR or Launch action, and for a GoToE action the PDF file that holds
-     * the embedded one; null when the action names none.
-     */
-    public ?string $filePath;
-    /** Where a GoTo action leads; null for every other type. */
-    public ?Destination $destination;
-
-    private function __construct() {}
-}
-
 /** One entry of the document outline, as Document::bookmarks() returns it. */
 final readonly class Bookmark
 {
@@ -373,12 +333,16 @@ final readonly class Bookmark
     public string $title;
     /** Whether its children are shown by default. */
     public bool $open;
-    /** The colour of the title; null when the entry sets none, and viewers then use black. */
+    /**
+     * The colour of the title; null when the entry sets none, and viewers then use black, or sets one
+     * PDFium cannot read: anything but three numbers from 0 to 1.
+     */
     public ?Color $color;
     public bool $italic;
     public bool $bold;
     /** Where the entry leads in this document; null when it leads elsewhere or nowhere. */
     public ?Destination $destination;
+    /** What the entry does, when it has an action rather than a plain destination. */
     public ?Action $action;
     /** @var Bookmark[] */
     public array $children;
@@ -386,7 +350,10 @@ final readonly class Bookmark
     private function __construct() {}
 }
 
-/** A link annotation on a page, as Page::links() returns it. Coordinates are in points, as TextPage gives them. */
+/**
+ * A link annotation on a page, as Page::links() and linkAt() return it. Coordinates are in points,
+ * as TextPage gives them.
+ */
 final readonly class Link
 {
     /** The annotation's rectangle. */
@@ -395,6 +362,7 @@ final readonly class Link
     public array $quadPoints;
     /** Where the link leads in this document; null when it leads elsewhere or nowhere. */
     public ?Destination $destination;
+    /** What the link does, when it has an action rather than a plain destination. */
     public ?Action $action;
 
     private function __construct() {}
@@ -411,6 +379,47 @@ final readonly class Quad
     public float $y3;
     public float $x4;
     public float $y4;
+
+    private function __construct() {}
+}
+
+/** Where a bookmark, link or action leads in this document. */
+final readonly class Destination
+{
+    /** The 0-based index of the target page. */
+    public int $pageIndex;
+    /** "XYZ", "Fit", "FitH", "FitV", "FitR", "FitB", "FitBH" or "FitBV"; null when PDFium cannot tell. */
+    public ?string $view;
+    /** @var float[] the view's parameters as PDFium gives them, at most 4, with 0 for an absent XYZ value */
+    public array $params;
+    /** The left edge to show, in points, for an XYZ view; null when absent or for another view. */
+    public ?float $x;
+    /** The top edge to show, in points, for an XYZ view; null when absent or for another view. */
+    public ?float $y;
+    /** The zoom factor, for an XYZ view; null when absent or for another view. */
+    public ?float $zoom;
+
+    private function __construct() {}
+}
+
+/** What a bookmark, link or page event does. */
+final readonly class Action
+{
+    /** "GoTo", "GoToR", "URI", "Launch", "GoToE", or "Unsupported" for every type PDFium does not read. */
+    public string $type;
+    /**
+     * The URI, for a URI action: the bytes as written, which may not be UTF-8, with the document's
+     * base URI in front when it is relative and the document sets one; null when the action names
+     * none, and for every other type.
+     */
+    public ?string $uri;
+    /**
+     * The file, as UTF-8, for a GoToR or Launch action, and for a GoToE action the PDF file that holds
+     * the embedded one; null when the action names none.
+     */
+    public ?string $filePath;
+    /** Where a GoTo action leads; null for every other type. */
+    public ?Destination $destination;
 
     private function __construct() {}
 }

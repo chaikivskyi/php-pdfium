@@ -55,11 +55,11 @@ extern zend_class_entry *pdfium_ce_matrix;
 extern zend_class_entry *pdfium_ce_char;
 extern zend_class_entry *pdfium_ce_text_match;
 extern zend_class_entry *pdfium_ce_web_link;
-extern zend_class_entry *pdfium_ce_destination;
-extern zend_class_entry *pdfium_ce_action;
+extern zend_class_entry *pdfium_ce_bookmark;
 extern zend_class_entry *pdfium_ce_link;
 extern zend_class_entry *pdfium_ce_quad;
-extern zend_class_entry *pdfium_ce_bookmark;
+extern zend_class_entry *pdfium_ce_destination;
+extern zend_class_entry *pdfium_ce_action;
 extern zend_class_entry *pdfium_ce_exception;
 extern zend_class_entry *pdfium_ce_file_exception;
 extern zend_class_entry *pdfium_ce_format_exception;
@@ -83,6 +83,11 @@ static inline void pdfium_guard_startup(void) {}
 static inline pdfium_document *pdfium_document_from_obj(zend_object *obj)
 {
 	return (pdfium_document *)((char *)obj - XtOffsetOf(pdfium_document, std));
+}
+
+static inline pdfium_doc_handle *pdfium_this_document(zval *self)
+{
+	return pdfium_document_from_obj(Z_OBJ_P(self))->h;
 }
 
 static inline pdfium_page *pdfium_page_from_obj(zend_object *obj)

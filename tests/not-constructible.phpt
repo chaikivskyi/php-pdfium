@@ -4,7 +4,7 @@ Document, Page, PageIterator and Bitmap cannot be created except through the API
 pdfium
 --FILE--
 <?php
-foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Metadata', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Destination', 'Action', 'Link', 'Quad', 'Bookmark', 'Rect'] as $c) {
+foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Metadata', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Rect'] as $c) {
     $fq = "Pdfium\\$c";
     $r = new ReflectionClass($fq);
     echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true),
@@ -67,11 +67,7 @@ WebLink final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created
-Destination final=true cloneable=true instantiable=false abstract=false
-  Error
-  created
-  created
-Action final=true cloneable=true instantiable=false abstract=false
+Bookmark final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created
@@ -83,7 +79,11 @@ Quad final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created
-Bookmark final=true cloneable=true instantiable=false abstract=false
+Destination final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
+Action final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created

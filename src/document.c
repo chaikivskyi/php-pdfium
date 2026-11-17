@@ -167,18 +167,13 @@ ZEND_METHOD(Pdfium_Document, fromString)
 	load_document(doc_handle_create(zend_string_copy(bytes)), password, return_value);
 }
 
-static pdfium_doc_handle *this_handle(zval *self)
-{
-	return pdfium_document_from_obj(Z_OBJ_P(self))->h;
-}
-
 ZEND_METHOD(Pdfium_Document, pageCount)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	int count = FPDF_GetPageCount(this_handle(ZEND_THIS)->doc);
+	int count = FPDF_GetPageCount(pdfium_this_document(ZEND_THIS)->doc);
 	pdfium_leave();
 	RETURN_LONG(count);
 }
@@ -189,7 +184,7 @@ ZEND_METHOD(Pdfium_Document, metadata)
 		{"Title", "title"}, {"Author", "author"}, {"Subject", "subject"}, {"Keywords", "keywords"},
 		{"Creator", "creator"}, {"Producer", "producer"}, {"CreationDate", "creationDate"}, {"ModDate", "modDate"},
 	};
-	FPDF_DOCUMENT doc = this_handle(ZEND_THIS)->doc;
+	FPDF_DOCUMENT doc = pdfium_this_document(ZEND_THIS)->doc;
 	unsigned short *bufs[sizeof(entries) / sizeof(entries[0])] = {0};
 	size_t units[sizeof(entries) / sizeof(entries[0])] = {0};
 	size_t n = sizeof(entries) / sizeof(entries[0]), i, failed = n, converted = 0;
@@ -249,7 +244,7 @@ ZEND_METHOD(Pdfium_Document, permissions)
 		{3, 3, "print"}, {4, 4, "modify"}, {5, 5, "copy"}, {6, 6, "annotate"}, {9, 6, "fillForms"},
 		{10, 5, "extractForAccessibility"}, {11, 4, "assemble"}, {12, 3, "printHighQuality"},
 	};
-	FPDF_DOCUMENT doc = this_handle(ZEND_THIS)->doc;
+	FPDF_DOCUMENT doc = pdfium_this_document(ZEND_THIS)->doc;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 	if (!pdfium_enter()) {
@@ -273,7 +268,7 @@ ZEND_METHOD(Pdfium_Document, permissions)
 
 static void file_id(INTERNAL_FUNCTION_PARAMETERS, FPDF_FILEIDTYPE type)
 {
-	FPDF_DOCUMENT doc = this_handle(ZEND_THIS)->doc;
+	FPDF_DOCUMENT doc = pdfium_this_document(ZEND_THIS)->doc;
 	const char *oom = NULL;
 
 	ZEND_PARSE_PARAMETERS_NONE();
@@ -318,7 +313,7 @@ ZEND_METHOD(Pdfium_Document, page)
 		Z_PARAM_LONG(index)
 	ZEND_PARSE_PARAMETERS_END();
 
-	zend_object *obj = pdfium_page_load(this_handle(ZEND_THIS), index, &page_count);
+	zend_object *obj = pdfium_page_load(pdfium_this_document(ZEND_THIS), index, &page_count);
 
 	if (obj) {
 		RETURN_OBJ(obj);
@@ -336,7 +331,7 @@ ZEND_METHOD(Pdfium_Document, page)
 ZEND_METHOD(Pdfium_Document, pages)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	RETURN_OBJ(pdfium_page_iterator_create(this_handle(ZEND_THIS)));
+	RETURN_OBJ(pdfium_page_iterator_create(pdfium_this_document(ZEND_THIS)));
 }
 
 typedef enum { ASSEMBLED, CANNOT_CREATE, CANNOT_IMPORT } assemble_status;
@@ -407,7 +402,7 @@ ZEND_METHOD(Pdfium_Document, extractPages)
 	HashTable *ht;
 	zval *zv;
 	bool remove_security = false;
-	pdfium_doc_handle *h = this_handle(ZEND_THIS);
+	pdfium_doc_handle *h = pdfium_this_document(ZEND_THIS);
 
 	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_ARRAY_HT(ht)
@@ -509,7 +504,7 @@ ZEND_METHOD(Pdfium_Document, merge)
 			efree(sources);
 			RETURN_THROWS();
 		}
-		sources[n++] = this_handle(zv);
+		sources[n++] = pdfium_document_from_obj(Z_OBJ_P(zv))->h;
 	} ZEND_HASH_FOREACH_END();
 
 	pdfium_doc_handle *out = doc_handle_create(NULL);
@@ -590,7 +585,7 @@ ZEND_METHOD(Pdfium_Document, save)
 	if (!pdfium_path_given(path_len)) {
 		RETURN_THROWS();
 	}
-	pdfium_write_and_release(serialise(this_handle(ZEND_THIS), remove_security), path);
+	pdfium_write_and_release(serialise(pdfium_this_document(ZEND_THIS), remove_security), path);
 }
 
 ZEND_METHOD(Pdfium_Document, toString)
@@ -602,7 +597,7 @@ ZEND_METHOD(Pdfium_Document, toString)
 		Z_PARAM_BOOL(remove_security)
 	ZEND_PARSE_PARAMETERS_END();
 
-	zend_string *bytes = serialise(this_handle(ZEND_THIS), remove_security);
+	zend_string *bytes = serialise(pdfium_this_document(ZEND_THIS), remove_security);
 	if (!bytes) {
 		RETURN_THROWS();
 	}

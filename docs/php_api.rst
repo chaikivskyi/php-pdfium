@@ -13,8 +13,8 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator` and
 :php:class:`Bitmap` cannot be cloned or serialized. The value classes (:php:class:`Metadata`,
 :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`, :php:class:`Color`,
-:php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`, :php:class:`Destination`,
-:php:class:`Action`, :php:class:`Link`, :php:class:`Quad` and :php:class:`Bookmark`) are read-only
+:php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`, :php:class:`Bookmark`,
+:php:class:`Link`, :php:class:`Quad`, :php:class:`Destination` and :php:class:`Action`) are read-only
 and can be cloned and serialized.
 
 
@@ -934,7 +934,8 @@ Bookmark
    .. php:attr:: color
 
       ``?Color``: the colour of the title, with alpha 255; ``null`` when the entry sets none, and
-      viewers then use black. PDF stores each channel from 0 to 1; it is rounded to 0 to 255.
+      viewers then use black. PDF stores each channel from 0 to 1; it is rounded to 0 to 255. A
+      colour PDFium cannot read, anything but three numbers from 0 to 1, is ``null`` too.
 
    .. php:attr:: italic
 
@@ -1026,7 +1027,8 @@ Destination
    .. php:attr:: params
 
       ``float[]``: the view's parameters as PDFium gives them, at most four. For ``"FitH"`` it is
-      the top edge, for ``"FitR"`` the left, bottom, right and top.
+      the top edge, for ``"FitR"`` the left, bottom, right and top. For ``"XYZ"``, an absent value
+      is 0 here; :php:attr:`x`, :php:attr:`y` and :php:attr:`zoom` tell it apart as ``null``.
 
    .. php:attr:: x
 
@@ -1059,6 +1061,7 @@ Action
 
       ``?string``: for ``"URI"``, the URI as written in the PDF, with the document's base URI in
       front when it is relative and the document sets one. It is not checked: it may not be UTF-8.
+      ``null`` when the action names none, and for every other type.
 
    .. php:attr:: filePath
 
