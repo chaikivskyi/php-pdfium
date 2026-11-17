@@ -199,11 +199,10 @@ when there is no action. If a PDF gives both a destination and an action, the ac
 
 A :php:class:`Destination <Pdfium\\Destination>` always points into this document; when its page
 cannot be found, ``destination`` is ``null``. Actions into another PDF (``"GoToR"``) or an embedded
-PDF (``"GoToE"``) have no destination: the page they lead to is not available, only the file in
-``filePath``.
+PDF (``"GoToE"``) have no destination: the page they lead to is not available. ``filePath`` names
+the other file; for ``"GoToE"`` it is ``null`` when the embedded PDF is attached to this document.
 
-A ``"URI"`` action's ``uri`` is returned as the PDF stores it, except that a relative URI gets the
-document's base URI in front, when the document sets one. PDF asks for 7-bit ASCII, but real files
+A ``"URI"`` action's ``uri`` is not checked for encoding. PDF asks for 7-bit ASCII, but real files
 hold UTF-8 and other encodings, so check it before you use it as text.
 
 Actions PDFium does not read, such as JavaScript, form submission and named actions like *next
