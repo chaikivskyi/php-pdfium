@@ -631,7 +631,7 @@ final class TextPage
 
     /**
      * The http, https and www URLs and the email addresses written in the text, which PDFium finds
-     * by their shape; link annotations are not included.
+     * by their shape; link annotations are not included: Page::links() gives those.
      *
      * @return WebLink[]
      * @throws MemoryException when the links would not fit under memory_limit

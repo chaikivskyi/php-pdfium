@@ -202,11 +202,10 @@ where it leads in this document: its own destination, or that of its ``"GoTo"`` 
 action, and its own destination is ignored.
 
 A :php:class:`Destination <Pdfium\\Destination>` is always in this document; one whose page does
-not exist in this document is ``null``. An action that
-leads into another file (``"GoToR"``) or into an embedded file (``"GoToE"``) has no destination:
-PDFium would read its page number against this document and give the wrong page. Its
-``filePath`` says which file; for ``"GoToE"``, it is the PDF file that holds the embedded one,
-``null`` when that is this document.
+not exist in this document is ``null``. An action that leads into another file (``"GoToR"``) or
+into an embedded file (``"GoToE"``) has no destination: PDFium would read its page number against
+this document and give the wrong page. Its ``filePath`` says which file; for ``"GoToE"``, it is
+the PDF file that holds the embedded one, ``null`` when that is this document.
 
 A ``"URI"`` action's ``uri`` is returned as the PDF stores it, except that a relative URI gets the
 document's base URI in front, when the document sets one. PDF asks for 7-bit ASCII, but real files

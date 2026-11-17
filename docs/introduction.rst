@@ -5,7 +5,9 @@ What it does
 ------------
 
 - Open a PDF from a file or a string, with an optional password.
-- Read the page count, metadata, permissions, page sizes, rotation and text.
+- Read the page count, metadata, permissions, file identifiers, page sizes, rotation and text.
+- Read the outline (bookmarks), link annotations and page open and close actions, with where they
+  lead.
 - Find text on a page: search it, read the text inside a rectangle, list the URLs written in it,
   and get every character with its position, font and colour.
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
@@ -104,6 +106,9 @@ Read document information
 
    $doc->metadata()->title;        // 'Report', or null if the document has no title
    $doc->permissions()->copy;      // false
+
+   $doc->bookmarks();              // Bookmark[]: the outline, each with title, destination, children
+   $doc->page(0)->links();         // Link[]: the clickable areas, with where each one leads
 
 Work with pages
 ~~~~~~~~~~~~~~~

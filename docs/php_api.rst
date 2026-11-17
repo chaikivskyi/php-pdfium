@@ -93,7 +93,7 @@ Document
 
    .. php:method:: permanentId() -> ?string
 
-      The first entry of the trailer's ``/ID``, set when the file was first written, as raw bytes:
+      The first entry of the trailer's ``/ID``, set when the file was created, as raw bytes:
       use ``bin2hex()`` to show it. ``null`` when the file has no ``/ID`` or the entry is empty.
 
       :rtype: ?string
@@ -579,7 +579,8 @@ TextPage
 
       The URLs and email addresses written in the page's text. PDFium finds them by their shape:
       ``http://``, ``https://`` and ``www.`` addresses, and email addresses, which come back as
-      ``mailto:`` URLs. Link annotations, the clickable areas a PDF can define, are not included.
+      ``mailto:`` URLs. Link annotations, the clickable areas a PDF can define, are not included:
+      :php:meth:`Page::links` gives those.
 
       :rtype: WebLink[]
       :throws MemoryException: The links would not fit under ``memory_limit``.
@@ -997,19 +998,40 @@ Quad
 
 .. php:class:: Quad
 
-   The four corners of a quadrilateral, in points: a final, read-only value.
+   The four corners of a quadrilateral, in points, from :php:attr:`Link::quadPoints`: a final,
+   read-only value. The corners are ``x1, y1`` to ``x4, y4``, in the order the PDF gives them.
 
    .. php:attr:: x1
 
-      ``float``: the corners, as ``x1``, ``y1`` to ``x4``, ``y4``, in the order the PDF gives them.
+      ``float``
 
    .. php:attr:: y1
+
+      ``float``
+
    .. php:attr:: x2
+
+      ``float``
+
    .. php:attr:: y2
+
+      ``float``
+
    .. php:attr:: x3
+
+      ``float``
+
    .. php:attr:: y3
+
+      ``float``
+
    .. php:attr:: x4
+
+      ``float``
+
    .. php:attr:: y4
+
+      ``float``
 
 
 Destination
