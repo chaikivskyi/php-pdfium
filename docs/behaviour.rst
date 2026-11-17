@@ -184,35 +184,29 @@ PDFium cannot map.
 Navigation
 ----------
 
-Link annotations are the areas a viewer makes clickable. Their coordinates are in points, as for
-:ref:`text positions <text-positions>`, without the page's rotation. ``links()`` lists them back to
-front, as the page stores them, and ``linkAt()`` gives the one in front. A URL that is only
-written in the text, with no annotation, is not a link annotation; ``TextPage::webLinks()`` finds
-those.
+Link rectangles and quads, and the point you pass to ``linkAt()``, are in points, as for
+:ref:`text positions <text-positions>`, without the page's rotation.
 
-A broken outline can loop: an entry can point back to one before it, as a sibling or as a child.
-``bookmarks()`` lists each entry once. When it meets an entry it has already listed, it leaves
-it out, with the entries after it at that level. It also stops at 100 levels: the entries at the
-100th level have no children, whatever the PDF says. Real outlines are far shallower.
+A broken outline can loop, with an entry pointing back to an earlier one. ``bookmarks()`` lists
+each entry once: when it reaches an entry it has already listed, it skips that entry and the rest
+of its level. It also goes at most 100 levels deep: entries on the 100th level have no children.
+Real outlines are far shallower.
 
-A bookmark or link leads either to a destination or through an action. Its ``destination`` is
-where it leads in this document: its own destination, or that of its ``"GoTo"`` action, so for a
-``"GoTo"`` action the same destination appears twice. With any other action, ``destination`` is
-``null``. An entry that has both, which the PDF specification does not allow, is read through its
-action, and its own destination is ignored.
+A bookmark or link leads to a place in this document, through an action, or nowhere. To find the
+page, read ``destination``: it is set for a plain destination and for a ``"GoTo"`` action (then it
+equals ``action->destination``), and is ``null`` for every other action. ``action`` is ``null``
+when there is no action. If a PDF gives both a destination and an action, the action wins.
 
-A :php:class:`Destination <Pdfium\\Destination>` is always in this document; one whose page does
-not exist in this document is ``null``. An action that leads into another file (``"GoToR"``) or
-into an embedded file (``"GoToE"``) has no destination: PDFium would read its page number against
-this document and give the wrong page. Its ``filePath`` says which file; for ``"GoToE"``, it is
-the PDF file that holds the embedded one, ``null`` when that is this document.
+A :php:class:`Destination <Pdfium\\Destination>` always points into this document; when its page
+does not exist, ``destination`` is ``null``. Actions into another PDF (``"GoToR"``) or an embedded
+PDF (``"GoToE"``) have no destination, only a ``filePath``: the page they lead to is not available.
 
 A ``"URI"`` action's ``uri`` is returned as the PDF stores it, except that a relative URI gets the
 document's base URI in front, when the document sets one. PDF asks for 7-bit ASCII, but real files
 hold UTF-8 and other encodings, so check it before you use it as text.
 
-Actions PDFium does not read, such as JavaScript, named actions and form submission, have the
-type ``"Unsupported"`` and nothing else set.
+Actions PDFium does not read, such as JavaScript, named actions like *next page* and form
+submission, have the type ``"Unsupported"`` and nothing else set.
 
 
 .. _memory-limit:

@@ -13,14 +13,16 @@ Features:
   output; JPEG is drawn on white.
 - ``Page::render()`` option ``grayscale: true``: a gray image, with one-channel PNG and JPEG output
   (two channels, gray and alpha, in a transparent PNG).
-- ``Document::permanentId()`` and ``Document::changingId()``: the two entries of the file's ``/ID``.
+- ``Document::permanentId()`` and ``Document::changingId()``: the file's identifiers, one set when it
+  was created and one that changes with each save.
 - ``Document::bookmarks()``: the outline, as a tree of ``Bookmark`` values with their titles,
   colours, styles and where they lead.
 - ``Page::openAction()`` and ``Page::closeAction()``: the actions a viewer runs when it opens or
   closes the page.
 - ``Page::links()`` and ``Page::linkAt()``: the page's link annotations, with where they lead.
 - Value classes ``Bookmark``, ``Link``, ``Quad``, ``Destination`` (a page in this document and how
-  to show it) and ``Action`` (``GoTo``, ``GoToR``, ``URI``, ``Launch`` and ``GoToE`` actions).
+  to show it) and ``Action`` (what a link, bookmark or page event does: go to a page, open a URI or
+  another file).
 
 v0.2.0 (2026-11-15)
 -------------------

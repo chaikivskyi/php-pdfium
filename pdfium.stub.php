@@ -85,8 +85,8 @@ final class Document implements \Countable, \IteratorAggregate
     public function permissions(): Permissions {}
 
     /**
-     * The first entry of the trailer's /ID, set when the file was created, as raw bytes; null when
-     * there is none or it is empty.
+     * The first of the file's two identifiers (its /ID), set when the file was created, as raw
+     * bytes; null when there is none or it is empty.
      *
      * @throws MemoryException when the identifier would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -94,8 +94,8 @@ final class Document implements \Countable, \IteratorAggregate
     public function permanentId(): ?string {}
 
     /**
-     * The second entry of the trailer's /ID, changed each time the file is saved, as raw bytes; null
-     * when there is none or it is empty.
+     * The second of the file's two identifiers (its /ID), changed each time the file is saved, as
+     * raw bytes; null when there is none or it is empty.
      *
      * @throws MemoryException when the identifier would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -103,9 +103,8 @@ final class Document implements \Countable, \IteratorAggregate
     public function changingId(): ?string {}
 
     /**
-     * The top level of the outline, in order, each with its children. An entry met a second time, in
-     * a broken outline that loops, is left out with the entries after it at its level, and entries
-     * nested deeper than 100 levels are left out.
+     * The top level of the outline, in order, each with its children; empty when there is none. A
+     * broken outline that loops or nests deeper than 100 levels is cut short.
      *
      * @return Bookmark[]
      * @throws MemoryException when the outline would not fit under memory_limit
@@ -334,10 +333,7 @@ final readonly class Bookmark
     public string $title;
     /** Whether its children are shown by default. */
     public bool $open;
-    /**
-     * The colour of the title; null when the entry sets none, and viewers then use black, or sets one
-     * PDFium cannot read: anything but three numbers from 0 to 1.
-     */
+    /** The colour of the title; null when there is none (viewers then use black) or it is invalid. */
     public ?Color $color;
     public bool $italic;
     public bool $bold;

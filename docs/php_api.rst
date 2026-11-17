@@ -93,8 +93,9 @@ Document
 
    .. php:method:: permanentId() -> ?string
 
-      The first entry of the trailer's ``/ID``, set when the file was created, as raw bytes:
-      use ``bin2hex()`` to show it. ``null`` when the file has no ``/ID`` or the entry is empty.
+      The first of the file's two identifiers (its ``/ID``): set when the file was created and
+      meant to stay the same in later versions. Raw bytes: use ``bin2hex()`` to show them.
+      ``null`` when the file has none or it is empty.
 
       :rtype: ?string
       :throws MemoryException: The identifier would not fit under ``memory_limit``.
@@ -102,8 +103,8 @@ Document
 
    .. php:method:: changingId() -> ?string
 
-      The second entry of the trailer's ``/ID``, which changes each time the file is saved, as raw
-      bytes: use ``bin2hex()`` to show it. ``null`` when the file has no ``/ID`` or the entry is
+      The second of the file's two identifiers (its ``/ID``), which changes each time the file is
+      saved. Raw bytes: use ``bin2hex()`` to show them. ``null`` when the file has none or it is
       empty.
 
       :rtype: ?string
@@ -433,8 +434,7 @@ Page
 
    .. php:method:: linkAt(float $x, float $y) -> ?Link
 
-      The topmost link annotation at a point, or ``null``. The point is in points, as
-      :php:class:`TextPage` gives positions.
+      The topmost link annotation at a point, or ``null`` if there is none.
 
       :param float $x: Horizontal position in points.
       :param float $y: Vertical position in points, from the bottom of the page.
@@ -938,9 +938,8 @@ Bookmark
 
    .. php:attr:: color
 
-      ``?Color``: the colour of the title, with alpha 255; ``null`` when the entry sets none, and
-      viewers then use black. PDF stores each channel from 0 to 1; it is rounded to 0 to 255. A
-      colour PDFium cannot read, anything but three numbers from 0 to 1, is ``null`` too.
+      ``?Color``: the colour of the title, with alpha 255; ``null`` when the entry sets none
+      (viewers then use black) or sets an invalid one.
 
    .. php:attr:: italic
 
@@ -975,7 +974,7 @@ Link
 
    .. php:attr:: rect
 
-      :php:class:`Rect`: the annotation's rectangle.
+      :php:class:`Rect`: the annotation's rectangle, in points.
 
    .. php:attr:: quadPoints
 
@@ -1048,15 +1047,16 @@ Destination
 
    .. php:attr:: view
 
-      ``?string``: how the viewer fits the page: ``"XYZ"``, ``"Fit"``, ``"FitH"``, ``"FitV"``,
-      ``"FitR"``, ``"FitB"``, ``"FitBH"`` or ``"FitBV"``, as named in the PDF specification;
-      ``null`` when PDFium cannot tell.
+      ``?string``: how the viewer shows the page: ``"XYZ"`` (a point at a zoom), ``"Fit"`` (the
+      whole page), ``"FitH"`` (full width, from a top edge), ``"FitV"`` (full height, from a left
+      edge), ``"FitR"`` (a rectangle), or ``"FitB"``, ``"FitBH"``, ``"FitBV"`` (the same, for the
+      page's content only); ``null`` when PDFium cannot tell.
 
    .. php:attr:: params
 
-      ``float[]``: the view's parameters as PDFium gives them, at most four. For ``"FitH"`` it is
-      the top edge, for ``"FitR"`` the left, bottom, right and top. For ``"XYZ"``, an absent value
-      is 0 here; :php:attr:`x`, :php:attr:`y` and :php:attr:`zoom` tell it apart as ``null``.
+      ``float[]``: the view's numbers, at most four: none for ``"Fit"``, the top edge for
+      ``"FitH"``, the left, bottom, right and top for ``"FitR"``. For ``"XYZ"`` a missing number is
+      0 here; use :php:attr:`x`, :php:attr:`y` and :php:attr:`zoom`, which are ``null`` instead.
 
    .. php:attr:: x
 
@@ -1088,14 +1088,14 @@ Action
    .. php:attr:: uri
 
       ``?string``: for ``"URI"``, the URI as written in the PDF, with the document's base URI in
-      front when it is relative and the document sets one. It is not checked: it may not be UTF-8.
-      ``null`` when the action names none, and for every other type.
+      front when it is relative and the document sets one. It may not be UTF-8; see
+      :ref:`navigation`. ``null`` when the action names none, and for every other type.
 
    .. php:attr:: filePath
 
-      ``?string``: the file, as UTF-8, for ``"GoToR"`` and ``"Launch"``; for ``"GoToE"``, the PDF
-      file that holds the embedded one, ``null`` when that is this document. ``null`` for every
-      other type.
+      ``?string``: the file, as UTF-8, for ``"GoToR"`` and ``"Launch"``, ``null`` when the action
+      names none; for ``"GoToE"``, the PDF file that holds the embedded one, ``null`` when that is
+      this document. ``null`` for every other type.
 
    .. php:attr:: destination
 
