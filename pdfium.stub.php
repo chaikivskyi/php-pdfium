@@ -387,7 +387,7 @@ final readonly class Destination
     public int $pageIndex;
     /** "XYZ", "Fit", "FitH", "FitV", "FitR", "FitB", "FitBH" or "FitBV"; null when PDFium cannot tell. */
     public ?string $view;
-    /** @var float[] the view's parameters as PDFium gives them, at most 4, with 0 for an absent XYZ value */
+    /** @var float[] the view's numbers, at most 4; 0 for an absent XYZ value */
     public array $params;
     /** The left edge to show, in points, for an XYZ view; null when absent or for another view. */
     public ?float $x;

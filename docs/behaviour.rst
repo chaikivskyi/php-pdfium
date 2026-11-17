@@ -192,21 +192,22 @@ each entry once: when it reaches an entry it has already listed, it skips that e
 of its level. It also goes at most 100 levels deep: entries on the 100th level have no children.
 Real outlines are far shallower.
 
-A bookmark or link leads to a place in this document, through an action, or nowhere. To find the
-page, read ``destination``: it is set for a plain destination and for a ``"GoTo"`` action (then it
+A bookmark or link has a plain destination, an action, or neither. To find the page it leads to,
+read ``destination``: it is set for a plain destination and for a ``"GoTo"`` action (then it
 equals ``action->destination``), and is ``null`` for every other action. ``action`` is ``null``
 when there is no action. If a PDF gives both a destination and an action, the action wins.
 
 A :php:class:`Destination <Pdfium\\Destination>` always points into this document; when its page
-does not exist, ``destination`` is ``null``. Actions into another PDF (``"GoToR"``) or an embedded
-PDF (``"GoToE"``) have no destination, only a ``filePath``: the page they lead to is not available.
+cannot be found, ``destination`` is ``null``. Actions into another PDF (``"GoToR"``) or an embedded
+PDF (``"GoToE"``) have no destination: the page they lead to is not available, only the file in
+``filePath``.
 
 A ``"URI"`` action's ``uri`` is returned as the PDF stores it, except that a relative URI gets the
 document's base URI in front, when the document sets one. PDF asks for 7-bit ASCII, but real files
 hold UTF-8 and other encodings, so check it before you use it as text.
 
-Actions PDFium does not read, such as JavaScript, named actions like *next page* and form
-submission, have the type ``"Unsupported"`` and nothing else set.
+Actions PDFium does not read, such as JavaScript, form submission and named actions like *next
+page*, have the type ``"Unsupported"`` and nothing else set.
 
 
 .. _memory-limit:

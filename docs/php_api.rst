@@ -133,8 +133,7 @@ Document
          }
          toc($doc->bookmarks());
 
-      A broken outline that loops, and one nested deeper than 100 levels, is cut short; see
-      :ref:`navigation`.
+      An outline that loops or nests deeper than 100 levels is cut short; see :ref:`navigation`.
 
       :rtype: Bookmark[]
       :throws MemoryException: The outline would not fit under ``memory_limit``.
@@ -697,7 +696,8 @@ Rect
 
    A rectangle in points, with ``y`` growing upwards: a final, read-only value. See
    :ref:`text-positions`. :php:meth:`TextPage::chars`, :php:meth:`TextPage::search` and
-   :php:meth:`TextPage::webLinks` return them, and you create one to pass to
+   :php:meth:`TextPage::webLinks` return them, as does :php:attr:`Link::rect`, and you create one
+   to pass to
    :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
 
    .. php:method:: __construct(float $left, float $bottom, float $right, float $top)
@@ -816,9 +816,9 @@ Color
 
 .. php:class:: Color
 
-   A colour from :php:attr:`Char::fillColor` or :php:attr:`Char::strokeColor`, as RGB with values
-   from 0 to 255: a final, read-only value. PDFium converts other colour spaces, such as CMYK, to
-   RGB.
+   A colour from :php:attr:`Char::fillColor`, :php:attr:`Char::strokeColor` or
+   :php:attr:`Bookmark::color`, as RGB with values from 0 to 255: a final, read-only value. PDFium
+   converts other colour spaces, such as CMYK, to RGB.
 
    .. php:attr:: red
 
@@ -951,8 +951,8 @@ Bookmark
 
    .. php:attr:: destination
 
-      ``?Destination``: where the entry leads in this document; ``null`` when it leads to another
-      file, opens a URI or does nothing. See :ref:`navigation`.
+      ``?Destination``: the page in this document the entry leads to, directly or through a
+      ``"GoTo"`` action; ``null`` otherwise. See :ref:`navigation`.
 
    .. php:attr:: action
 
@@ -984,8 +984,8 @@ Link
 
    .. php:attr:: destination
 
-      ``?Destination``: where the link leads in this document; ``null`` when it leads to another
-      file, opens a URI or does nothing. See :ref:`navigation`.
+      ``?Destination``: the page in this document the link leads to, directly or through a
+      ``"GoTo"`` action; ``null`` otherwise. See :ref:`navigation`.
 
    .. php:attr:: action
 
@@ -1060,8 +1060,8 @@ Destination
 
    .. php:attr:: x
 
-      ``?float``: for ``"XYZ"``, the left edge to show, in points; ``null`` when absent, which means
-      keep the current one, and for other views.
+      ``?float``: for ``"XYZ"``, the left edge to show, in points; ``null`` for other views, and
+      when the PDF leaves it out, which means keep the current one.
 
    .. php:attr:: y
 
@@ -1069,7 +1069,7 @@ Destination
 
    .. php:attr:: zoom
 
-      ``?float``: for ``"XYZ"``, the zoom factor; ``null`` as for :php:attr:`x`.
+      ``?float``: for ``"XYZ"``, the zoom factor (1 is 100%); ``null`` as for :php:attr:`x`.
 
 
 Action
@@ -1082,8 +1082,9 @@ Action
    .. php:attr:: type
 
       ``string``: ``"GoTo"`` (a place in this document), ``"GoToR"`` (a place in another PDF file),
-      ``"URI"``, ``"Launch"`` (open a file or run an application), ``"GoToE"`` (a place in an
-      embedded PDF), or ``"Unsupported"`` for every type PDFium does not read, such as JavaScript.
+      ``"URI"`` (open a web address), ``"Launch"`` (open a file or run an application),
+      ``"GoToE"`` (a place in an embedded PDF), or ``"Unsupported"`` for every type PDFium does not
+      read, such as JavaScript.
 
    .. php:attr:: uri
 
