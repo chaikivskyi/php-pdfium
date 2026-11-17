@@ -19,7 +19,7 @@ enum {
 enum { LINK_RECT, LINK_QUAD_POINTS, LINK_DESTINATION, LINK_ACTION };
 enum { DEST_PAGE_INDEX, DEST_VIEW, DEST_PARAMS, DEST_X, DEST_Y, DEST_ZOOM };
 enum { ACTION_TYPE, ACTION_URI, ACTION_FILE_PATH, ACTION_DESTINATION };
-enum { COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_ALPHA };
+enum { COLOR_SLOTS = 4 };
 enum { STYLE_ITALIC = 1, STYLE_BOLD = 2 };
 
 typedef struct {
@@ -343,17 +343,16 @@ static zend_long color_channel(float value)
 
 static void bookmark_color_set(zval *zv, FPDF_BOOKMARK bm)
 {
-	float rgb[3];
+	float rgba[COLOR_SLOTS] = {0, 0, 0, 1};
 
-	if (!FPDFBookmark_GetColor(bm, &rgb[0], &rgb[1], &rgb[2])) {
+	if (!FPDFBookmark_GetColor(bm, &rgba[0], &rgba[1], &rgba[2])) {
 		ZVAL_NULL(zv);
 		return;
 	}
 	object_init_ex(zv, pdfium_ce_color);
-	for (int i = 0; i < 3; i++) {
-		ZVAL_LONG(pdfium_slot(Z_OBJ_P(zv), COLOR_RED + i), color_channel(rgb[i]));
+	for (int i = 0; i < COLOR_SLOTS; i++) {
+		ZVAL_LONG(pdfium_slot(Z_OBJ_P(zv), i), color_channel(rgba[i]));
 	}
-	ZVAL_LONG(pdfium_slot(Z_OBJ_P(zv), COLOR_ALPHA), 255);
 }
 
 static void bookmark_title_set(zval *zv, FPDF_BOOKMARK bm, unsigned long bytes)
