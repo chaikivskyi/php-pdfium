@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 4749678d8860a2d36c2c6e06086f1f1698e80907 */
+ * Stub hash: 37a50e17fe9caaa3ddece8b1b645e11e58dfdc34 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -85,6 +85,14 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_extractPages, 0, 1, Pdfium\\Document, 0)
 	ZEND_ARG_TYPE_INFO(0, indexes, IS_ARRAY, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, removeSecurity, _IS_BOOL, 0, "false")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_nUp, 0, 4, Pdfium\\Document, 0)
+	ZEND_ARG_TYPE_INFO(0, width, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, height, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, columns, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, rows, IS_LONG, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, removeSecurity, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
@@ -303,6 +311,7 @@ ZEND_METHOD(Pdfium_Document, insertPages);
 ZEND_METHOD(Pdfium_Document, movePages);
 ZEND_METHOD(Pdfium_Document, pages);
 ZEND_METHOD(Pdfium_Document, extractPages);
+ZEND_METHOD(Pdfium_Document, nUp);
 ZEND_METHOD(Pdfium_Document, merge);
 ZEND_METHOD(Pdfium_Document, save);
 ZEND_METHOD(Pdfium_Document, toString);
@@ -404,6 +413,7 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 	ZEND_RAW_FENTRY("getIterator", zim_Pdfium_Document_pages, arginfo_class_Pdfium_Document_getIterator, ZEND_ACC_PUBLIC)
 #endif
 	ZEND_ME(Pdfium_Document, extractPages, arginfo_class_Pdfium_Document_extractPages, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, nUp, arginfo_class_Pdfium_Document_nUp, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, merge, arginfo_class_Pdfium_Document_merge, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	ZEND_ME(Pdfium_Document, save, arginfo_class_Pdfium_Document_save, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, toString, arginfo_class_Pdfium_Document_toString, ZEND_ACC_PUBLIC)

@@ -276,6 +276,26 @@ final class Document implements \Countable, \IteratorAggregate
     public function extractPages(array $indexes, bool $removeSecurity = false): Document {}
 
     /**
+     * A new document with this document's pages scaled onto sheets of $width by $height points,
+     * $columns across and $rows down, in page order left to right, then top to bottom. Each page is
+     * scaled up or down to fit its cell, keeping its proportions, and centred in it. The sheets have
+     * no links, form fields or other annotations. With one column and one row, PDFium instead copies
+     * the pages whole, annotations included, and ignores $width and $height. The new document is
+     * unencrypted, has no viewer preferences, bookmarks, attachments or metadata beyond the creator, producer and
+     * creation date PDFium sets, and does not keep this document alive.
+     *
+     * @param bool $removeSecurity must be true for an encrypted document, because PDFium cannot
+     *        encrypt the result
+     * @throws \ValueError when a size is not finite or not above 0 once rounded to a float, or a count
+     *         is below 1
+     * @throws UnsupportedException when this document is encrypted and $removeSecurity is false
+     * @throws PdfiumException when this document has no pages, or $columns and $rows are too large to
+     *         lay out
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function nUp(float $width, float $height, int $columns, int $rows, bool $removeSecurity = false): Document {}
+
+    /**
      * A new document with every page of each Document in turn, duplicates kept, and the first one's
      * viewer preferences. It is unencrypted, has no bookmarks or metadata beyond the creator, producer
      * and creation date PDFium sets, and its form fields can no longer be filled in. It does not keep

@@ -597,6 +597,58 @@ bool pdfium_page_size_args(const double *size, float *sides)
 	return true;
 }
 
+ZEND_METHOD(Pdfium_Document, nUp)
+{
+	pdfium_doc_handle *h = pdfium_this_document(ZEND_THIS);
+	double size[2];
+	float sides[2];
+	zend_long columns, rows;
+	bool remove_security = false;
+
+	ZEND_PARSE_PARAMETERS_START(4, 5)
+		Z_PARAM_DOUBLE(size[0])
+		Z_PARAM_DOUBLE(size[1])
+		Z_PARAM_LONG(columns)
+		Z_PARAM_LONG(rows)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(remove_security)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!pdfium_page_size_args(size, sides)) {
+		RETURN_THROWS();
+	}
+	if (columns < 1) {
+		zend_argument_value_error(3, "must be at least 1");
+		RETURN_THROWS();
+	}
+	if (rows < 1) {
+		zend_argument_value_error(4, "must be at least 1");
+		RETURN_THROWS();
+	}
+	pdfium_doc_handle *out = doc_handle_create(NULL);
+	zend_object *obj = new_document(out);
+
+	if (!pdfium_enter()) {
+		OBJ_RELEASE(obj);
+		RETURN_THROWS();
+	}
+	if (!remove_security && pdfium_is_encrypted(h)) {
+		pdfium_leave();
+		OBJ_RELEASE(obj);
+		zend_throw_exception(pdfium_ce_unsupported_exception, "The document is encrypted and PDFium cannot "
+			"encrypt the result; pass removeSecurity: true to put its pages on sheets unencrypted", 0);
+		RETURN_THROWS();
+	}
+	out->doc = FPDF_ImportNPagesToOne(h->doc, sides[0], sides[1], (size_t) columns, (size_t) rows);
+	pdfium_leave();
+	if (!out->doc) {
+		OBJ_RELEASE(obj);
+		zend_throw_exception(pdfium_ce_exception, "Cannot put the pages on sheets", 0);
+		RETURN_THROWS();
+	}
+	RETURN_OBJ(obj);
+}
+
 typedef struct {
 	FPDF_FILEWRITE fw;
 	pdfium_buf out;

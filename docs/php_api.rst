@@ -7,9 +7,9 @@ All classes are in the ``Pdfium`` namespace. The exact signatures are in ``pdfiu
 
 Except for :php:class:`Rect`, you cannot create these classes with ``new``. Get a
 :php:class:`Document` from :php:meth:`Document::fromFile`, :php:meth:`Document::fromString` or
-:php:meth:`Document::create`, or from :php:meth:`Document::extractPages` or
-:php:meth:`Document::merge`, which return a new one; get everything else from the document. You
-create a :php:class:`Rect` to pass to :php:meth:`TextPage::textIn`,
+:php:meth:`Document::create`, or from :php:meth:`Document::extractPages`,
+:php:meth:`Document::merge` or :php:meth:`Document::nUp`, which return a new one; get everything
+else from the document. You create a :php:class:`Rect` to pass to :php:meth:`TextPage::textIn`,
 :php:meth:`TextPage::textInEach`, :php:meth:`Page::render` or a box setter such as
 :php:meth:`Page::setCropBox`.
 
@@ -359,6 +359,33 @@ Document
       :throws MemoryException: The indexes would not fit under ``memory_limit``, or PDFium cannot
          create the new document.
       :throws PdfiumException: PDFium cannot copy the pages.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: nUp(float $width, float $height, int $columns, int $rows, bool $removeSecurity = false) -> Document
+
+      A new document with this document's pages scaled onto sheets of ``$width`` by ``$height``
+      points, ``$columns`` across and ``$rows`` down, in page order left to right, then top to
+      bottom. Each page is scaled up or down to fit its cell, keeping its proportions, and centred
+      in it. The last sheet may be partly empty. The sheets show the pages' content only, without
+      links, form fields or other annotations. With one column and one row, PDFium instead copies
+      the pages whole and ignores ``$width`` and ``$height``: links stay, and form fields draw but
+      can no longer be filled in.
+
+      The new document is unencrypted and has no viewer preferences, bookmarks, attachments or
+      metadata beyond what PDFium writes.
+
+      :param float $width: Sheet width in points, finite and greater than 0.
+      :param float $height: Sheet height in points, finite and greater than 0.
+      :param int $columns: Pages across a sheet, at least 1.
+      :param int $rows: Pages down a sheet, at least 1.
+      :param bool $removeSecurity: Must be ``true`` if this document is encrypted, because PDFium
+         cannot encrypt the result.
+      :rtype: Document
+      :throws \\ValueError: A size is not finite or not above 0 once rounded to a float, or a count
+         is below 1.
+      :throws UnsupportedException: This document is encrypted and ``$removeSecurity`` is ``false``.
+      :throws PdfiumException: This document has no pages, or ``$columns`` and ``$rows`` are too
+         large to lay out.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:staticmethod:: merge(array $documents, bool $removeSecurity = false) -> Document
@@ -1448,8 +1475,8 @@ these:
    Base class for all exceptions below. Extends ``\RuntimeException``.
 
    Also thrown on its own when PDFium cannot copy pages, edit pages, write a document or encode a
-   bitmap, and by a :php:class:`Page` or :php:class:`TextPage` whose page was deleted or whose
-   position is unknown after a failed edit.
+   bitmap, when :php:meth:`Document::nUp` cannot lay out the pages, and by a :php:class:`Page` or
+   :php:class:`TextPage` whose page was deleted or whose position is unknown after a failed edit.
 
 .. php:exception:: FileException
 
@@ -1472,8 +1499,8 @@ these:
 .. php:exception:: UnsupportedException
 
    The document uses an encryption PDFium does not support, or :php:meth:`Document::extractPages`,
-   :php:meth:`Document::insertPages` or :php:meth:`Document::merge` was given an encrypted document
-   without ``removeSecurity: true``.
+   :php:meth:`Document::insertPages`, :php:meth:`Document::merge` or :php:meth:`Document::nUp` was
+   given an encrypted document without ``removeSecurity: true``.
 
 .. php:exception:: MemoryException
 

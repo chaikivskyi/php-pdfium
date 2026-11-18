@@ -34,6 +34,8 @@ Features:
 - ``Document::insertPages()``: copy pages of another document, or of the same one, into a document
   at any position.
 - ``Document::movePages()``: reorder pages.
+- ``Document::nUp()``: a new document with the pages scaled onto sheets of a given size, several
+  to a sheet.
 - ``Page::setRotation()`` and the page boxes: ``mediaBox()``, ``cropBox()``, ``bleedBox()``,
   ``trimBox()`` and ``artBox()`` with their setters, as ``Rect`` values in points.
 - A ``Page`` held from before an edit follows its page to its new index. Once its page is deleted,
