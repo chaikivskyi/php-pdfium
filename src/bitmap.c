@@ -112,7 +112,7 @@ ZEND_METHOD(Pdfium_Page, render)
 		zend_argument_value_error(2, "must have %s", fault);
 		RETURN_THROWS();
 	}
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	int page_w = pixels_for(FPDF_GetPageWidthF(p->page), dpi);

@@ -55,7 +55,7 @@ ZEND_METHOD(Pdfium_Page, index)
 ZEND_METHOD(Pdfium_Page, width)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	float width = FPDF_GetPageWidthF(pdfium_this_page(ZEND_THIS)->page);
@@ -66,7 +66,7 @@ ZEND_METHOD(Pdfium_Page, width)
 ZEND_METHOD(Pdfium_Page, height)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	float height = FPDF_GetPageHeightF(pdfium_this_page(ZEND_THIS)->page);
@@ -77,12 +77,22 @@ ZEND_METHOD(Pdfium_Page, height)
 ZEND_METHOD(Pdfium_Page, rotation)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	int rotation = FPDFPage_GetRotation(pdfium_this_page(ZEND_THIS)->page);
 	pdfium_leave();
 	RETURN_LONG(rotation * 90);
+}
+
+static pdfium_page_handle *handle_new(pdfium_doc_handle *h)
+{
+	pdfium_page_handle *ph = ecalloc(1, sizeof(*ph));
+
+	ph->h = h;
+	ph->refs = 1;
+	pdfium_doc_handle_addref(h);
+	return ph;
 }
 
 zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count)
@@ -93,10 +103,7 @@ zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_c
 	zend_object *obj = Z_OBJ(zv);
 	pdfium_page *p = pdfium_page_from_obj(obj);
 	p->index = (int) index;
-	p->ph = ecalloc(1, sizeof(*p->ph));
-	p->ph->h = h;
-	p->ph->refs = 1;
-	pdfium_doc_handle_addref(h);
+	p->ph = handle_new(h);
 
 	if (!pdfium_enter()) {
 		OBJ_RELEASE(obj);
@@ -149,6 +156,26 @@ void pdfium_page_handle_release(pdfium_page_handle *ph)
 	}
 	pdfium_doc_handle_release(ph->h);
 	efree(ph);
+}
+
+void pdfium_page_swap_handle(pdfium_page *p, FPDF_PAGE fresh)
+{
+	pdfium_page_handle *old = p->ph;
+
+	p->ph = handle_new(old->h);
+	p->ph->page = fresh;
+	pdfium_page_handle_release(old);
+}
+
+bool pdfium_page_enter(zval *self)
+{
+	pdfium_page *p = pdfium_page_from_obj(Z_OBJ_P(self));
+
+	if (!p->ph->page) {
+		zend_throw_exception_ex(pdfium_ce_format_exception, 0, "Cannot load page %d", p->index);
+		return false;
+	}
+	return pdfium_enter();
 }
 
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h)

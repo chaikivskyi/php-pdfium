@@ -705,6 +705,47 @@ Page
       :throws \\ValueError: ``$x`` or ``$y`` is not finite.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: flatten(bool $forPrint = false) -> bool
+
+      Turns every annotation of the page into page content, in place: form fields with their current
+      values, and links and other annotations too, so :php:meth:`formFields` and :php:meth:`links`
+      are empty afterwards. It cannot be undone; :php:meth:`Document::save` writes it out, and the
+      saved file has no form left on that page.
+
+      By default it flattens what a viewer shows on screen: annotations flagged hidden or invisible
+      are dropped. With ``$forPrint`` it flattens what a printer prints: only annotations flagged
+      for printing are kept.
+
+      Afterwards this ``Page`` shows the flattened page: its :php:meth:`render`, :php:meth:`text`,
+      :php:meth:`textPage` and the other methods read the new content. Objects made before keep the
+      old page:
+
+      * a :php:class:`TextPage` made earlier keeps the text from before the flatten;
+      * a :php:class:`FormField` made earlier throws :php:class:`PdfiumException` on every call,
+        because its field is gone;
+      * another ``Page`` object for the same page, fetched before the flatten, shows the page without
+        its annotations and without the flattened content; fetch it again with
+        :php:meth:`Document::page`.
+
+      A field with widgets on other pages keeps them: only this page is flattened. Its
+      :php:meth:`FormField::controlCount` and :php:meth:`FormField::controlIndex` still count the
+      flattened widgets until the saved document is opened again.
+
+      .. code-block:: php
+
+         $page->formFields()[0]->setValue('Jane');
+         $page->flatten();
+         $doc->save('flat.pdf');
+
+      :param bool $forPrint: Flatten for printing instead of for the screen.
+      :returns: ``false`` when the page has nothing to flatten.
+      :rtype: bool
+      :throws PdfiumException: PDFium cannot flatten the page.
+      :throws FormatException: PDFium cannot load the flattened page again; every later call on this
+         ``Page`` but :php:meth:`index` throws it too, so fetch the page again with
+         :php:meth:`Document::page`.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
 
 Attachment
 ----------

@@ -10,12 +10,7 @@ function attempt(Pdfium\Document $doc, string $name, string $value): void
 {
     $f = field($doc, $name);
     $before = $f->value();
-    try {
-        $f->setValue($value);
-        echo "$name: no exception\n";
-    } catch (Throwable $e) {
-        echo "$name: ", get_class($e), ': ', $e->getMessage(), "\n";
-    }
+    echo "$name: ", outcome(fn() => $f->setValue($value)), "\n";
     var_dump($f->value() === $before);
     $doc->toString();
     $n = field($doc, 'name');

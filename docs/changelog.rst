@@ -17,6 +17,8 @@ Features:
   the field's widgets on every page.
 - ``FormField::setChecked()`` checks or unchecks a checkbox or radio button, and
   ``FormField::select()`` selects or deselects an option of a combo box or list box, in place.
+- ``Page::flatten()`` turns a page's annotations and form fields into page content, for the screen
+  or for printing, in place.
 
 v0.3.0 (2026-11-21)
 -------------------

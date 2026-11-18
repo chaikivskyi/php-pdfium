@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 339c4a0ef3fc48ae61f019f4c3332afc80a23b83 */
+ * Stub hash: b331e6ec4d58ad7209e4b7b8ba549fd3a5c32f97 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -176,6 +176,10 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Page_formFieldAt, 0, 2, Pdfium\\FormField, 1)
 	ZEND_ARG_TYPE_INFO(0, x, IS_DOUBLE, 0)
 	ZEND_ARG_TYPE_INFO(0, y, IS_DOUBLE, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Page_flatten, 0, 0, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, forPrint, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Attachment___construct arginfo_class_Pdfium_Document___construct
@@ -356,6 +360,7 @@ ZEND_METHOD(Pdfium_Page, links);
 ZEND_METHOD(Pdfium_Page, linkAt);
 ZEND_METHOD(Pdfium_Page, formFields);
 ZEND_METHOD(Pdfium_Page, formFieldAt);
+ZEND_METHOD(Pdfium_Page, flatten);
 ZEND_METHOD(Pdfium_Attachment, __construct);
 ZEND_METHOD(Pdfium_Attachment, index);
 ZEND_METHOD(Pdfium_Attachment, name);
@@ -539,6 +544,7 @@ static const zend_function_entry class_Pdfium_Page_methods[] = {
 	ZEND_ME(Pdfium_Page, linkAt, arginfo_class_Pdfium_Page_linkAt, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, formFields, arginfo_class_Pdfium_Page_formFields, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, formFieldAt, arginfo_class_Pdfium_Page_formFieldAt, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, flatten, arginfo_class_Pdfium_Page_flatten, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
