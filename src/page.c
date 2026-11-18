@@ -123,6 +123,17 @@ void pdfium_page_handle_addref(pdfium_page_handle *ph)
 	ph->refs++;
 }
 
+FPDF_FORMHANDLE pdfium_page_form(pdfium_page_handle *ph)
+{
+	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
+
+	if (form && !ph->form_loaded) {
+		FORM_OnAfterLoadPage(ph->page, form);
+		ph->form_loaded = true;
+	}
+	return form;
+}
+
 void pdfium_page_handle_release(pdfium_page_handle *ph)
 {
 	if (--ph->refs) {

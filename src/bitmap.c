@@ -160,11 +160,7 @@ ZEND_METHOD(Pdfium_Page, render)
 		zend_throw_exception_ex(pdfium_ce_memory_exception, 0, "Cannot allocate a %dx%d bitmap", w, h);
 		RETURN_THROWS();
 	}
-	FPDF_FORMHANDLE form = annotations ? pdfium_doc_handle_form(p->h) : NULL;
-	if (form && !p->form_loaded) {
-		FORM_OnAfterLoadPage(p->page, form);
-		p->form_loaded = true;
-	}
+	FPDF_FORMHANDLE form = annotations ? pdfium_page_form(p) : NULL;
 	int flags = annotations ? FPDF_ANNOT : 0;
 	FPDFBitmap_FillRect(bitmap, 0, 0, w, h, transparent ? 0x00000000 : 0xFFFFFFFF);
 	FPDF_RenderPageBitmap(bitmap, p->page, -x0, -y0, page_w, page_h, 0, flags);
