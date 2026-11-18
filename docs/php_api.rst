@@ -14,8 +14,9 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 :php:class:`Bitmap` and :php:class:`Attachment` cannot be cloned or serialized. The value classes
 (:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`,
 :php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`,
-:php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`, :php:class:`Destination` and
-:php:class:`Action`) are read-only and can be cloned and serialized.
+:php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`, :php:class:`Destination`,
+:php:class:`Action` and :php:class:`AttachmentMetadata`) are read-only and can be cloned and
+serialized.
 
 
 Document
@@ -309,6 +310,44 @@ Metadata
       ``?string``
 
 
+AttachmentMetadata
+------------------
+
+.. php:class:: AttachmentMetadata
+
+   An embedded file's details, returned by :php:meth:`Attachment::metadata`: a final, read-only
+   value. Each property is a UTF-8 string, or ``null`` when the entry is empty or missing. Dates are
+   as stored in the PDF, for example ``D:20261031120000Z``. There is no size, as PDFium does not
+   read the stored one; use ``strlen($attachment->contents())``.
+
+   .. php:attr:: description
+
+      ``?string``
+
+   .. php:attr:: subtype
+
+      ``?string``: the MIME type, such as ``application/pdf``.
+
+   .. php:attr:: afRelationship
+
+      ``?string``: how the file relates to the document: ``Source``, ``Data``, ``Alternative``,
+      ``Supplement``, ``Unspecified`` or another name.
+
+   .. php:attr:: creationDate
+
+      ``?string``
+
+   .. php:attr:: modDate
+
+      ``?string``
+
+   .. php:attr:: checksum
+
+      ``?string``: the MD5 the PDF stores for the file, as 32 lowercase hex digits. It is not checked
+      against :php:meth:`Attachment::contents`. ``null`` when missing or not stored as a hex
+      string.
+
+
 Permissions
 -----------
 
@@ -515,6 +554,15 @@ Attachment
       :throws PdfiumException: The document's attachments changed since this one was fetched, or
          reading the file fails partway.
       :throws MemoryException: The file would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: metadata() -> AttachmentMetadata
+
+      The file's description, MIME type, relationship to the document, dates and checksum.
+
+      :rtype: AttachmentMetadata
+      :throws PdfiumException: The document's attachments changed since this one was fetched.
+      :throws MemoryException: An entry would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
 

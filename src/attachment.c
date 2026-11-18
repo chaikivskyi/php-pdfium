@@ -3,6 +3,7 @@
 #endif
 
 #include "php_pdfium.h"
+#include <ctype.h>
 #include <fpdf_attachment.h>
 #include "zend_exceptions.h"
 
@@ -11,9 +12,54 @@ static unsigned long name_get(void *att, unsigned short *buf, unsigned long len)
 	return FPDFAttachment_GetName(att, buf, len);
 }
 
+static unsigned long description_get(void *att, unsigned short *buf, unsigned long len)
+{
+	return FPDFAttachment_GetDescription(att, buf, len);
+}
+
+static unsigned long subtype_get(void *att, unsigned short *buf, unsigned long len)
+{
+	return FPDFAttachment_GetSubtype(att, buf, len);
+}
+
+static unsigned long relationship_get(void *att, unsigned short *buf, unsigned long len)
+{
+	return FPDFAttachment_GetAFRelationship(att, buf, len);
+}
+
+typedef struct { FPDF_ATTACHMENT att; FPDF_BYTESTRING key; } param_source;
+
+static unsigned long param_get(void *source, unsigned short *buf, unsigned long len)
+{
+	param_source *p = source;
+
+	return FPDFAttachment_GetStringValue(p->att, p->key, buf, len);
+}
+
+enum { META_DESCRIPTION, META_SUBTYPE, META_AF_RELATIONSHIP, META_CREATION_DATE, META_MOD_DATE, META_CHECKSUM, META_SLOTS };
+
+static const struct { pdfium_utf16le_getter get; FPDF_BYTESTRING key; const char *what; } meta_fields[META_SLOTS] = {
+	[META_DESCRIPTION] = {description_get, NULL, "description"},
+	[META_SUBTYPE] = {subtype_get, NULL, "subtype"},
+	[META_AF_RELATIONSHIP] = {relationship_get, NULL, "afRelationship"},
+	[META_CREATION_DATE] = {param_get, "CreationDate", "creationDate"},
+	[META_MOD_DATE] = {param_get, "ModDate", "modDate"},
+	[META_CHECKSUM] = {param_get, "CheckSum", "checksum"},
+};
+
 ZEND_METHOD(Pdfium_Attachment, __construct)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+ZEND_METHOD(Pdfium_AttachmentMetadata, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+bool pdfium_attachment_slots_match(void)
+{
+	return pdfium_slots_named(pdfium_ce_attachment_metadata, "description subtype afRelationship creationDate modDate checksum");
 }
 
 static zend_object *attachment_new(pdfium_doc_handle *h, int index, FPDF_ATTACHMENT att)
@@ -199,6 +245,73 @@ ZEND_METHOD(Pdfium_Attachment, contents)
 	pdfium_leave();
 	if (fail) {
 		zend_throw_exception(ce, fail, 0);
+	}
+}
+
+static zend_string *checksum_hex(const zend_string *s)
+{
+	const char *v = ZSTR_VAL(s);
+
+	if (ZSTR_LEN(s) != 34 || v[0] != '<' || v[33] != '>') {
+		return NULL;
+	}
+	for (int i = 1; i < 33; i++) {
+		if (!isxdigit((unsigned char) v[i])) {
+			return NULL;
+		}
+	}
+	zend_string *hex = zend_string_init(v + 1, 32, 0);
+
+	zend_str_tolower(ZSTR_VAL(hex), 32);
+	return hex;
+}
+
+ZEND_METHOD(Pdfium_Attachment, metadata)
+{
+	zend_string *values[META_SLOTS] = {0};
+	size_t used = 0;
+	int i, failed = META_SLOTS;
+	bool oom = false;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	FPDF_ATTACHMENT att = attachment_enter(ZEND_THIS);
+
+	if (!att) {
+		RETURN_THROWS();
+	}
+	for (i = 0; i < META_SLOTS && !oom; i++) {
+		param_source p = {att, meta_fields[i].key};
+
+		values[i] = pdfium_utf16le_fetch_under_limit(meta_fields[i].get, p.key ? (void *) &p : att, &used, &oom);
+		if (oom) {
+			failed = i;
+		}
+	}
+	pdfium_leave();
+
+	if (failed != META_SLOTS) {
+		for (i = 0; i < META_SLOTS; i++) {
+			if (values[i]) {
+				zend_string_release(values[i]);
+			}
+		}
+		zend_throw_exception_ex(pdfium_ce_memory_exception, 0,
+			"The attachment's %s needs more memory than memory_limit leaves", meta_fields[failed].what);
+		RETURN_THROWS();
+	}
+	if (values[META_CHECKSUM]) {
+		zend_string *hex = checksum_hex(values[META_CHECKSUM]);
+
+		zend_string_release(values[META_CHECKSUM]);
+		values[META_CHECKSUM] = hex;
+	}
+	object_init_ex(return_value, pdfium_ce_attachment_metadata);
+	for (i = 0; i < META_SLOTS; i++) {
+		if (values[i]) {
+			ZVAL_STR(pdfium_slot(Z_OBJ_P(return_value), i), values[i]);
+		} else {
+			ZVAL_NULL(pdfium_slot(Z_OBJ_P(return_value), i));
+		}
 	}
 }
 

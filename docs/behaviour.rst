@@ -235,7 +235,7 @@ Rough memory needed:
 - ``links()`` and ``linkAt()``: about 2 KB per link, 256 bytes per quad, and the length of its
   URI or file path.
 - ``attachments()``: about 100 bytes per attachment.
-- ``Attachment::name()``: about 5 bytes per character.
+- ``Attachment::name()`` and ``metadata()``: about 5 bytes per character.
 - ``Attachment::contents()``: the size of the file.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 

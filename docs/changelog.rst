@@ -23,8 +23,9 @@ Features:
 - Value classes ``Bookmark``, ``Link``, ``Quad``, ``Destination`` (a page in this document and how
   to show it) and ``Action`` (what a link, bookmark or page event does: go to a page, open a URI or
   another file).
-- ``Document::attachmentCount()``, ``attachments()`` and ``attachment()``: the document's embedded
-  files, as ``Attachment`` objects with their name and contents.
+- ``Document::attachmentCount()``, ``attachments()`` and ``attachment()`` list embedded files as
+  ``Attachment`` objects with a name, contents and ``metadata()``, which gives the description,
+  MIME type, relationship, dates and checksum.
 
 v0.2.0 (2026-11-15)
 -------------------

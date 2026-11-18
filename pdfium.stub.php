@@ -225,6 +225,26 @@ final readonly class Metadata
     private function __construct() {}
 }
 
+/** An embedded file's details as UTF-8 strings; null when missing or empty. */
+final readonly class AttachmentMetadata
+{
+    public ?string $description;
+    /** The MIME type, such as "application/pdf". */
+    public ?string $subtype;
+    /** How the file relates to the document: "Source", "Data", "Alternative", "Supplement", "Unspecified" or another name. */
+    public ?string $afRelationship;
+    /** As stored in the PDF, such as "D:20261031120000Z", like the Metadata dates. */
+    public ?string $creationDate;
+    public ?string $modDate;
+    /**
+     * The MD5 the PDF stores for the file, as 32 lowercase hex digits; null when missing or not stored
+     * as a hex string. It is not checked against contents().
+     */
+    public ?string $checksum;
+
+    private function __construct() {}
+}
+
 /** The document's permission flags. They are reported, never enforced. */
 final readonly class Permissions
 {
@@ -597,6 +617,13 @@ final class Attachment
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function contents(): ?string {}
+
+    /**
+     * @throws PdfiumException when the document's attachments changed since it was fetched
+     * @throws MemoryException when an entry would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function metadata(): AttachmentMetadata {}
 }
 
 /**

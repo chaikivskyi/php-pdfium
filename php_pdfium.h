@@ -50,6 +50,7 @@ extern zend_class_entry *pdfium_ce_page_iterator;
 extern zend_class_entry *pdfium_ce_text_page;
 extern zend_class_entry *pdfium_ce_bitmap;
 extern zend_class_entry *pdfium_ce_attachment;
+extern zend_class_entry *pdfium_ce_attachment_metadata;
 extern zend_class_entry *pdfium_ce_metadata;
 extern zend_class_entry *pdfium_ce_permissions;
 extern zend_class_entry *pdfium_ce_rect;
@@ -150,6 +151,7 @@ bool pdfium_navigation_slots_match(void);
 void pdfium_bitmap_free_obj(zend_object *obj);
 
 void pdfium_attachment_free_obj(zend_object *obj);
+bool pdfium_attachment_slots_match(void);
 
 bool pdfium_memory_fits(size_t bytes);
 bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);
