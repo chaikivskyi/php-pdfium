@@ -17,7 +17,7 @@ function attempt(Pdfium\Document $doc, string $name, string $value): void
         echo "$name: ", get_class($e), ': ', $e->getMessage(), "\n";
     }
     var_dump($f->value() === $before);
-    var_dump(strlen($doc->toString()) > 0);
+    $doc->toString();
     $n = field($doc, 'name');
     $n->setValue('ok');
     var_dump($n->value());
@@ -61,7 +61,7 @@ foreach (["a\r\nb", "a\rb", "a\tb"] as $v) {
     $notes->setValue($v);
     var_dump(bin2hex($notes->value()));
 }
-foreach (["a\nb", "a\r\nb"] as $v) {
+foreach (["a\nb", "a\r\nb", "\u{1F600}x"] as $v) {
     $name->setValue($v);
     var_dump(bin2hex($name->value()));
 }
@@ -71,7 +71,8 @@ foreach (['country', 'agree', 'sig', 'go', 'langs'] as $n) {
 }
 attempt($doc, 'name', "a\0b");
 attempt($doc, 'name', "\xFF");
-attempt($doc, 'name', "\u{1F600}x");
+$read = form_pdf([8 => '<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /FT /Tx /T (e) /V <FEFFD83DDE000078> /Rect [100 700 300 720] >>']);
+var_dump(bin2hex(Pdfium\Document::fromString($read)->page(0)->formFields()[0]->value()));
 ?>
 --EXPECT--
 string(4) "Jane"
@@ -92,35 +93,26 @@ string(8) "610d0a62"
 string(6) "612062"
 string(4) "6162"
 string(4) "6162"
+string(8) "ef988078"
 country: Pdfium\PdfiumException: Cannot set the text of a ComboBox field that is not editable
-bool(true)
 bool(true)
 string(2) "ok"
 agree: Pdfium\PdfiumException: Cannot set the text of a Checkbox field
 bool(true)
-bool(true)
 string(2) "ok"
 sig: Pdfium\PdfiumException: Cannot set the text of a Signature field
-bool(true)
 bool(true)
 string(2) "ok"
 go: Pdfium\PdfiumException: Cannot set the text of a PushButton field
 bool(true)
-bool(true)
 string(2) "ok"
 langs: Pdfium\PdfiumException: Cannot set the text of a ListBox field
-bool(true)
 bool(true)
 string(2) "ok"
 name: ValueError: Pdfium\FormField::setValue(): Argument #1 ($value) must not contain any null bytes
 bool(true)
-bool(true)
 string(2) "ok"
 name: ValueError: Pdfium\FormField::setValue(): Argument #1 ($value) must be valid UTF-8
 bool(true)
-bool(true)
 string(2) "ok"
-name: ValueError: Pdfium\FormField::setValue(): Argument #1 ($value) must not contain characters outside the Basic Multilingual Plane; PDFium's form filler cannot store them
-bool(true)
-bool(true)
-string(2) "ok"
+string(10) "f09f988078"

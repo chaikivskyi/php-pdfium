@@ -1063,10 +1063,11 @@ final class FormField
      * appearance of every widget of the field, on this page and on others. An empty string clears the
      * field. PDFium cuts text longer than the field's length limit without saying so: compare value()
      * when it matters. A read-only field is changed all the same; check flags()->readOnly to refuse it.
-     * No script runs, so fields calculated or formatted from this one are not updated.
+     * No script runs, so fields calculated or formatted from this one are not updated. PDFium's form filler
+     * does not store characters outside the Basic Multilingual Plane (above U+FFFF, such as most emoji)
+     * correctly: they come back as a different character, so check value() when the text may contain them.
      *
-     * @throws \ValueError when $value is not valid UTF-8, contains a NUL byte, or contains a character outside the
-     *         Basic Multilingual Plane (above U+FFFF, such as most emoji), which PDFium's form filler cannot store
+     * @throws \ValueError when $value is not valid UTF-8 or contains a NUL byte
      * @throws PdfiumException when the field is gone: its page may have been flattened, or PDFium cannot set up form
      *         support; when the field's type cannot take text; or when PDFium refuses to edit the field
      * @throws MemoryException when the text would not fit under memory_limit
