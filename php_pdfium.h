@@ -21,6 +21,7 @@ typedef struct pdfium_doc_handle {
 	FPDF_FORMHANDLE form;
 	bool form_tried;
 	FPDF_FORMFILLINFO form_info;
+	struct pdfium_fill *fill;
 	zend_string *buffer;
 	uint32_t refs;
 	uint64_t attachment_changes;

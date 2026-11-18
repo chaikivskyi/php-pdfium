@@ -14,6 +14,12 @@ function check_ap_objects(int $first = 22): array
     ];
 }
 
+function text_ap(string $text): string
+{
+    return stream_obj("/Tx BMC BT /Helv 12 Tf 0 g 2 6 Td ($text) Tj ET EMC",
+        '/Type /XObject /Subtype /Form /BBox [0 0 200 20] /Resources << /Font << /Helv 5 0 R >> >> ');
+}
+
 function standard_form(): string
 {
     $ap = check_ap(...);
@@ -36,4 +42,25 @@ function standard_form(): string
     ], [
         7 => '<< /Type /Annot /Subtype /Link /Rect [10 10 50 50] /Border [0 0 0] >>',
     ] + check_ap_objects());
+}
+
+function repeat_pdf(): string
+{
+    $w = '/Type /Annot /Subtype /Widget /Parent 7 0 R /F 4 /Rect [100 700 300 720]';
+    return form_pdf([7 => '<< /FT /Tx /T (shared) /V (old) /Kids [8 0 R 9 0 R] >>'], [
+        8 => "<< $w /P 3 0 R /AP << /N 10 0 R >> >>",
+        9 => "<< $w /P 6 0 R /AP << /N 11 0 R >> >>",
+        10 => text_ap('old'),
+        11 => text_ap('old'),
+    ], [9]);
+}
+
+function field(Pdfium\Page|Pdfium\Document $in, string $name): Pdfium\FormField
+{
+    foreach (($in instanceof Pdfium\Document ? $in->page(0) : $in)->formFields() as $f) {
+        if ($f->name() === $name) {
+            return $f;
+        }
+    }
+    throw new LogicException($name);
 }

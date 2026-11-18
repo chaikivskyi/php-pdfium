@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 8ddccb8a680cb29e323b66c0863165cb6eb02401 */
+ * Stub hash: d6d199fc22704550d42930d48f50d17334c8aec2 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -216,6 +216,10 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_FormField_flags, 0, 0, Pdfium\\FormFieldFlags, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_FormField_setValue, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 #define arginfo_class_Pdfium_TextPage___construct arginfo_class_Pdfium_Document___construct
 
 #define arginfo_class_Pdfium_TextPage_text arginfo_class_Pdfium_Page_text
@@ -360,6 +364,7 @@ ZEND_METHOD(Pdfium_FormField, controlIndex);
 ZEND_METHOD(Pdfium_FormField, controlCount);
 ZEND_METHOD(Pdfium_FormField, options);
 ZEND_METHOD(Pdfium_FormField, flags);
+ZEND_METHOD(Pdfium_FormField, setValue);
 ZEND_METHOD(Pdfium_TextPage, __construct);
 ZEND_METHOD(Pdfium_TextPage, text);
 ZEND_METHOD(Pdfium_TextPage, charCount);
@@ -548,6 +553,7 @@ static const zend_function_entry class_Pdfium_FormField_methods[] = {
 	ZEND_ME(Pdfium_FormField, controlCount, arginfo_class_Pdfium_FormField_controlCount, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_FormField, options, arginfo_class_Pdfium_FormField_options, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_FormField, flags, arginfo_class_Pdfium_FormField_flags, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, setValue, arginfo_class_Pdfium_FormField_setValue, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 

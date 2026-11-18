@@ -13,6 +13,8 @@ Features:
 - ``FormField::options()`` and ``flags()`` give a combo or list box's options and a field's flags
   as ``FormFieldOption`` and ``FormFieldFlags``; ``Page::formFieldAt()`` finds the field under a
   point.
+- ``FormField::setValue()`` fills in a text field or an editable combo box, in place, and redraws
+  the field's widgets on every page.
 
 v0.3.0 (2026-11-21)
 -------------------
