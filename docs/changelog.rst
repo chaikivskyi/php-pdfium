@@ -28,6 +28,11 @@ Features:
   MIME type, relationship, dates and checksum.
 - ``Document::addAttachment()`` and ``deleteAttachment()``: embed a file in the document or remove
   one, written out by ``save()`` and ``toString()``.
+- ``Document::deletePage()``: remove a page.
+- A ``Page`` held from before an edit follows its page to its new index. Once its page is deleted,
+  or a failed edit leaves its position unknown, the ``Page`` and every ``TextPage`` made from it
+  throw ``PdfiumException`` from every method. ``PageIterator::current()`` gives the page at
+  ``key()`` after the edit.
 
 Changes:
 

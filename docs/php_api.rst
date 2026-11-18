@@ -232,6 +232,22 @@ Document
       :throws FormatException: PDFium cannot load the page.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: deletePage(int $index) -> void
+
+      Removes a page from this document; :php:meth:`save` and :php:meth:`toString` write the
+      change. A :php:class:`Page` held from before keeps working and its
+      :php:meth:`Page::index` reports the new position. A ``Page`` or :php:class:`TextPage` of the
+      deleted page throws ``PdfiumException`` from every method. Deleting the only page leaves a
+      document with no pages, which :php:meth:`save` and :php:meth:`toString` can write.
+
+      An iterator continues by index, so deleting inside ``foreach`` skips the page after the
+      deleted one. To delete several pages, go from the highest index down.
+
+      :param int $index: Page number, starting at 0.
+      :throws \\ValueError: The index is out of range.
+      :throws PdfiumException: PDFium did not remove the page. If the page count changed even so, the message says the page order is now undefined and every :php:class:`Page` held from before throws.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. php:method:: pages() -> PageIterator
 
       An iterator over all pages. It loads one page at a time.
@@ -436,7 +452,8 @@ Page
 
 .. php:class:: Page
 
-   One page of a :php:class:`Document`.
+   One page of a :php:class:`Document`. Once its page is removed with
+   :php:meth:`Document::deletePage`, every method throws ``PdfiumException``.
 
    .. php:method:: index() -> int
 
@@ -621,7 +638,9 @@ TextPage
 
    A page's text as PDFium read it once, returned by :php:meth:`Page::textPage`. It keeps its page
    and document alive. Its methods never throw ``FormatException``, because the text is already
-   read. See :ref:`text-positions`.
+   read. Once its page is removed with :php:meth:`Document::deletePage`, or a failed edit leaves
+   the page's position unknown, every method throws ``PdfiumException`` with the same message as
+   the :php:class:`Page`'s methods. See :ref:`text-positions`.
 
    .. php:method:: text() -> string
 
@@ -771,6 +790,10 @@ PageIterator
       foreach ($doc->pages() as $index => $page) { /* ... */ }
 
    .. php:method:: current() -> Page
+
+      The page at :php:meth:`key`, loaded on the first call and again when an edit has deleted it,
+      moved it away from :php:meth:`key` or left its position unknown. A :php:class:`Page` returned
+      earlier keeps following its own page.
 
       :rtype: Page
       :throws PdfiumException: The iterator is past the last page.
@@ -1288,7 +1311,9 @@ these:
 
    Base class for all exceptions below. Extends ``\RuntimeException``.
 
-   Also thrown on its own when PDFium cannot copy pages, write a document or encode a bitmap.
+   Also thrown on its own when PDFium cannot copy pages, edit pages, write a document or encode a
+   bitmap, and by a :php:class:`Page` or :php:class:`TextPage` whose page was deleted or whose
+   position is unknown after a failed edit.
 
 .. php:exception:: FileException
 

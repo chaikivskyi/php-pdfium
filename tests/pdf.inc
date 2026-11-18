@@ -99,3 +99,36 @@ function file_spec(string $name, int $stream, string $more = ''): string
 {
     return "<< /Type /Filespec /F ($name) /UF ($name) /EF << /F $stream 0 R >> $more >>";
 }
+
+function letters_pdf(int $n = 4): string
+{
+    $kids = [];
+    for ($i = 0; $i < $n; $i++) {
+        $kids[] = (4 + 2 * $i) . ' 0 R';
+    }
+    return tree_pdf($n, implode(' ', $kids), $n);
+}
+
+function tree_pdf(int $letters, string $kids, int $count, array $extra = []): string
+{
+    $objs = [
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        "<< /Type /Pages /Kids [$kids] /Count $count >>",
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    ];
+    for ($i = 0; $i < $letters; $i++) {
+        $objs[] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents '
+            . (5 + 2 * $i) . ' 0 R >>';
+        $objs[] = stream_obj('BT /F1 24 Tf 72 700 Td (' . chr(65 + $i) . ') Tj ET');
+    }
+    return build_pdf(array_merge($objs, $extra));
+}
+
+function order(Pdfium\Document $doc): string
+{
+    $s = '';
+    for ($i = 0; $i < $doc->pageCount(); $i++) {
+        try { $s .= trim($doc->page($i)->text()) ?: '_'; } catch (Pdfium\FormatException) { $s .= '!'; }
+    }
+    return $s;
+}

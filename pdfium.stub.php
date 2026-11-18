@@ -166,6 +166,19 @@ final class Document implements \Countable, \IteratorAggregate
     public function page(int $index): Page {}
 
     /**
+     * Removes the page at $index from this document. The change is written by save() and toString().
+     * Pages held from before keep working and report their new index(); a Page or TextPage of the
+     * deleted page throws from every method. Deleting the only page leaves a document with no
+     * pages. Deleting inside foreach can make the loop skip a page.
+     *
+     * @throws \ValueError when $index is outside 0..pageCount()-1
+     * @throws PdfiumException when PDFium does not remove the page; if the page count changed even so,
+     *         the message says the page order is now undefined and every Page held from before throws
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function deletePage(int $index): void {}
+
+    /**
      * Loads each page on demand and holds only the current one; rewind() restarts at 0.
      */
     public function pages(): PageIterator {}
@@ -765,7 +778,8 @@ final class Attachment
 }
 
 /**
- * The page's text as PDFium read it once. It keeps its page and document alive.
+ * The page's text as PDFium read it once. It keeps its page and document alive, and its methods
+ * throw as the Page's do once the page is deleted or its position unknown.
  *
  * @strict-properties
  * @not-serializable
@@ -872,7 +886,9 @@ final class PageIterator implements \Iterator
     private function __construct() {}
 
     /**
-     * The page at the current position, loaded on the first call.
+     * The page at the current position, loaded on the first call and again when an edit has deleted
+     * it, moved it away from key() or left its position unknown. A Page returned earlier keeps
+     * following its own page.
      *
      * @throws PdfiumException when the iterator is past the last page
      * @throws FormatException when PDFium cannot load the page

@@ -46,57 +46,107 @@ double pdfium_points(float value)
 	return shortest;
 }
 
+bool pdfium_page_live(pdfium_page_handle *ph)
+{
+	if (ph->state == PDFIUM_PAGE_DELETED) {
+		zend_throw_exception(pdfium_ce_exception, "The page was deleted from its document", 0);
+		return false;
+	}
+	if (ph->state == PDFIUM_PAGE_LOST) {
+		zend_throw_exception(pdfium_ce_exception,
+			"The page's position is unknown after a failed edit of its document; load the document again", 0);
+		return false;
+	}
+	return true;
+}
+
+static bool placed_at(const pdfium_page_handle *ph, int index)
+{
+	return ph->state == PDFIUM_PAGE_PLACED && ph->index == index;
+}
+
 ZEND_METHOD(Pdfium_Page, index)
 {
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+
 	ZEND_PARSE_PARAMETERS_NONE();
-	RETURN_LONG(pdfium_page_from_obj(Z_OBJ_P(ZEND_THIS))->index);
+	if (!pdfium_page_live(ph)) {
+		RETURN_THROWS();
+	}
+	RETURN_LONG(ph->index);
 }
 
 ZEND_METHOD(Pdfium_Page, width)
 {
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_live(ph) || !pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	float width = FPDF_GetPageWidthF(pdfium_this_page(ZEND_THIS)->page);
+	float width = FPDF_GetPageWidthF(ph->page);
 	pdfium_leave();
 	RETURN_DOUBLE(pdfium_points(width));
 }
 
 ZEND_METHOD(Pdfium_Page, height)
 {
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_live(ph) || !pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	float height = FPDF_GetPageHeightF(pdfium_this_page(ZEND_THIS)->page);
+	float height = FPDF_GetPageHeightF(ph->page);
 	pdfium_leave();
 	RETURN_DOUBLE(pdfium_points(height));
 }
 
 ZEND_METHOD(Pdfium_Page, rotation)
 {
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_live(ph) || !pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	int rotation = FPDFPage_GetRotation(pdfium_this_page(ZEND_THIS)->page);
+	int rotation = FPDFPage_GetRotation(ph->page);
 	pdfium_leave();
 	RETURN_LONG(rotation * 90);
 }
 
-zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count)
+zend_object *pdfium_page_new(pdfium_doc_handle *h)
 {
 	zval zv;
 
 	object_init_ex(&zv, pdfium_ce_page);
-	zend_object *obj = Z_OBJ(zv);
-	pdfium_page *p = pdfium_page_from_obj(obj);
-	p->index = (int) index;
-	p->ph = ecalloc(1, sizeof(*p->ph));
-	p->ph->h = h;
-	p->ph->refs = 1;
+	pdfium_page_handle *ph = ecalloc(1, sizeof(*ph));
+
+	ph->h = h;
+	ph->refs = 1;
 	pdfium_doc_handle_addref(h);
+	pdfium_page_from_obj(Z_OBJ(zv))->ph = ph;
+	return Z_OBJ(zv);
+}
+
+zend_object *pdfium_page_attach(zend_object *obj, FPDF_PAGE page, int index)
+{
+	pdfium_page_handle *ph = pdfium_page_from_obj(obj)->ph;
+	pdfium_doc_handle *h = ph->h;
+
+	ph->page = page;
+	ph->index = index;
+	ph->next = h->pages;
+	if (h->pages) {
+		h->pages->prev = ph;
+	}
+	h->pages = ph;
+	return obj;
+}
+
+zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count)
+{
+	zend_object *obj = pdfium_page_new(h);
 
 	if (!pdfium_enter()) {
 		OBJ_RELEASE(obj);
@@ -114,8 +164,39 @@ zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_c
 		}
 		return NULL;
 	}
-	p->ph->page = page;
-	return obj;
+	return pdfium_page_attach(obj, page, (int) index);
+}
+
+void pdfium_pages_deleted(pdfium_doc_handle *h, int index)
+{
+	for (pdfium_page_handle *ph = h->pages; ph; ph = ph->next) {
+		if (ph->state != PDFIUM_PAGE_PLACED) {
+			continue;
+		}
+		if (ph->index == index) {
+			ph->state = PDFIUM_PAGE_DELETED;
+		} else if (ph->index > index) {
+			ph->index--;
+		}
+	}
+}
+
+void pdfium_pages_inserted(pdfium_doc_handle *h, int index, int count)
+{
+	for (pdfium_page_handle *ph = h->pages; ph; ph = ph->next) {
+		if (ph->state == PDFIUM_PAGE_PLACED && ph->index >= index) {
+			ph->index += count;
+		}
+	}
+}
+
+void pdfium_pages_lost(pdfium_doc_handle *h)
+{
+	for (pdfium_page_handle *ph = h->pages; ph; ph = ph->next) {
+		if (ph->state == PDFIUM_PAGE_PLACED) {
+			ph->state = PDFIUM_PAGE_LOST;
+		}
+	}
 }
 
 void pdfium_page_handle_addref(pdfium_page_handle *ph)
@@ -135,6 +216,14 @@ void pdfium_page_handle_release(pdfium_page_handle *ph)
 		}
 		FPDF_ClosePage(ph->page);
 		pdfium_leave();
+		if (ph->prev) {
+			ph->prev->next = ph->next;
+		} else {
+			ph->h->pages = ph->next;
+		}
+		if (ph->next) {
+			ph->next->prev = ph->prev;
+		}
 	}
 	pdfium_doc_handle_release(ph->h);
 	efree(ph);
@@ -167,7 +256,12 @@ ZEND_METHOD(Pdfium_PageIterator, current)
 
 	ZEND_PARSE_PARAMETERS_NONE();
 	if (!Z_ISUNDEF(it->current)) {
-		RETURN_COPY(&it->current);
+		pdfium_page_handle *ph = pdfium_page_from_obj(Z_OBJ(it->current))->ph;
+
+		if (placed_at(ph, it->index)) {
+			RETURN_COPY(&it->current);
+		}
+		iterator_drop_current(it);
 	}
 	int page_count;
 	zend_object *obj = pdfium_page_load(it->h, it->index, &page_count);

@@ -24,17 +24,23 @@ typedef struct pdfium_doc_handle {
 	zend_string *buffer;
 	uint32_t refs;
 	uint64_t attachment_changes;
+	struct pdfium_page_handle *pages;
 } pdfium_doc_handle;
+
+typedef enum { PDFIUM_PAGE_PLACED, PDFIUM_PAGE_DELETED, PDFIUM_PAGE_LOST } pdfium_page_state;
 
 typedef struct pdfium_page_handle {
 	pdfium_doc_handle *h;
 	FPDF_PAGE page;
 	bool form_loaded;
 	uint32_t refs;
+	int index;
+	pdfium_page_state state;
+	struct pdfium_page_handle *prev, *next;
 } pdfium_page_handle;
 
 typedef struct { pdfium_doc_handle *h; zend_object std; } pdfium_document;
-typedef struct { pdfium_page_handle *ph; int index; zend_object std; } pdfium_page;
+typedef struct { pdfium_page_handle *ph; zend_object std; } pdfium_page;
 typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std; } pdfium_page_iterator;
 typedef struct { unsigned char *pixels; int width, height; bool alpha, gray; zend_object std; } pdfium_bitmap;
 typedef struct { pdfium_page_handle *ph; FPDF_TEXTPAGE tp; zend_object std; } pdfium_text_page;
@@ -133,7 +139,13 @@ void pdfium_page_handle_addref(pdfium_page_handle *ph);
 void pdfium_page_handle_release(pdfium_page_handle *ph);
 void pdfium_text_page_free_obj(zend_object *obj);
 bool pdfium_text_slots_match(void);
+zend_object *pdfium_page_new(pdfium_doc_handle *h);
+zend_object *pdfium_page_attach(zend_object *obj, FPDF_PAGE page, int index);
 zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count);
+bool pdfium_page_live(pdfium_page_handle *ph);
+void pdfium_pages_deleted(pdfium_doc_handle *h, int index);
+void pdfium_pages_inserted(pdfium_doc_handle *h, int index, int count);
+void pdfium_pages_lost(pdfium_doc_handle *h);
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h);
 void pdfium_page_free_obj(zend_object *obj);
 void pdfium_page_iterator_free_obj(zend_object *obj);

@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 73a6d1e8eb66dae0d7efe4053c8342dfe2cfdae9 */
+ * Stub hash: b983996487530f1469c32fcf110a362e562d5ddc */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -54,6 +54,8 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_page, 0, 1, Pdfium\\Page, 0)
 	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
 ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Document_deletePage arginfo_class_Pdfium_Document_deleteAttachment
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_pages, 0, 0, Pdfium\\PageIterator, 0)
 ZEND_END_ARG_INFO()
@@ -246,6 +248,7 @@ ZEND_METHOD(Pdfium_Document, attachment);
 ZEND_METHOD(Pdfium_Document, addAttachment);
 ZEND_METHOD(Pdfium_Document, deleteAttachment);
 ZEND_METHOD(Pdfium_Document, page);
+ZEND_METHOD(Pdfium_Document, deletePage);
 ZEND_METHOD(Pdfium_Document, pages);
 ZEND_METHOD(Pdfium_Document, extractPages);
 ZEND_METHOD(Pdfium_Document, merge);
@@ -326,6 +329,7 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 	ZEND_ME(Pdfium_Document, addAttachment, arginfo_class_Pdfium_Document_addAttachment, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, deleteAttachment, arginfo_class_Pdfium_Document_deleteAttachment, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, page, arginfo_class_Pdfium_Document_page, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, deletePage, arginfo_class_Pdfium_Document_deletePage, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, pages, arginfo_class_Pdfium_Document_pages, ZEND_ACC_PUBLIC)
 #if (PHP_VERSION_ID >= 80400)
 	ZEND_RAW_FENTRY("getIterator", zim_Pdfium_Document_pages, arginfo_class_Pdfium_Document_getIterator, ZEND_ACC_PUBLIC, NULL, NULL)
