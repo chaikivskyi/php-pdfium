@@ -118,8 +118,8 @@ final class Document implements \Countable, \IteratorAggregate
     public function attachmentCount(): int {}
 
     /**
-     * Every embedded file, keyed by the index attachment() takes. An entry PDFium cannot read is
-     * left out, so keys can skip numbers.
+     * Every embedded file, keyed by the index attachment() and deleteAttachment() take. An entry
+     * PDFium cannot read is left out, so keys can skip numbers.
      *
      * @return array<int, Attachment>
      * @throws MemoryException when the list would not fit under memory_limit
@@ -147,6 +147,16 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function addAttachment(string $name, string $contents, ?string $description = null): Attachment {}
+
+    /**
+     * Removes an embedded file from this document, in place. Its bytes stay in the saved PDF, unused.
+     * Every Attachment fetched before is now stale; to delete several, delete from the highest index down.
+     *
+     * @throws \ValueError when $index is outside 0..attachmentCount()-1
+     * @throws PdfiumException when PDFium cannot delete the entry
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function deleteAttachment(int $index): void {}
 
     /**
      * @throws \ValueError when $index is outside 0..pageCount()-1
@@ -625,8 +635,9 @@ final class Attachment
     public function name(): string {}
 
     /**
-     * The file's bytes, decoded; null when there is no embedded file PDFium can read, for example
-     * when the entry only points to a file outside the PDF.
+     * The file's bytes, decoded; when PDFium cannot decode the file, the bytes as stored. Null when
+     * there is no embedded file PDFium can read, for example when the entry only points to a file
+     * outside the PDF.
      *
      * @throws PdfiumException when the document's attachments changed since it was fetched, or
      *         reading the file fails partway

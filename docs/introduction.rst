@@ -12,7 +12,7 @@ What it does
   and get every character with its position, font and colour.
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
   transparent.
-- List, extract and add embedded files (attachments).
+- List, extract, add and delete embedded files (attachments).
 - Split, merge and save documents.
 
 It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.

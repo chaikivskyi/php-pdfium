@@ -26,8 +26,8 @@ Features:
 - ``Document::attachmentCount()``, ``attachments()`` and ``attachment()`` list embedded files as
   ``Attachment`` objects with a name, contents and ``metadata()``, which gives the description,
   MIME type, relationship, dates and checksum.
-- ``Document::addAttachment()``: embed a file in the document, written out by ``save()`` and
-  ``toString()``.
+- ``Document::addAttachment()`` and ``deleteAttachment()``: embed a file in the document or remove
+  one, written out by ``save()`` and ``toString()``.
 
 v0.2.0 (2026-11-15)
 -------------------

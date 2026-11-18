@@ -216,17 +216,28 @@ page*, have the type ``"Unsupported"`` and nothing else set.
 Attachments
 -----------
 
-``addAttachment()`` changes the loaded document, never the file or string it came from;
-``save()`` or ``toString()`` writes the change out.
+``addAttachment()`` and ``deleteAttachment()`` change the loaded document, never the file or
+string it came from; ``save()`` or ``toString()`` writes the change out. A deleted file only leaves
+the list: its bytes stay in the saved PDF, unused.
 
-The list is kept sorted by name, so adding a file can shift the indexes of the others. After
-that, every :php:class:`Attachment <Pdfium\\Attachment>` fetched before it is stale: its methods
-throw ``PdfiumException`` instead of reading a different file. Fetch it again with
-``attachments()`` or ``attachment()``. The one ``addAttachment()`` returns is current.
+The list is kept sorted by name, so adding or deleting a file can shift the indexes of the others.
+After either call, every :php:class:`Attachment <Pdfium\\Attachment>` fetched before it is stale:
+its methods throw ``PdfiumException`` instead of reading a different file. Fetch it again with
+``attachments()`` or ``attachment()``. The one ``addAttachment()`` returns is current. To delete
+several files, see ``deleteAttachment()`` in :doc:`php_api`.
 
 Strictly, the list is sorted and checked by a key PDFium does not show. PDFium sets it to the file
 name, but other tools may not, so two entries can have the same ``name()``, and ``addAttachment()``
 can refuse a name that no ``name()`` shows.
+
+When PDFium cannot decode a file, ``contents()`` returns its bytes as stored, still compressed or
+encoded. This happens when the stream is damaged, or when it is ``/RunLengthDecode`` and would
+decode to 20 MB or more.
+
+PDFium decodes a file in its own memory, which ``memory_limit`` does not count, before
+``contents()`` can check the size. A small compressed file that expands to gigabytes can exhaust
+the process's memory before ``MemoryException`` is thrown. ``addAttachment()`` also gives PDFium a
+copy of ``$contents`` outside ``memory_limit``.
 
 ``extractPages()`` and ``merge()`` copy pages only, so their results have no attachments.
 
@@ -258,7 +269,7 @@ Rough memory needed:
   URI or file path.
 - ``attachments()``: about 100 bytes per attachment.
 - ``Attachment::name()`` and ``metadata()``: about 5 bytes per character.
-- ``Attachment::contents()``: the size of the file.
+- ``Attachment::contents()``: the size of the file. See :ref:`attachments` for PDFium's own copy.
 - ``addAttachment()``: 2 bytes per character of the name and description.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 

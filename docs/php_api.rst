@@ -152,8 +152,8 @@ Document
    .. php:method:: attachments() -> array
 
       Every embedded file as an :php:class:`Attachment`, keyed by the index that
-      :php:meth:`attachment` takes. An entry PDFium cannot read is left out, so keys can skip
-      numbers.
+      :php:meth:`attachment` and :php:meth:`deleteAttachment` take. An entry PDFium cannot read is
+      left out, so keys can skip numbers.
 
       .. code-block:: php
 
@@ -195,6 +195,29 @@ Document
          attachments is damaged. Also when PDFium cannot store the contents or description; the new
          entry is then removed if possible, and the message says when it stays.
       :throws MemoryException: The name or description would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: deleteAttachment(int $index) -> void
+
+      Removes an embedded file from this document, in place. Its bytes stay in the saved PDF,
+      unused. Every :php:class:`Attachment` fetched before is now stale, so to delete several,
+      collect their indexes first and delete from the highest down:
+
+      .. code-block:: php
+
+         $doomed = [];
+         foreach ($doc->attachments() as $index => $a) {
+             if (str_ends_with($a->name(), '.tmp')) {
+                 $doomed[] = $index;
+             }
+         }
+         foreach (array_reverse($doomed) as $index) {
+             $doc->deleteAttachment($index);
+         }
+
+      :param int $index: Attachment number, starting at 0.
+      :throws \\ValueError: The index is out of range.
+      :throws PdfiumException: PDFium cannot delete the entry.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Pages
@@ -546,7 +569,7 @@ Attachment
 
    A file embedded in a :php:class:`Document`, from :php:meth:`Document::attachments`,
    :php:meth:`Document::attachment` or :php:meth:`Document::addAttachment`. It keeps its document
-   alive. Once a file is added to the document, it is stale and must be fetched
+   alive. Once a file is added to or deleted from the document, it is stale and must be fetched
    again; see :ref:`attachments`.
 
    .. php:method:: index() -> int
@@ -572,7 +595,8 @@ Attachment
    .. php:method:: contents() -> ?string
 
       The file's bytes, decoded. ``null`` when there is no embedded file PDFium can read, for
-      example when the entry only points to a file outside the PDF.
+      example when the entry only points to a file outside the PDF. When PDFium cannot decode the
+      file, these are the bytes as stored; see :ref:`attachments`.
 
       :rtype: ?string
       :throws PdfiumException: The document's attachments changed since this one was fetched, or

@@ -254,6 +254,36 @@ ZEND_METHOD(Pdfium_Document, addAttachment)
 	RETURN_OBJ(attachment_new(h, -1, att));
 }
 
+ZEND_METHOD(Pdfium_Document, deleteAttachment)
+{
+	pdfium_doc_handle *h = pdfium_this_document(ZEND_THIS);
+	zend_long index;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_LONG(index)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	int count = attachment_count(h->doc);
+	bool in_range = index >= 0 && index < count;
+	bool deleted = in_range && FPDFDoc_DeleteAttachment(h->doc, (int) index);
+
+	if (deleted) {
+		h->attachment_changes++;
+	}
+	pdfium_leave();
+	if (!in_range) {
+		pdfium_index_error(1, count, "an attachment", "attachments");
+		RETURN_THROWS();
+	}
+	if (!deleted) {
+		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot delete attachment %d", (int) index);
+		RETURN_THROWS();
+	}
+}
+
 ZEND_METHOD(Pdfium_Attachment, index)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
