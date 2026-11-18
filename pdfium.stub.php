@@ -1057,6 +1057,21 @@ final class FormField
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function flags(): FormFieldFlags {}
+
+    /**
+     * Sets the text of a text field or an editable combo box, as if a user typed it, and rebuilds the
+     * appearance of every widget of the field, on this page and on others. An empty string clears the
+     * field. PDFium cuts text longer than the field's length limit without saying so: compare value()
+     * when it matters. A read-only field is changed all the same; check flags()->readOnly to refuse it.
+     * No script runs, so fields calculated or formatted from this one are not updated.
+     *
+     * @throws \ValueError when $value is not valid UTF-8 or contains a NUL byte
+     * @throws PdfiumException when the field is gone: its page may have been flattened, or PDFium cannot set up form
+     *         support; when the field's type cannot take text; or when PDFium refuses to edit the field
+     * @throws MemoryException when the text would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setValue(string $value): void {}
 }
 
 /**

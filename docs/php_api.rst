@@ -871,6 +871,27 @@ FormField
       :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: setValue(string $value) -> void
+
+      Sets the text of a text field or of a combo box with the ``editable`` flag, as if a user typed
+      it, in place: :php:meth:`Document::save` or :php:meth:`Document::toString` writes it out.
+      PDFium stores the value where the field keeps it and draws the new text into every widget of
+      the field, on this page and on the others; a :php:class:`Page` object already fetched for one
+      of them shows it too. An empty string clears the field.
+
+      PDFium cuts text longer than the field's length limit without saying so; compare
+      :php:meth:`value` when it matters. A read-only field is changed all the same; check
+      ``flags()->readOnly`` to refuse it. No script runs, so fields calculated or formatted from
+      this one are not updated.
+
+      :param string $value: The text, as UTF-8.
+      :throws \\ValueError: ``$value`` is not valid UTF-8 or contains a null byte.
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support. Also when
+         the field's type cannot take text (a combo box without the ``editable`` flag included), and
+         when PDFium refuses to edit the field.
+      :throws MemoryException: The text would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
 
 FormFieldOption
 ---------------

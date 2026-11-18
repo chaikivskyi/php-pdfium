@@ -398,6 +398,144 @@ ZEND_METHOD(Pdfium_FormField, options)
 	free(labels);
 }
 
+struct pdfium_fill {
+	pdfium_form_field *f;
+	FPDF_PAGE *pages;
+	int count;
+};
+
+static struct pdfium_fill fill_state;
+
+static FPDF_PAGE fill_get_page(FPDF_FORMFILLINFO *info, FPDF_DOCUMENT doc, int index)
+{
+	pdfium_doc_handle *h = (pdfium_doc_handle *) ((char *) info - XtOffsetOf(pdfium_doc_handle, form_info));
+	struct pdfium_fill *fill = h->fill;
+
+	if (!fill || doc != h->doc) {
+		return NULL;
+	}
+	if (index == fill->f->page_index) {
+		return fill->f->ph->page;
+	}
+	if (!fill->pages) {
+		int count = FPDF_GetPageCount(h->doc);
+
+		if (count <= 0 || !pdfium_memory_fits((size_t) count * sizeof(FPDF_PAGE))) {
+			return NULL;
+		}
+		fill->pages = ecalloc((size_t) count, sizeof(FPDF_PAGE));
+		fill->count = count;
+	}
+	if (index < 0 || index >= fill->count) {
+		return NULL;
+	}
+	if (!fill->pages[index]) {
+		FPDF_PAGE page = FPDF_LoadPage(h->doc, index);
+
+		if (!page) {
+			return NULL;
+		}
+		fill->pages[index] = page;
+		FORM_OnAfterLoadPage(page, h->form);
+	}
+	return fill->pages[index];
+}
+
+static bool fill_begin(pdfium_form_field *f, FPDF_FORMHANDLE form, FPDF_ANNOTATION a)
+{
+	pdfium_doc_handle *h = f->ph->h;
+
+	page_form_load(f->ph, form);
+	fill_state = (struct pdfium_fill) {f, NULL, 0};
+	h->fill = &fill_state;
+	h->form_info.FFI_GetPage = fill_get_page;
+	return FORM_SetFocusedAnnot(form, a);
+}
+
+static void fill_end(pdfium_form_field *f, FPDF_FORMHANDLE form)
+{
+	pdfium_doc_handle *h = f->ph->h;
+	struct pdfium_fill *fill = h->fill;
+
+	FORM_ForceToKillFocus(form);
+	h->form_info.FFI_GetPage = NULL;
+	h->fill = NULL;
+	for (int i = 0; i < fill->count; i++) {
+		if (fill->pages[i]) {
+			FORM_OnBeforeClosePage(fill->pages[i], form);
+			FPDF_ClosePage(fill->pages[i]);
+		}
+	}
+	if (fill->pages) {
+		efree(fill->pages);
+	}
+	*fill = (struct pdfium_fill) {0};
+}
+
+static const char *field_type_name(int type)
+{
+	return case_name(field_type_cases, sizeof(field_type_cases) / sizeof(field_type_cases[0]), type);
+}
+
+static const char *field_type_article(int type)
+{
+	const char *name = field_type_name(type);
+
+	return name[0] && strchr("AEIOU", name[0]) ? "an" : "a";
+}
+
+ZEND_METHOD(Pdfium_FormField, setValue)
+{
+	zend_string *value;
+	pdfium_form_field *f;
+	FPDF_FORMHANDLE form;
+	size_t count;
+	const char *bad;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STR(value)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if ((bad = pdfium_utf8_to_utf16le(value, NULL, &count))) {
+		zend_argument_value_error(1, "%s", bad);
+		RETURN_THROWS();
+	}
+	if (!pdfium_memory_fits((count + 1) * sizeof(unsigned short))) {
+		zend_throw_exception(pdfium_ce_memory_exception, "The form field needs more memory than memory_limit leaves", 0);
+		RETURN_THROWS();
+	}
+	unsigned short *units = pdfium_utf8_to_utf16le_alloc(value);
+	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
+
+	if (!a) {
+		efree(units);
+		RETURN_THROWS();
+	}
+	int type = FPDFAnnot_GetFormFieldType(form, a);
+	bool combo = type == FPDF_FORMFIELD_COMBOBOX;
+	bool takes_text = type == FPDF_FORMFIELD_TEXTFIELD || (combo && (field_flags(form, a) & FPDF_FORMFLAG_CHOICE_EDIT));
+	bool refused = false;
+
+	if (takes_text) {
+		refused = !fill_begin(f, form, a) || !FORM_SelectAllText(form, f->ph->page);
+		if (!refused) {
+			FORM_ReplaceSelection(form, f->ph->page, units);
+		}
+		fill_end(f, form);
+	}
+	field_leave(a);
+	efree(units);
+	if (!takes_text) {
+		zend_throw_exception_ex(pdfium_ce_exception, 0, combo ? "Cannot set the text of %s %s field that is not editable"
+			: "Cannot set the text of %s %s field", field_type_article(type), field_type_name(type));
+		RETURN_THROWS();
+	}
+	if (refused) {
+		zend_throw_exception(pdfium_ce_exception, "PDFium refused to edit the field", 0);
+		RETURN_THROWS();
+	}
+}
+
 ZEND_METHOD(Pdfium_FormField, name)
 {
 	string_method(INTERNAL_FUNCTION_PARAM_PASSTHRU, name_get, false, false);
