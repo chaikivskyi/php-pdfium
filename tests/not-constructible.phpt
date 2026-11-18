@@ -4,7 +4,7 @@ Document, Page, PageIterator, Bitmap, Attachment and FormField cannot be created
 pdfium
 --FILE--
 <?php
-foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'FormField', 'Metadata', 'AttachmentMetadata', 'Signature', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Rect'] as $c) {
+foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'FormField', 'Metadata', 'AttachmentMetadata', 'Signature', 'FormFieldOption', 'FormFieldFlags', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Rect'] as $c) {
     $fq = "Pdfium\\$c";
     $r = new ReflectionClass($fq);
     echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true),
@@ -56,6 +56,14 @@ AttachmentMetadata final=true cloneable=true instantiable=false abstract=false
   created
   created
 Signature final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
+FormFieldOption final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
+FormFieldFlags final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created
