@@ -53,7 +53,11 @@ extern zend_class_entry *pdfium_ce_bitmap;
 extern zend_class_entry *pdfium_ce_attachment;
 extern zend_class_entry *pdfium_ce_attachment_metadata;
 extern zend_class_entry *pdfium_ce_signature;
-extern zend_class_entry *pdfium_ce_form_field, *pdfium_ce_form_type, *pdfium_ce_form_field_type;
+extern zend_class_entry *pdfium_ce_form_field;
+extern zend_class_entry *pdfium_ce_form_type;
+extern zend_class_entry *pdfium_ce_form_field_type;
+extern zend_class_entry *pdfium_ce_form_field_option;
+extern zend_class_entry *pdfium_ce_form_field_flags;
 extern zend_class_entry *pdfium_ce_metadata;
 extern zend_class_entry *pdfium_ce_permissions;
 extern zend_class_entry *pdfium_ce_rect;
@@ -165,6 +169,7 @@ bool pdfium_attachment_slots_match(void);
 bool pdfium_signature_slots_match(void);
 
 void pdfium_form_field_free_obj(zend_object *obj);
+bool pdfium_form_slots_match(void);
 
 bool pdfium_memory_fits(size_t bytes);
 bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);

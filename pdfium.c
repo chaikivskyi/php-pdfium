@@ -20,6 +20,8 @@ zend_class_entry *pdfium_ce_signature;
 zend_class_entry *pdfium_ce_form_field;
 zend_class_entry *pdfium_ce_form_type;
 zend_class_entry *pdfium_ce_form_field_type;
+zend_class_entry *pdfium_ce_form_field_option;
+zend_class_entry *pdfium_ce_form_field_flags;
 zend_class_entry *pdfium_ce_metadata;
 zend_class_entry *pdfium_ce_permissions;
 zend_class_entry *pdfium_ce_rect;
@@ -167,6 +169,8 @@ PHP_MINIT_FUNCTION(pdfium)
 
 	pdfium_ce_form_type = register_class_Pdfium_FormType();
 	pdfium_ce_form_field_type = register_class_Pdfium_FormFieldType();
+	pdfium_ce_form_field_option = register_class_Pdfium_FormFieldOption();
+	pdfium_ce_form_field_flags = register_class_Pdfium_FormFieldFlags();
 	init_handlers(&form_field_handlers, XtOffsetOf(pdfium_form_field, std), pdfium_form_field_free_obj);
 	pdfium_ce_form_field = register_class_Pdfium_FormField();
 	pdfium_ce_form_field->create_object = form_field_create;
@@ -185,6 +189,10 @@ PHP_MINIT_FUNCTION(pdfium)
 	}
 	if (!pdfium_signature_slots_match()) {
 		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/signature.c do not match pdfium.stub.php");
+		return FAILURE;
+	}
+	if (!pdfium_form_slots_match()) {
+		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/form.c do not match pdfium.stub.php");
 		return FAILURE;
 	}
 	return SUCCESS;

@@ -48,17 +48,33 @@ ZEND_METHOD(Pdfium_FormField, __construct)
 	ZEND_PARSE_PARAMETERS_NONE();
 }
 
-static zend_object *field_new(pdfium_page_handle *ph, int page_index, int index)
+ZEND_METHOD(Pdfium_FormFieldOption, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+ZEND_METHOD(Pdfium_FormFieldFlags, __construct)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+}
+
+bool pdfium_form_slots_match(void)
+{
+	return pdfium_slots_named(pdfium_ce_form_field_option, "label selected")
+		&& pdfium_slots_named(pdfium_ce_form_field_flags, "readOnly required noExport multiline password editable multiSelect");
+}
+
+static zend_object *field_new(pdfium_page *p, int index)
 {
 	zval zv;
 
 	object_init_ex(&zv, pdfium_ce_form_field);
 	pdfium_form_field *f = pdfium_form_field_from_obj(Z_OBJ(zv));
 
-	f->ph = ph;
-	f->page_index = page_index;
+	f->ph = p->ph;
+	f->page_index = p->index;
 	f->index = index;
-	pdfium_page_handle_addref(ph);
+	pdfium_page_handle_addref(p->ph);
 	return Z_OBJ(zv);
 }
 
@@ -189,8 +205,8 @@ ZEND_METHOD(Pdfium_Document, formType)
 
 ZEND_METHOD(Pdfium_Page, formFields)
 {
-	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
-	int page_index = pdfium_page_from_obj(Z_OBJ_P(ZEND_THIS))->index;
+	pdfium_page *p = pdfium_page_from_obj(Z_OBJ_P(ZEND_THIS));
+	pdfium_page_handle *ph = p->ph;
 	const char *oom = NULL;
 
 	ZEND_PARSE_PARAMETERS_NONE();
@@ -235,11 +251,151 @@ ZEND_METHOD(Pdfium_Page, formFields)
 		for (int i = 0; i < n; i++) {
 			zval zv;
 
-			ZVAL_OBJ(&zv, field_new(ph, page_index, widgets[i]));
+			ZVAL_OBJ(&zv, field_new(p, widgets[i]));
 			add_next_index_zval(return_value, &zv);
 		}
 	}
 	free(widgets);
+}
+
+ZEND_METHOD(Pdfium_Page, formFieldAt)
+{
+	pdfium_page *p = pdfium_page_from_obj(Z_OBJ_P(ZEND_THIS));
+	pdfium_page_handle *ph = p->ph;
+	double x, y;
+
+	ZEND_PARSE_PARAMETERS_START(2, 2)
+		Z_PARAM_DOUBLE(x)
+		Z_PARAM_DOUBLE(y)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!zend_finite(x) || !zend_finite(y)) {
+		zend_argument_value_error(zend_finite(x) ? 2 : 1, "must be finite");
+		RETURN_THROWS();
+	}
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
+	int index = -1;
+
+	if (form && ph->page) {
+		page_form_load(ph, form);
+
+		FS_POINTF point = {pdfium_float_side(x), pdfium_float_side(y)};
+		FPDF_ANNOTATION a = FPDFAnnot_GetFormFieldAtPoint(form, ph->page, &point);
+
+		if (a) {
+			index = FPDFPage_GetAnnotIndex(ph->page, a);
+			FPDFPage_CloseAnnot(a);
+		}
+	}
+	pdfium_leave();
+	if (index >= 0) {
+		RETURN_OBJ(field_new(p, index));
+	}
+	RETURN_NULL();
+}
+
+static int field_flags(FPDF_FORMHANDLE form, FPDF_ANNOTATION a)
+{
+	return FPDFAnnot_GetFormFieldFlags(form, a);
+}
+
+ZEND_METHOD(Pdfium_FormField, flags)
+{
+	pdfium_form_field *f;
+	FPDF_FORMHANDLE form;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
+
+	if (!a) {
+		RETURN_THROWS();
+	}
+	int type = FPDFAnnot_GetFormFieldType(form, a);
+	int bits = field_flags(form, a);
+
+	field_leave(a);
+	bool values[] = {
+		bits & FPDF_FORMFLAG_READONLY,
+		bits & FPDF_FORMFLAG_REQUIRED,
+		bits & FPDF_FORMFLAG_NOEXPORT,
+		type == FPDF_FORMFIELD_TEXTFIELD && (bits & FPDF_FORMFLAG_TEXT_MULTILINE),
+		type == FPDF_FORMFIELD_TEXTFIELD && (bits & FPDF_FORMFLAG_TEXT_PASSWORD),
+		type == FPDF_FORMFIELD_COMBOBOX && (bits & FPDF_FORMFLAG_CHOICE_EDIT),
+		type == FPDF_FORMFIELD_LISTBOX && (bits & FPDF_FORMFLAG_CHOICE_MULTI_SELECT),
+	};
+
+	object_init_ex(return_value, pdfium_ce_form_field_flags);
+	for (size_t i = 0; i < sizeof(values) / sizeof(values[0]); i++) {
+		ZVAL_BOOL(pdfium_slot(Z_OBJ_P(return_value), (int) i), values[i]);
+	}
+}
+
+typedef struct { FPDF_FORMHANDLE form; FPDF_ANNOTATION annot; int index; } option_source;
+
+typedef struct { unsigned short *units; size_t count; bool selected; } option_label;
+
+static unsigned long option_label_get(void *source, unsigned short *buf, unsigned long len)
+{
+	option_source *s = source;
+
+	return FPDFAnnot_GetOptionLabel(s->form, s->annot, s->index, buf, len);
+}
+
+ZEND_METHOD(Pdfium_FormField, options)
+{
+	pdfium_form_field *f;
+	FPDF_FORMHANDLE form;
+	option_label *labels = NULL;
+	bool oom = false;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
+
+	if (!a) {
+		RETURN_THROWS();
+	}
+	int type = FPDFAnnot_GetFormFieldType(form, a);
+	int count = type == FPDF_FORMFIELD_COMBOBOX || type == FPDF_FORMFIELD_LISTBOX ? FPDFAnnot_GetOptionCount(form, a) : 0;
+
+	if (count < 0) {
+		count = 0;
+	}
+	size_t used = (size_t) count * (sizeof(option_label) + sizeof(zval) + sizeof(zend_object) + 2 * sizeof(zval));
+
+	if (!pdfium_memory_fits(used) || (count && !(labels = calloc((size_t) count, sizeof(option_label))))) {
+		oom = true;
+	} else {
+		option_source src = {form, a, 0};
+
+		for (int i = 0; i < count && !oom; i++) {
+			src.index = i;
+			labels[i].units = units_take(option_label_get, &src, &labels[i].count, &used, &oom);
+			labels[i].selected = FPDFAnnot_IsOptionSelected(form, a, i);
+		}
+	}
+	field_leave(a);
+	if (oom) {
+		for (int i = 0; labels && i < count; i++) {
+			free(labels[i].units);
+		}
+		free(labels);
+		zend_throw_exception(pdfium_ce_memory_exception, "The form field options need more memory than memory_limit leaves", 0);
+		RETURN_THROWS();
+	}
+	array_init_size(return_value, (uint32_t) count);
+	for (int i = 0; i < count; i++) {
+		zend_string *label = pdfium_utf16le_finish(labels[i].units, labels[i].count);
+		zval zv;
+
+		object_init_ex(&zv, pdfium_ce_form_field_option);
+		ZVAL_STR(pdfium_slot(Z_OBJ(zv), 0), label ? label : ZSTR_EMPTY_ALLOC());
+		ZVAL_BOOL(pdfium_slot(Z_OBJ(zv), 1), labels[i].selected);
+		add_next_index_zval(return_value, &zv);
+	}
+	free(labels);
 }
 
 ZEND_METHOD(Pdfium_FormField, name)

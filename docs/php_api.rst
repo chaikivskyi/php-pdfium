@@ -15,8 +15,9 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 serialized. The value classes (:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`,
 :php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`,
 :php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`, :php:class:`Destination`,
-:php:class:`Action`, :php:class:`AttachmentMetadata` and :php:class:`Signature`) are read-only and
-can be cloned and serialized.
+:php:class:`Action`, :php:class:`AttachmentMetadata`, :php:class:`Signature`,
+:php:class:`FormFieldOption` and :php:class:`FormFieldFlags`) are read-only and can be cloned and
+serialized.
 
 
 Document
@@ -693,6 +694,17 @@ Page
       :throws MemoryException: The fields would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: formFieldAt(float $x, float $y) -> ?FormField
+
+      The form field whose widget is at a point, or ``null`` if there is none. Like
+      :php:meth:`formFields`, this sets up the document's form support.
+
+      :param float $x: Horizontal position in points.
+      :param float $y: Vertical position in points, from the bottom of the page.
+      :rtype: ?FormField
+      :throws \\ValueError: ``$x`` or ``$y`` is not finite.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
 
 Attachment
 ----------
@@ -839,6 +851,96 @@ FormField
       :throws PdfiumException: The field is gone, PDFium cannot set up form support, or PDFium
          cannot tell the widget's place.
       :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: options() -> array
+
+      The options of a combo box or list box, in order, as :php:class:`FormFieldOption` objects.
+      An empty array for any other type. PDFium does not give an option's export value, only its
+      label; :php:meth:`value` gives the export value of the selected option.
+
+      :rtype: FormFieldOption[]
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws MemoryException: The options would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: flags() -> FormFieldFlags
+
+      The field's flags. A flag that does not apply to the field's type is ``false``.
+
+      :rtype: FormFieldFlags
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+
+FormFieldOption
+---------------
+
+.. php:class:: FormFieldOption
+
+   One option of a combo box or list box, from :php:meth:`FormField::options`. Read-only.
+
+   .. php:attr:: label
+
+      ``string``
+
+      The text shown for the option, as UTF-8.
+
+   .. php:attr:: selected
+
+      ``bool``
+
+      Whether the option is selected.
+
+
+FormFieldFlags
+--------------
+
+.. php:class:: FormFieldFlags
+
+   The flags of a form field, from :php:meth:`FormField::flags`. Read-only. Each flag is ``false``
+   unless it applies to the field's type.
+
+   .. php:attr:: readOnly
+
+      ``bool``
+
+      The field is read-only.
+
+   .. php:attr:: required
+
+      ``bool``
+
+      The field must have a value before the form is submitted.
+
+   .. php:attr:: noExport
+
+      ``bool``
+
+      The field is left out when the form is submitted.
+
+   .. php:attr:: multiline
+
+      ``bool``
+
+      Text fields only: the text can have several lines.
+
+   .. php:attr:: password
+
+      ``bool``
+
+      Text fields only: the text is hidden.
+
+   .. php:attr:: editable
+
+      ``bool``
+
+      Combo boxes only: the user can type a value that is not an option.
+
+   .. php:attr:: multiSelect
+
+      ``bool``
+
+      List boxes only: several options can be selected.
 
 
 FormType

@@ -397,6 +397,45 @@ final readonly class Permissions
 }
 
 /**
+ * One option of a combo box or list box. PDFium does not give the option's export value.
+ */
+final readonly class FormFieldOption
+{
+    public string $label;
+    public bool $selected;
+
+    private function __construct() {}
+}
+
+/**
+ * The flags of a form field that apply to its type; the others are false.
+ */
+final readonly class FormFieldFlags
+{
+    public bool $readOnly;
+    public bool $required;
+    public bool $noExport;
+    /**
+     * Text fields only.
+     */
+    public bool $multiline;
+    /**
+     * Text fields only.
+     */
+    public bool $password;
+    /**
+     * Combo boxes only: the user can type a value that is not an option.
+     */
+    public bool $editable;
+    /**
+     * List boxes only.
+     */
+    public bool $multiSelect;
+
+    private function __construct() {}
+}
+
+/**
  * A rectangle in PDF points, with y growing upwards.
  */
 final readonly class Rect
@@ -822,6 +861,15 @@ final class Page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function formFields(): array {}
+
+    /**
+     * The form field whose widget is at this point, in points as TextPage gives them; null when there
+     * is none. This sets up the document's form support.
+     *
+     * @throws \ValueError when $x or $y is not finite
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function formFieldAt(float $x, float $y): ?FormField {}
 }
 
 /**
@@ -990,6 +1038,25 @@ final class FormField
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function controlCount(): int {}
+
+    /**
+     * The options of a combo box or list box, in order, with which are selected; an empty array for
+     * any other type.
+     *
+     * @return FormFieldOption[]
+     * @throws PdfiumException when the field is gone: its page may have been flattened, or PDFium cannot set up form support
+     * @throws MemoryException when the options would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function options(): array {}
+
+    /**
+     * The field's flags, limited to those that apply to its type.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened, or PDFium cannot set up form support
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function flags(): FormFieldFlags {}
 }
 
 /**

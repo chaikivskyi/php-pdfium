@@ -10,6 +10,9 @@ Features:
   tooltip, type, value, export value, checked state, rectangle and place in a group;
   ``Document::formType()`` tells AcroForm, XFA and no form apart. The enums ``FormType`` and
   ``FormFieldType`` are the extension's first.
+- ``FormField::options()`` and ``flags()`` give a combo or list box's options and a field's flags
+  as ``FormFieldOption`` and ``FormFieldFlags``; ``Page::formFieldAt()`` finds the field under a
+  point.
 
 v0.3.0 (2026-11-21)
 -------------------
