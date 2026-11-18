@@ -178,6 +178,15 @@ ZEND_METHOD(Pdfium_Document, pageCount)
 	RETURN_LONG(count);
 }
 
+typedef struct { FPDF_DOCUMENT doc; const char *tag; } meta_source;
+
+static unsigned long meta_get(void *source, unsigned short *buf, unsigned long bytes)
+{
+	meta_source *m = source;
+
+	return FPDF_GetMetaText(m->doc, m->tag, buf, bytes);
+}
+
 ZEND_METHOD(Pdfium_Document, metadata)
 {
 	static const struct { const char *tag, *key; } entries[] = {
@@ -185,56 +194,45 @@ ZEND_METHOD(Pdfium_Document, metadata)
 		{"Creator", "creator"}, {"Producer", "producer"}, {"CreationDate", "creationDate"}, {"ModDate", "modDate"},
 	};
 	FPDF_DOCUMENT doc = pdfium_this_document(ZEND_THIS)->doc;
-	unsigned short *bufs[sizeof(entries) / sizeof(entries[0])] = {0};
-	size_t units[sizeof(entries) / sizeof(entries[0])] = {0};
+	zend_string *values[sizeof(entries) / sizeof(entries[0])] = {0};
 	size_t n = sizeof(entries) / sizeof(entries[0]), i, failed = n, converted = 0;
+	bool oom = false;
 
 	ZEND_PARSE_PARAMETERS_NONE();
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	for (i = 0; i < n; i++) {
-		unsigned long bytes = FPDF_GetMetaText(doc, entries[i].tag, NULL, 0);
+	for (i = 0; i < n && !oom; i++) {
+		meta_source m = {doc, entries[i].tag};
 
-		if (bytes <= 2) {
-			continue;
-		}
-		converted += (size_t) bytes / 2 * 3;
-		if (!pdfium_memory_fits(bytes + converted)) {
+		values[i] = pdfium_utf16le_fetch_under_limit(meta_get, &m, &converted, &oom);
+		if (oom) {
 			failed = i;
-			break;
-		}
-		bufs[i] = emalloc(bytes);
-		FPDF_GetMetaText(doc, entries[i].tag, bufs[i], bytes);
-		while (units[i] < bytes / 2 && bufs[i][units[i]]) {
-			units[i]++;
 		}
 	}
 	pdfium_leave();
 
-	if (failed == n) {
-		object_init_ex(return_value, pdfium_ce_metadata);
-	}
-	for (i = 0; i < n; i++) {
-		if (failed == n) {
-			zval value;
-
-			if (units[i]) {
-				ZVAL_STR(&value, pdfium_utf16le_to_utf8(bufs[i], units[i]));
-			} else {
-				ZVAL_NULL(&value);
-			}
-			zend_update_property(pdfium_ce_metadata, Z_OBJ_P(return_value), entries[i].key, strlen(entries[i].key), &value);
-			zval_ptr_dtor(&value);
-		}
-		if (bufs[i]) {
-			efree(bufs[i]);
-		}
-	}
 	if (failed != n) {
+		for (i = 0; i < n; i++) {
+			if (values[i]) {
+				zend_string_release(values[i]);
+			}
+		}
 		zend_throw_exception_ex(pdfium_ce_memory_exception, 0,
 			"The %s entry needs more memory than memory_limit leaves", entries[failed].tag);
 		RETURN_THROWS();
+	}
+	object_init_ex(return_value, pdfium_ce_metadata);
+	for (i = 0; i < n; i++) {
+		zval value;
+
+		if (values[i]) {
+			ZVAL_STR(&value, values[i]);
+		} else {
+			ZVAL_NULL(&value);
+		}
+		zend_update_property(pdfium_ce_metadata, Z_OBJ_P(return_value), entries[i].key, strlen(entries[i].key), &value);
+		zval_ptr_dtor(&value);
 	}
 }
 
@@ -319,11 +317,7 @@ ZEND_METHOD(Pdfium_Document, page)
 		RETURN_OBJ(obj);
 	}
 	if (!EG(exception)) {
-		if (!page_count) {
-			zend_argument_value_error(1, "must be a page index, but the document has no pages");
-		} else {
-			zend_argument_value_error(1, "must be between 0 and %d", page_count - 1);
-		}
+		pdfium_index_error(1, page_count, "a page", "pages");
 	}
 	RETURN_THROWS();
 }

@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: f933ca6857c9cba444122c350bcd577563ce432c */
+ * Stub hash: 698f37bca8444e124858de0b42dd9b9aea9bbd00 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -31,6 +31,14 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_Pdfium_Document_changingId arginfo_class_Pdfium_Document_permanentId
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_bookmarks, 0, 0, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Document_attachmentCount arginfo_class_Pdfium_Document_pageCount
+
+#define arginfo_class_Pdfium_Document_attachments arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_attachment, 0, 1, Pdfium\\Attachment, 0)
+	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_page, 0, 1, Pdfium\\Page, 0)
@@ -129,6 +137,14 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Page_linkAt, 0, 2, P
 	ZEND_ARG_TYPE_INFO(0, y, IS_DOUBLE, 0)
 ZEND_END_ARG_INFO()
 
+#define arginfo_class_Pdfium_Attachment___construct arginfo_class_Pdfium_Document___construct
+
+#define arginfo_class_Pdfium_Attachment_index arginfo_class_Pdfium_Document_pageCount
+
+#define arginfo_class_Pdfium_Attachment_name arginfo_class_Pdfium_Page_text
+
+#define arginfo_class_Pdfium_Attachment_contents arginfo_class_Pdfium_Document_permanentId
+
 #define arginfo_class_Pdfium_TextPage___construct arginfo_class_Pdfium_Document___construct
 
 #define arginfo_class_Pdfium_TextPage_text arginfo_class_Pdfium_Page_text
@@ -209,6 +225,9 @@ ZEND_METHOD(Pdfium_Document, permissions);
 ZEND_METHOD(Pdfium_Document, permanentId);
 ZEND_METHOD(Pdfium_Document, changingId);
 ZEND_METHOD(Pdfium_Document, bookmarks);
+ZEND_METHOD(Pdfium_Document, attachmentCount);
+ZEND_METHOD(Pdfium_Document, attachments);
+ZEND_METHOD(Pdfium_Document, attachment);
 ZEND_METHOD(Pdfium_Document, page);
 ZEND_METHOD(Pdfium_Document, pages);
 ZEND_METHOD(Pdfium_Document, extractPages);
@@ -240,6 +259,10 @@ ZEND_METHOD(Pdfium_Page, openAction);
 ZEND_METHOD(Pdfium_Page, closeAction);
 ZEND_METHOD(Pdfium_Page, links);
 ZEND_METHOD(Pdfium_Page, linkAt);
+ZEND_METHOD(Pdfium_Attachment, __construct);
+ZEND_METHOD(Pdfium_Attachment, index);
+ZEND_METHOD(Pdfium_Attachment, name);
+ZEND_METHOD(Pdfium_Attachment, contents);
 ZEND_METHOD(Pdfium_TextPage, __construct);
 ZEND_METHOD(Pdfium_TextPage, text);
 ZEND_METHOD(Pdfium_TextPage, charCount);
@@ -278,6 +301,9 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 	ZEND_ME(Pdfium_Document, permanentId, arginfo_class_Pdfium_Document_permanentId, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, changingId, arginfo_class_Pdfium_Document_changingId, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, bookmarks, arginfo_class_Pdfium_Document_bookmarks, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, attachmentCount, arginfo_class_Pdfium_Document_attachmentCount, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, attachments, arginfo_class_Pdfium_Document_attachments, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, attachment, arginfo_class_Pdfium_Document_attachment, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, page, arginfo_class_Pdfium_Document_page, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, pages, arginfo_class_Pdfium_Document_pages, ZEND_ACC_PUBLIC)
 #if (PHP_VERSION_ID >= 80400)
@@ -370,6 +396,14 @@ static const zend_function_entry class_Pdfium_Page_methods[] = {
 	ZEND_ME(Pdfium_Page, closeAction, arginfo_class_Pdfium_Page_closeAction, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, links, arginfo_class_Pdfium_Page_links, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, linkAt, arginfo_class_Pdfium_Page_linkAt, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_Attachment_methods[] = {
+	ZEND_ME(Pdfium_Attachment, __construct, arginfo_class_Pdfium_Attachment___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Pdfium_Attachment, index, arginfo_class_Pdfium_Attachment_index, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Attachment, name, arginfo_class_Pdfium_Attachment_name, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Attachment, contents, arginfo_class_Pdfium_Attachment_contents, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -1237,6 +1271,21 @@ static zend_class_entry *register_class_Pdfium_Page(void)
 	zend_class_entry ce, *class_entry;
 
 	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Page", class_Pdfium_Page_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE;
+#endif
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_Attachment(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Attachment", class_Pdfium_Attachment_methods);
 #if (PHP_VERSION_ID >= 80400)
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
 #else

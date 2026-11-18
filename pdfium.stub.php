@@ -113,6 +113,28 @@ final class Document implements \Countable, \IteratorAggregate
     public function bookmarks(): array {}
 
     /**
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function attachmentCount(): int {}
+
+    /**
+     * Every embedded file, keyed by the index attachment() takes. An entry PDFium cannot read is
+     * left out, so keys can skip numbers.
+     *
+     * @return array<int, Attachment>
+     * @throws MemoryException when the list would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function attachments(): array {}
+
+    /**
+     * @throws \ValueError when $index is outside 0..attachmentCount()-1
+     * @throws FormatException when PDFium cannot read the entry
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function attachment(int $index): Attachment {}
+
+    /**
      * @throws \ValueError when $index is outside 0..pageCount()-1
      * @throws FormatException when PDFium cannot load the page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -535,6 +557,46 @@ final class Page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function linkAt(float $x, float $y): ?Link {}
+}
+
+/**
+ * A file embedded in the document. It keeps the document alive. Once a file is added to or deleted
+ * from the document, it is stale: every method throws; fetch it again.
+ *
+ * @strict-properties
+ * @not-serializable
+ */
+final class Attachment
+{
+    private function __construct() {}
+
+    /**
+     * The attachment's position in its document, starting at 0.
+     *
+     * @throws PdfiumException when the document's attachments changed since it was fetched
+     */
+    public function index(): int {}
+
+    /**
+     * The file name the entry gives, as UTF-8; empty when it gives none. It can differ from the key
+     * the list is sorted by, which PDFium does not show.
+     *
+     * @throws PdfiumException when the document's attachments changed since it was fetched
+     * @throws MemoryException when the name would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function name(): string {}
+
+    /**
+     * The file's bytes, decoded; null when there is no embedded file PDFium can read, for example
+     * when the entry only points to a file outside the PDF.
+     *
+     * @throws PdfiumException when the document's attachments changed since it was fetched, or
+     *         reading the file fails partway
+     * @throws MemoryException when the file would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function contents(): ?string {}
 }
 
 /**

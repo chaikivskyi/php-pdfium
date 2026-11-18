@@ -23,6 +23,7 @@ typedef struct pdfium_doc_handle {
 	FPDF_FORMFILLINFO form_info;
 	zend_string *buffer;
 	uint32_t refs;
+	uint64_t attachment_changes;
 } pdfium_doc_handle;
 
 typedef struct pdfium_page_handle {
@@ -37,6 +38,7 @@ typedef struct { pdfium_page_handle *ph; int index; zend_object std; } pdfium_pa
 typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std; } pdfium_page_iterator;
 typedef struct { unsigned char *pixels; int width, height; bool alpha, gray; zend_object std; } pdfium_bitmap;
 typedef struct { pdfium_page_handle *ph; FPDF_TEXTPAGE tp; zend_object std; } pdfium_text_page;
+typedef struct { pdfium_doc_handle *h; FPDF_ATTACHMENT att; int index; uint64_t changes; zend_object std; } pdfium_attachment;
 
 typedef struct { smart_str s; bool oom; } pdfium_buf;
 
@@ -47,6 +49,7 @@ extern zend_class_entry *pdfium_ce_page;
 extern zend_class_entry *pdfium_ce_page_iterator;
 extern zend_class_entry *pdfium_ce_text_page;
 extern zend_class_entry *pdfium_ce_bitmap;
+extern zend_class_entry *pdfium_ce_attachment;
 extern zend_class_entry *pdfium_ce_metadata;
 extern zend_class_entry *pdfium_ce_permissions;
 extern zend_class_entry *pdfium_ce_rect;
@@ -115,6 +118,11 @@ static inline pdfium_bitmap *pdfium_bitmap_from_obj(zend_object *obj)
 	return (pdfium_bitmap *)((char *)obj - XtOffsetOf(pdfium_bitmap, std));
 }
 
+static inline pdfium_attachment *pdfium_attachment_from_obj(zend_object *obj)
+{
+	return (pdfium_attachment *)((char *)obj - XtOffsetOf(pdfium_attachment, std));
+}
+
 void pdfium_doc_handle_addref(pdfium_doc_handle *h);
 void pdfium_doc_handle_release(pdfium_doc_handle *h);
 FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h);
@@ -135,10 +143,13 @@ zval *pdfium_slot(zend_object *obj, int index);
 void pdfium_rect_init(zval *zv, double x1, double y1, double x2, double y2);
 bool pdfium_slots_named(zend_class_entry *ce, const char *names);
 void pdfium_leave_or_throw(zval *return_value, const char *oom);
+void pdfium_index_error(uint32_t arg, int count, const char *one, const char *all);
 
 bool pdfium_navigation_slots_match(void);
 
 void pdfium_bitmap_free_obj(zend_object *obj);
+
+void pdfium_attachment_free_obj(zend_object *obj);
 
 bool pdfium_memory_fits(size_t bytes);
 bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);
@@ -162,6 +173,9 @@ static inline uint32_t pdfium_surrogate_pair(uint32_t high, uint32_t low)
 }
 
 zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count);
+typedef unsigned long (*pdfium_utf16le_getter)(void *source, unsigned short *buf, unsigned long bytes);
+zend_string *pdfium_utf16le_fetch(pdfium_utf16le_getter get, void *source, unsigned long bytes);
+zend_string *pdfium_utf16le_fetch_under_limit(pdfium_utf16le_getter get, void *source, size_t *used, bool *oom);
 size_t pdfium_utf8_encode(uint32_t cp, char *out);
 
 #endif

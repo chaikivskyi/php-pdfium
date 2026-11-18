@@ -29,6 +29,39 @@ zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count)
 	return out;
 }
 
+zend_string *pdfium_utf16le_fetch(pdfium_utf16le_getter get, void *source, unsigned long bytes)
+{
+	if (bytes <= 2) {
+		return NULL;
+	}
+	unsigned short *units = emalloc(bytes);
+	unsigned long got = get(source, units, bytes);
+	size_t count = got <= bytes ? got / 2 : 0, n = 0;
+
+	while (n < count && units[n]) {
+		n++;
+	}
+	zend_string *s = n ? pdfium_utf16le_to_utf8(units, n) : NULL;
+
+	efree(units);
+	return s;
+}
+
+zend_string *pdfium_utf16le_fetch_under_limit(pdfium_utf16le_getter get, void *source, size_t *used, bool *oom)
+{
+	unsigned long bytes = get(source, NULL, 0);
+
+	if (bytes <= 2) {
+		return NULL;
+	}
+	*used += (size_t) bytes / 2 * 3;
+	if (!pdfium_memory_fits(bytes + *used)) {
+		*oom = true;
+		return NULL;
+	}
+	return pdfium_utf16le_fetch(get, source, bytes);
+}
+
 size_t pdfium_utf8_encode(uint32_t cp, char *out)
 {
 	if ((cp >= 0xD800 && cp <= 0xDFFF) || cp > 0x10FFFF) {

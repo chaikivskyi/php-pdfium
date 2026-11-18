@@ -10,12 +10,12 @@ Except for :php:class:`Rect`, you cannot create these classes with ``new``. Get 
 everything else from the document. You create a :php:class:`Rect` to pass to
 :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
 
-:php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator` and
-:php:class:`Bitmap` cannot be cloned or serialized. The value classes (:php:class:`Metadata`,
-:php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`, :php:class:`Color`,
-:php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`, :php:class:`Bookmark`,
-:php:class:`Link`, :php:class:`Quad`, :php:class:`Destination` and :php:class:`Action`) are read-only
-and can be cloned and serialized.
+:php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
+:php:class:`Bitmap` and :php:class:`Attachment` cannot be cloned or serialized. The value classes
+(:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`,
+:php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`,
+:php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`, :php:class:`Destination` and
+:php:class:`Action`) are read-only and can be cloned and serialized.
 
 
 Document
@@ -137,6 +137,44 @@ Document
 
       :rtype: Bookmark[]
       :throws MemoryException: The outline would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. rubric:: Attachments
+
+   .. php:method:: attachmentCount() -> int
+
+      The number of files embedded in the document.
+
+      :rtype: int
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: attachments() -> array
+
+      Every embedded file as an :php:class:`Attachment`, keyed by the index that
+      :php:meth:`attachment` takes. An entry PDFium cannot read is left out, so keys can skip
+      numbers.
+
+      .. code-block:: php
+
+         foreach ($doc->attachments() as $index => $a) {
+             $bytes = $a->contents();
+             if ($bytes !== null) {
+                 file_put_contents("/tmp/out/$index.bin", $bytes);   // names can be empty, repeated or unsafe
+             }
+         }
+
+      :rtype: Attachment[]
+      :throws MemoryException: The list would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: attachment(int $index) -> Attachment
+
+      One embedded file.
+
+      :param int $index: Attachment number, starting at 0.
+      :rtype: Attachment
+      :throws \\ValueError: The index is out of range.
+      :throws FormatException: PDFium cannot read the entry.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Pages
@@ -440,6 +478,43 @@ Page
       :rtype: ?Link
       :throws \\ValueError: ``$x`` or ``$y`` is not finite.
       :throws MemoryException: The link would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+
+Attachment
+----------
+
+.. php:class:: Attachment
+
+   A file embedded in a :php:class:`Document`, from :php:meth:`Document::attachments` or
+   :php:meth:`Document::attachment`. It keeps its document alive.
+
+   .. php:method:: index() -> int
+
+      The attachment's position in its document, starting at 0.
+
+      :rtype: int
+      :throws PdfiumException: The document's attachments changed since this one was fetched.
+
+   .. php:method:: name() -> string
+
+      The file name the entry gives, as UTF-8; empty when it gives none. It can differ from the key
+      the list is sorted by, which PDFium does not show.
+
+      :rtype: string
+      :throws PdfiumException: The document's attachments changed since this one was fetched.
+      :throws MemoryException: The name would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: contents() -> ?string
+
+      The file's bytes, decoded. ``null`` when there is no embedded file PDFium can read, for
+      example when the entry only points to a file outside the PDF.
+
+      :rtype: ?string
+      :throws PdfiumException: The document's attachments changed since this one was fetched, or
+         reading the file fails partway.
+      :throws MemoryException: The file would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
 

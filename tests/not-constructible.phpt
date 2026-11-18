@@ -1,10 +1,10 @@
 --TEST--
-Document, Page, PageIterator and Bitmap cannot be created except through the API; the read-only values cannot be created with new, except Rect, but can be cloned and serialized
+Document, Page, PageIterator, Bitmap and Attachment cannot be created except through the API; the read-only values cannot be created with new, except Rect, but can be cloned and serialized
 --EXTENSIONS--
 pdfium
 --FILE--
 <?php
-foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Metadata', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Rect'] as $c) {
+foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'Metadata', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Rect'] as $c) {
     $fq = "Pdfium\\$c";
     $r = new ReflectionClass($fq);
     echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true),
@@ -36,6 +36,10 @@ TextPage final=true cloneable=false instantiable=false abstract=false
   ReflectionException
   Exception
 Bitmap final=true cloneable=false instantiable=false abstract=false
+  Error
+  ReflectionException
+  Exception
+Attachment final=true cloneable=false instantiable=false abstract=false
   Error
   ReflectionException
   Exception

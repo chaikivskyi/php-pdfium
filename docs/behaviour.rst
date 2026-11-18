@@ -234,6 +234,9 @@ Rough memory needed:
 - ``openAction()`` and ``closeAction()``: about 1 KB, and the length of the URI or file path.
 - ``links()`` and ``linkAt()``: about 2 KB per link, 256 bytes per quad, and the length of its
   URI or file path.
+- ``attachments()``: about 100 bytes per attachment.
+- ``Attachment::name()``: about 5 bytes per character.
+- ``Attachment::contents()``: the size of the file.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 
 With ``memory_limit = -1`` there are no checks.
@@ -263,8 +266,8 @@ nothing, so it is safe to retry. To render in parallel, use several processes, f
 workers.
 
 - ``Bitmap`` methods never throw it.
-- Freeing a document, page, text page or page iterator, and ``PageIterator::next()`` and
-  ``rewind()``, never throw it, but may wait for the other thread to finish.
+- Freeing a document, page, text page, page iterator or attachment, and ``PageIterator::next()``
+  and ``rewind()``, never throw it, but may wait for the other thread to finish.
 - ``fromFile()`` reads the file before it checks. For a stream you cannot read twice, such as
   ``php://stdin``, read it into a string yourself and retry with ``fromString()``.
 - Do not ``pcntl_fork()`` while another thread may be using PDFium. The child would find PDFium

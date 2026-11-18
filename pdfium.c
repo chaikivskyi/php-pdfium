@@ -13,6 +13,7 @@ zend_class_entry *pdfium_ce_page;
 zend_class_entry *pdfium_ce_page_iterator;
 zend_class_entry *pdfium_ce_text_page;
 zend_class_entry *pdfium_ce_bitmap;
+zend_class_entry *pdfium_ce_attachment;
 zend_class_entry *pdfium_ce_metadata;
 zend_class_entry *pdfium_ce_permissions;
 zend_class_entry *pdfium_ce_rect;
@@ -39,6 +40,7 @@ static zend_object_handlers page_handlers;
 static zend_object_handlers page_iterator_handlers;
 static zend_object_handlers text_page_handlers;
 static zend_object_handlers bitmap_handlers;
+static zend_object_handlers attachment_handlers;
 
 static zend_object *object_create(zend_class_entry *ce, size_t size, const zend_object_handlers *handlers)
 {
@@ -73,6 +75,11 @@ static zend_object *text_page_create(zend_class_entry *ce)
 static zend_object *bitmap_create(zend_class_entry *ce)
 {
 	return object_create(ce, sizeof(pdfium_bitmap), &bitmap_handlers);
+}
+
+static zend_object *attachment_create(zend_class_entry *ce)
+{
+	return object_create(ce, sizeof(pdfium_attachment), &attachment_handlers);
 }
 
 static void init_handlers(zend_object_handlers *h, int offset, zend_object_free_obj_t free_obj)
@@ -139,6 +146,10 @@ PHP_MINIT_FUNCTION(pdfium)
 	init_handlers(&bitmap_handlers, XtOffsetOf(pdfium_bitmap, std), pdfium_bitmap_free_obj);
 	pdfium_ce_bitmap = register_class_Pdfium_Bitmap();
 	pdfium_ce_bitmap->create_object = bitmap_create;
+
+	init_handlers(&attachment_handlers, XtOffsetOf(pdfium_attachment, std), pdfium_attachment_free_obj);
+	pdfium_ce_attachment = register_class_Pdfium_Attachment();
+	pdfium_ce_attachment->create_object = attachment_create;
 
 	if (!pdfium_text_slots_match()) {
 		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/text.c do not match pdfium.stub.php");

@@ -355,17 +355,16 @@ static void bookmark_color_set(zval *zv, FPDF_BOOKMARK bm)
 	}
 }
 
+static unsigned long title_get(void *bm, unsigned short *buf, unsigned long bytes)
+{
+	return FPDFBookmark_GetTitle(bm, buf, bytes);
+}
+
 static void bookmark_title_set(zval *zv, FPDF_BOOKMARK bm, unsigned long bytes)
 {
-	if (bytes <= 2) {
-		ZVAL_EMPTY_STRING(zv);
-		return;
-	}
-	unsigned short *units = emalloc(bytes);
+	zend_string *title = pdfium_utf16le_fetch(title_get, bm, bytes);
 
-	FPDFBookmark_GetTitle(bm, units, bytes);
-	ZVAL_STR(zv, pdfium_utf16le_to_utf8(units, bytes / 2 - 1));
-	efree(units);
+	ZVAL_STR(zv, title ? title : ZSTR_EMPTY_ALLOC());
 }
 
 static bool bookmark_fits(unsigned long title_bytes, const action_info *a, uint32_t held)

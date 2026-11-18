@@ -409,6 +409,15 @@ void pdfium_leave_or_throw(zval *return_value, const char *oom)
 	}
 }
 
+void pdfium_index_error(uint32_t arg, int count, const char *one, const char *all)
+{
+	if (!count) {
+		zend_argument_value_error(arg, "must be %s index, but the document has no %s", one, all);
+	} else {
+		zend_argument_value_error(arg, "must be between 0 and %d", count - 1);
+	}
+}
+
 static FPDF_TEXTPAGE this_text_page(zval *self)
 {
 	return pdfium_text_page_from_obj(Z_OBJ_P(self))->tp;
