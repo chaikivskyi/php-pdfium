@@ -54,6 +54,13 @@ $wrong = Pdfium\Document::fromString(untyped_pdf('/Type /Pagex'));
 try { $wrong->page(0); } catch (Pdfium\FormatException $e) { echo 'a source page whose /Type is not /Page: ', $e->getMessage(), "\n"; }
 $doc->insertPages($wrong);
 echo '  inserted: ', $all($doc), "\n";
+$doc = Pdfium\Document::fromString(nodes_pdf([['/Rotate 90 /CropBox [0 0 50 50]', 2]]));
+$doc->insertPages($plain, null, 1);
+$copy = $doc->page(1);
+echo 'S into a node with /Rotate 90 /CropBox [0 0 50 50]: ', $size($copy);
+$copy->setRotation(0);
+$copy->setCropBox(new Pdfium\Rect(0, 0, 612, 792));
+echo ', given its own rotation and crop box: ', $size($copy), ', saved: ', $size(Pdfium\Document::fromString($doc->toString())->page(1)), "\n";
 ?>
 --EXPECT--
 into a node with /Rotate 90: A 90 792x612, S 90 792x612, B 90 792x612
@@ -83,3 +90,4 @@ source pages without /Type, one inheriting /Rotate 90 and one with its own /Rota
 the same into a new document: A 0 612x792, B 180 612x792
 a source page whose /Type is not /Page: Cannot load page 0
   inserted: A 0 612x792, B 180 612x792, A 0 612x792, B 180 612x792
+S into a node with /Rotate 90 /CropBox [0 0 50 50]: S 90 50x50, given its own rotation and crop box: S 0 612x792, saved: S 0 612x792

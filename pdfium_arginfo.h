@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: ac30e19373f4c952425de78350da717324090d64 */
+ * Stub hash: 4749678d8860a2d36c2c6e06086f1f1698e80907 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -145,6 +145,33 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_Pdfium_Page_height arginfo_class_Pdfium_Page_width
 
 #define arginfo_class_Pdfium_Page_rotation arginfo_class_Pdfium_Document_pageCount
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Page_setRotation, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, degrees, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Page_mediaBox, 0, 0, Pdfium\\Rect, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Page_setMediaBox, 0, 1, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, box, Pdfium\\Rect, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Page_cropBox arginfo_class_Pdfium_Page_mediaBox
+
+#define arginfo_class_Pdfium_Page_setCropBox arginfo_class_Pdfium_Page_setMediaBox
+
+#define arginfo_class_Pdfium_Page_bleedBox arginfo_class_Pdfium_Page_mediaBox
+
+#define arginfo_class_Pdfium_Page_setBleedBox arginfo_class_Pdfium_Page_setMediaBox
+
+#define arginfo_class_Pdfium_Page_trimBox arginfo_class_Pdfium_Page_mediaBox
+
+#define arginfo_class_Pdfium_Page_setTrimBox arginfo_class_Pdfium_Page_setMediaBox
+
+#define arginfo_class_Pdfium_Page_artBox arginfo_class_Pdfium_Page_mediaBox
+
+#define arginfo_class_Pdfium_Page_setArtBox arginfo_class_Pdfium_Page_setMediaBox
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Page_text, 0, 0, IS_STRING, 0)
 ZEND_END_ARG_INFO()
@@ -298,6 +325,17 @@ ZEND_METHOD(Pdfium_Page, index);
 ZEND_METHOD(Pdfium_Page, width);
 ZEND_METHOD(Pdfium_Page, height);
 ZEND_METHOD(Pdfium_Page, rotation);
+ZEND_METHOD(Pdfium_Page, setRotation);
+ZEND_METHOD(Pdfium_Page, mediaBox);
+ZEND_METHOD(Pdfium_Page, setMediaBox);
+ZEND_METHOD(Pdfium_Page, cropBox);
+ZEND_METHOD(Pdfium_Page, setCropBox);
+ZEND_METHOD(Pdfium_Page, bleedBox);
+ZEND_METHOD(Pdfium_Page, setBleedBox);
+ZEND_METHOD(Pdfium_Page, trimBox);
+ZEND_METHOD(Pdfium_Page, setTrimBox);
+ZEND_METHOD(Pdfium_Page, artBox);
+ZEND_METHOD(Pdfium_Page, setArtBox);
 ZEND_METHOD(Pdfium_Page, text);
 ZEND_METHOD(Pdfium_Page, render);
 ZEND_METHOD(Pdfium_Page, textPage);
@@ -448,6 +486,17 @@ static const zend_function_entry class_Pdfium_Page_methods[] = {
 	ZEND_ME(Pdfium_Page, width, arginfo_class_Pdfium_Page_width, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, height, arginfo_class_Pdfium_Page_height, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, rotation, arginfo_class_Pdfium_Page_rotation, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, setRotation, arginfo_class_Pdfium_Page_setRotation, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, mediaBox, arginfo_class_Pdfium_Page_mediaBox, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, setMediaBox, arginfo_class_Pdfium_Page_setMediaBox, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, cropBox, arginfo_class_Pdfium_Page_cropBox, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, setCropBox, arginfo_class_Pdfium_Page_setCropBox, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, bleedBox, arginfo_class_Pdfium_Page_bleedBox, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, setBleedBox, arginfo_class_Pdfium_Page_setBleedBox, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, trimBox, arginfo_class_Pdfium_Page_trimBox, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, setTrimBox, arginfo_class_Pdfium_Page_setTrimBox, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, artBox, arginfo_class_Pdfium_Page_artBox, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, setArtBox, arginfo_class_Pdfium_Page_setArtBox, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, text, arginfo_class_Pdfium_Page_text, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, render, arginfo_class_Pdfium_Page_render, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, textPage, arginfo_class_Pdfium_Page_textPage, ZEND_ACC_PUBLIC)

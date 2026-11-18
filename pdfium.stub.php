@@ -208,7 +208,8 @@ final class Document implements \Countable, \IteratorAggregate
      * twice in memory during the call. Bookmarks, attachments and viewer preferences are not
      * copied, and copied form fields can no longer be filled in. A copy that lacks a rotation or
      * crop box takes the one a node of the page tree carries at $index, so its size and rotation
-     * can differ from its source page's. The change is written by save() and toString().
+     * can differ from its source page's; setRotation() and setCropBox() set its own. The change is
+     * written by save() and toString().
      *
      * @param null|int[] $indexes
      * @param bool $removeSecurity needed only when $source is another, encrypted document: true lets its
@@ -230,8 +231,8 @@ final class Document implements \Countable, \IteratorAggregate
      * Moves the pages at $indexes so that they sit at $to, $to+1, ... in the order listed. Pages held
      * from before report their new index(). A page that takes its rotation, media box, crop box or
      * resources from a node of the page tree takes the new node's once it lands under another node,
-     * so its size and rotation can change and it can draw differently. The change is written by
-     * save() and toString().
+     * so its size and rotation can change and it can draw differently; setRotation(), setMediaBox()
+     * and setCropBox() set its own. The change is written by save() and toString().
      *
      * @param int[] $indexes
      * @throws \ValueError when $indexes is empty, holds an index twice or one outside
@@ -689,14 +690,16 @@ final class Page
     public function index(): int {}
 
     /**
-     * Crop box width in points, after rotation, as the shortest decimal PDFium's float holds (595.28).
+     * Width in points of the area where the media box and crop box overlap, after rotation, as the
+     * shortest decimal PDFium's float holds (595.28).
      *
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function width(): float {}
 
     /**
-     * Crop box height in points, after rotation, as the shortest decimal PDFium's float holds (841.89).
+     * Height in points of the area where the media box and crop box overlap, after rotation, as the
+     * shortest decimal PDFium's float holds (841.89).
      *
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -708,6 +711,126 @@ final class Page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function rotation(): int {}
+
+    /**
+     * Sets the page's rotation to $degrees clockwise, absolute and not added to the current one:
+     * 0, 90, 180 or 270. width() and height() follow. The change is written by save() and
+     * toString().
+     *
+     * @throws \ValueError when $degrees is not 0, 90, 180 or 270
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setRotation(int $degrees): void {}
+
+    /**
+     * The page's own media box, the paper size, in points, with left <= right and bottom <= top.
+     * Returns null when the page has none of its own, also when it takes one from its page tree.
+     * width() and height() measure where the media box and crop box overlap.
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function mediaBox(): ?Rect {}
+
+    /**
+     * Writes the page's own media box as given; other Page objects at the same index report it too.
+     * width() and height() follow; a media box that does not overlap the crop box leaves them 0.
+     * The change is written by save() and toString().
+     *
+     * @throws \ValueError when a side is unset or not finite, or left is not less than right or bottom
+     *         not less than top once rounded to floats
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setMediaBox(Rect $box): void {}
+
+    /**
+     * The page's own crop box, the part of the page shown and printed, in points, with left <= right
+     * and bottom <= top. Returns null when the page has none of its own, also when it takes one from
+     * its page tree. width() and height() measure where the media box and crop box overlap.
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function cropBox(): ?Rect {}
+
+    /**
+     * Writes the page's own crop box as given, without checking that it lies inside the media box;
+     * other Page objects at the same index report it too. width() and height() follow; a crop box
+     * that does not overlap the media box leaves them 0. The change is written by save() and
+     * toString().
+     *
+     * @throws \ValueError when a side is unset or not finite, or left is not less than right or bottom
+     *         not less than top once rounded to floats
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setCropBox(Rect $box): void {}
+
+    /**
+     * The page's own bleed box in points, with left <= right and bottom <= top: for print, the
+     * finished page plus the margin printed past it so that colour reaches the cut edge; unset in
+     * most files. Returns null when the page has none of its own. It does not affect width() and
+     * height().
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function bleedBox(): ?Rect {}
+
+    /**
+     * Writes the page's own bleed box as given; other Page objects at the same index report it too.
+     * It does not affect width() and height(). The change is written by save() and toString().
+     *
+     * @throws \ValueError when a side is unset or not finite, or left is not less than right or bottom
+     *         not less than top once rounded to floats
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setBleedBox(Rect $box): void {}
+
+    /**
+     * The page's own trim box in points, with left <= right and bottom <= top: for print, the
+     * finished page after cutting; unset in most files. Returns null when the page has none of its
+     * own. It does not affect width() and height().
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function trimBox(): ?Rect {}
+
+    /**
+     * Writes the page's own trim box as given; other Page objects at the same index report it too.
+     * It does not affect width() and height(). The change is written by save() and toString().
+     *
+     * @throws \ValueError when a side is unset or not finite, or left is not less than right or bottom
+     *         not less than top once rounded to floats
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setTrimBox(Rect $box): void {}
+
+    /**
+     * The page's own art box in points, with left <= right and bottom <= top: the page's meaningful
+     * content, as its creator marked it; unset in most files. Returns null when the page has none of
+     * its own. It does not affect width() and height().
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function artBox(): ?Rect {}
+
+    /**
+     * Writes the page's own art box as given; other Page objects at the same index report it too.
+     * It does not affect width() and height(). The change is written by save() and toString().
+     *
+     * @throws \ValueError when a side is unset or not finite, or left is not less than right or bottom
+     *         not less than top once rounded to floats
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setArtBox(Rect $box): void {}
 
     /**
      * The whole page as UTF-8, with PDFium's line breaks kept as they are.

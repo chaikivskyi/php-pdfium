@@ -10,7 +10,8 @@ Except for :php:class:`Rect`, you cannot create these classes with ``new``. Get 
 :php:meth:`Document::create`, or from :php:meth:`Document::extractPages` or
 :php:meth:`Document::merge`, which return a new one; get everything else from the document. You
 create a :php:class:`Rect` to pass to :php:meth:`TextPage::textIn`,
-:php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
+:php:meth:`TextPage::textInEach`, :php:meth:`Page::render` or a box setter such as
+:php:meth:`Page::setCropBox`.
 
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
 :php:class:`Bitmap` and :php:class:`Attachment` cannot be cloned or serialized. The value classes
@@ -291,7 +292,8 @@ Document
       fields can no longer be filled in.
 
       A copy that lacks a rotation or crop box takes the one a node of the page tree carries at
-      ``$index``, so its size and rotation can differ from its source page's.
+      ``$index``, so its size and rotation can differ from its source page's;
+      :php:meth:`Page::setRotation` and :php:meth:`Page::setCropBox` set its own.
 
       :param Document $source: The document to copy from.
       :param ?array $indexes: Page indexes of ``$source``; ``null`` means every page.
@@ -542,14 +544,16 @@ Page
 
    .. php:method:: width() -> float
 
-      Width of the crop box, clipped to the media box, in points (1/72 inch), after rotation. For example, ``595.28`` for A4.
+      Width of the area where the media box and crop box overlap, in points (1/72 inch), after
+      rotation. For example, ``595.28`` for A4.
 
       :rtype: float
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: height() -> float
 
-      Height of the crop box, clipped to the media box, in points, after rotation. For example, ``841.89`` for A4.
+      Height of the area where the media box and crop box overlap, in points, after rotation. For
+      example, ``841.89`` for A4.
 
       :rtype: float
       :throws BusyException: ZTS only: another thread is using PDFium.
@@ -559,6 +563,57 @@ Page
       Rotation in degrees: ``0``, ``90``, ``180`` or ``270``.
 
       :rtype: int
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setRotation(int $degrees) -> void
+
+      Sets the rotation, clockwise and absolute, not added to the current one.
+      :php:meth:`width` and :php:meth:`height` follow, also on every other :php:class:`Page`
+      object for this page. :php:meth:`Document::save` and :php:meth:`Document::toString` write
+      the change.
+
+      :param int $degrees: ``0``, ``90``, ``180`` or ``270``.
+      :throws \\ValueError: ``$degrees`` is another value.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: mediaBox() -> ?Rect
+                   cropBox() -> ?Rect
+                   bleedBox() -> ?Rect
+                   trimBox() -> ?Rect
+                   artBox() -> ?Rect
+
+      The media box is the paper size, and the crop box the part of it that is shown and printed.
+      The bleed, trim and art boxes are used in print production; most files leave them unset.
+
+      The page's own box, in points, as stored, with the corners ordered so that ``left <= right``
+      and ``bottom <= top``; a box other than the media box is not clipped to it. ``null`` when
+      the page has none of its own, also when it takes one from its page tree. :php:meth:`width`
+      and :php:meth:`height` give the size of the area where the media box and crop box overlap,
+      inherited ones included; the bleed, trim and art boxes do not affect them.
+
+      :rtype: ?Rect
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setMediaBox(Rect $box) -> void
+                   setCropBox(Rect $box) -> void
+                   setBleedBox(Rect $box) -> void
+                   setTrimBox(Rect $box) -> void
+                   setArtBox(Rect $box) -> void
+
+      Writes the page's own box as given. A box other than the media box is not checked against
+      it; PDFium and viewers clip it to the media box. Every other :php:class:`Page` object for
+      this page reports the new box too. After :php:meth:`setMediaBox` or :php:meth:`setCropBox`,
+      :php:meth:`width` and :php:meth:`height` follow, on every such object; the bleed, trim and
+      art boxes do not affect them. A crop box and media box that do not overlap leave the page
+      with zero width and height. :php:meth:`Document::save` and :php:meth:`Document::toString`
+      write the change.
+
+      :param Rect $box: The box, in points.
+      :throws \\ValueError: A side is unset or not finite, or ``left`` is not less than ``right``
+         or ``bottom`` not less than ``top`` once rounded to floats.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: text() -> string
@@ -969,9 +1024,11 @@ Rect
 
    A rectangle in points, with ``y`` growing upwards: a final, read-only value. See
    :ref:`text-positions`. :php:meth:`TextPage::chars`, :php:meth:`TextPage::search` and
-   :php:meth:`TextPage::webLinks` return them, as does :php:attr:`Link::rect`, and you create one
-   to pass to
-   :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
+   :php:meth:`TextPage::webLinks` return them, as do :php:attr:`Link::rect` and the box getters
+   such as :php:meth:`Page::cropBox`. You create one to pass to :php:meth:`TextPage::textIn`,
+   :php:meth:`TextPage::textInEach`, :php:meth:`Page::render` or a box setter such as
+   :php:meth:`Page::setCropBox`. The box setters need ``left`` less than ``right`` and ``bottom``
+   less than ``top``; the constructor also accepts them equal.
 
    .. php:method:: __construct(float $left, float $bottom, float $right, float $top)
 

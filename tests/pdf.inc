@@ -168,3 +168,14 @@ function order(Pdfium\Document $doc): string
     }
     return $s;
 }
+
+function boxes_pdf(): string
+{
+    return build_pdf([
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 /MediaBox [0 0 612 792] /CropBox [10 10 600 780] /Rotate 90 >>',
+        '<< /Type /Page /Parent 2 0 R >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /CropBox [20 30 280 370] /BleedBox [1 2 3 4] /TrimBox [5 6 7 8] /ArtBox [9 10 11 12] >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /CropBox [110 60 10 10] >>',
+    ]);
+}

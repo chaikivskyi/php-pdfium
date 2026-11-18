@@ -12,7 +12,7 @@ var_dump($new->index(), $new->width(), $new->height(), $new->rotation(), $new->t
 echo $a->index(), $c->index(), ' ', $doc->pageCount(), "\n";
 var_dump($doc->addPage(10, 10)->index(), $doc->addPage(10, 10, 0)->index(), $new->index());
 $re = Pdfium\Document::fromString($doc->toString());
-var_dump($re->pageCount(), $re->page(2)->width());
+var_dump($re->pageCount(), $re->page(2)->width(), $re->page(2)->mediaBox() == new Pdfium\Rect(0, 0, 200.5, 300));
 foreach ([[0, 10, null], [10, -1, null], [INF, 10, null], [10, NAN, null], [1e-50, 10, null], [10, 1e-50, null], [10, 10, -1], [10, 10, 7]] as $args) {
     try { $doc->addPage(...$args); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 }
@@ -32,6 +32,7 @@ int(0)
 int(2)
 int(6)
 float(200.5)
+bool(true)
 Pdfium\Document::addPage(): Argument #1 ($width) must be finite and greater than 0
 Pdfium\Document::addPage(): Argument #2 ($height) must be finite and greater than 0
 Pdfium\Document::addPage(): Argument #1 ($width) must be finite and greater than 0

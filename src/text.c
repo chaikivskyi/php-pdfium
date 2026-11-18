@@ -997,18 +997,28 @@ ZEND_METHOD(Pdfium_TextPage, charIndexAt)
 	RETURN_LONG(index);
 }
 
-const char *pdfium_rect_fault(const zval *zr, double *sides)
+bool pdfium_rect_sides(const zval *zr, double *sides)
 {
-	bool finite = true;
-
 	for (int i = 0; i < RECT_SLOTS; i++) {
 		zval *side = OBJ_PROP_NUM(Z_OBJ_P(zr), i);
 
 		ZVAL_DEREF(side);
 		if (Z_TYPE_P(side) != IS_DOUBLE) {
-			return "every side set";
+			return false;
 		}
 		sides[i] = Z_DVAL_P(side);
+	}
+	return true;
+}
+
+const char *pdfium_rect_fault(const zval *zr, double *sides)
+{
+	bool finite = true;
+
+	if (!pdfium_rect_sides(zr, sides)) {
+		return "every side set";
+	}
+	for (int i = 0; i < RECT_SLOTS; i++) {
 		finite &= zend_finite(sides[i]) != 0;
 	}
 	if (!finite || sides[RECT_LEFT] > sides[RECT_RIGHT] || sides[RECT_BOTTOM] > sides[RECT_TOP]) {

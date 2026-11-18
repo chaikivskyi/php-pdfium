@@ -4,6 +4,7 @@
 
 #include "php_pdfium.h"
 #include <fpdf_edit.h>
+#include <fpdf_transformpage.h>
 #include "zend_exceptions.h"
 #include "zend_strtod.h"
 
@@ -114,6 +115,119 @@ ZEND_METHOD(Pdfium_Page, rotation)
 	pdfium_leave();
 	RETURN_LONG(rotation * 90);
 }
+
+typedef struct {
+	FPDF_BOOL (*get)(FPDF_PAGE, float *, float *, float *, float *);
+	void (*set)(FPDF_PAGE, float, float, float, float);
+} box_kind;
+
+static const box_kind media_kind = {FPDFPage_GetMediaBox, FPDFPage_SetMediaBox};
+static const box_kind crop_kind = {FPDFPage_GetCropBox, FPDFPage_SetCropBox};
+static const box_kind bleed_kind = {FPDFPage_GetBleedBox, FPDFPage_SetBleedBox};
+static const box_kind trim_kind = {FPDFPage_GetTrimBox, FPDFPage_SetTrimBox};
+static const box_kind art_kind = {FPDFPage_GetArtBox, FPDFPage_SetArtBox};
+
+static void page_box_get(INTERNAL_FUNCTION_PARAMETERS, const box_kind *kind)
+{
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+	float left, bottom, right, top;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (!pdfium_page_live(ph) || !pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	bool found = kind->get(ph->page, &left, &bottom, &right, &top);
+
+	pdfium_leave();
+	if (!found) {
+		RETURN_NULL();
+	}
+	pdfium_rect_init(return_value, left, bottom, right, top);
+}
+
+static const char *box_fault(const zval *zr, float *box)
+{
+	double sides[RECT_SLOTS];
+	bool finite = true;
+
+	if (!pdfium_rect_sides(zr, sides)) {
+		return "every side set";
+	}
+	for (int k = 0; k < RECT_SLOTS; k++) {
+		finite &= zend_finite(sides[k]) != 0;
+		box[k] = pdfium_float_side(sides[k]);
+	}
+	if (finite && box[RECT_LEFT] < box[RECT_RIGHT] && box[RECT_BOTTOM] < box[RECT_TOP]) {
+		return NULL;
+	}
+	return "finite sides, with left less than right and bottom less than top";
+}
+
+static void page_box_set(INTERNAL_FUNCTION_PARAMETERS, const box_kind *kind)
+{
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+	zval *zr;
+	float box[RECT_SLOTS];
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_OBJECT_OF_CLASS(zr, pdfium_ce_rect)
+	ZEND_PARSE_PARAMETERS_END();
+	if (!pdfium_page_live(ph)) {
+		RETURN_THROWS();
+	}
+	const char *fault = box_fault(zr, box);
+
+	if (fault) {
+		zend_argument_value_error(1, "must have %s", fault);
+		RETURN_THROWS();
+	}
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	for (pdfium_page_handle *other = ph->h->pages; other; other = other->next) {
+		if (placed_at(other, ph->index)) {
+			kind->set(other->page, box[RECT_LEFT], box[RECT_BOTTOM], box[RECT_RIGHT], box[RECT_TOP]);
+		}
+	}
+	pdfium_leave();
+}
+
+ZEND_METHOD(Pdfium_Page, setRotation)
+{
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+	zend_long degrees;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_LONG(degrees)
+	ZEND_PARSE_PARAMETERS_END();
+	if (!pdfium_page_live(ph)) {
+		RETURN_THROWS();
+	}
+	if (degrees < 0 || degrees > 270 || degrees % 90) {
+		zend_argument_value_error(1, "must be 0, 90, 180 or 270");
+		RETURN_THROWS();
+	}
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	for (pdfium_page_handle *other = ph->h->pages; other; other = other->next) {
+		if (placed_at(other, ph->index)) {
+			FPDFPage_SetRotation(other->page, (int) (degrees / 90));
+		}
+	}
+	pdfium_leave();
+}
+
+ZEND_METHOD(Pdfium_Page, mediaBox) { page_box_get(INTERNAL_FUNCTION_PARAM_PASSTHRU, &media_kind); }
+ZEND_METHOD(Pdfium_Page, cropBox) { page_box_get(INTERNAL_FUNCTION_PARAM_PASSTHRU, &crop_kind); }
+ZEND_METHOD(Pdfium_Page, bleedBox) { page_box_get(INTERNAL_FUNCTION_PARAM_PASSTHRU, &bleed_kind); }
+ZEND_METHOD(Pdfium_Page, trimBox) { page_box_get(INTERNAL_FUNCTION_PARAM_PASSTHRU, &trim_kind); }
+ZEND_METHOD(Pdfium_Page, artBox) { page_box_get(INTERNAL_FUNCTION_PARAM_PASSTHRU, &art_kind); }
+ZEND_METHOD(Pdfium_Page, setMediaBox) { page_box_set(INTERNAL_FUNCTION_PARAM_PASSTHRU, &media_kind); }
+ZEND_METHOD(Pdfium_Page, setCropBox) { page_box_set(INTERNAL_FUNCTION_PARAM_PASSTHRU, &crop_kind); }
+ZEND_METHOD(Pdfium_Page, setBleedBox) { page_box_set(INTERNAL_FUNCTION_PARAM_PASSTHRU, &bleed_kind); }
+ZEND_METHOD(Pdfium_Page, setTrimBox) { page_box_set(INTERNAL_FUNCTION_PARAM_PASSTHRU, &trim_kind); }
+ZEND_METHOD(Pdfium_Page, setArtBox) { page_box_set(INTERNAL_FUNCTION_PARAM_PASSTHRU, &art_kind); }
 
 zend_object *pdfium_page_new(pdfium_doc_handle *h)
 {
