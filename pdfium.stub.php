@@ -1076,6 +1076,32 @@ final class FormField
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function setValue(string $value): void {}
+
+    /**
+     * Checks or unchecks a checkbox or radio button, as if a user clicked it. Checking a radio button
+     * unchecks the others of its group. Nothing is done when the button is already in the requested state.
+     * A read-only button is not changed and throws, and so does a radio button whose group does not allow
+     * unchecking it.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened, or PDFium cannot set up form
+     *         support; when the field is not a checkbox or radio button; or when PDFium did not leave the button
+     *         in the requested state
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setChecked(bool $checked = true): void {}
+
+    /**
+     * Selects or deselects one option of a combo box or list box, as if a user picked it. In a list box
+     * that allows several selections the other options keep their state; selecting an option of a combo
+     * box replaces its selection, and PDFium does not deselect the chosen one, so that throws. A read-only
+     * field is changed all the same.
+     *
+     * @throws \ValueError when $option is not an option index of the field
+     * @throws PdfiumException when the field is gone: its page may have been flattened, or PDFium cannot set up form
+     *         support; when the field is not a combo box or list box; or when PDFium refuses to change the selection
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function select(int $option, bool $selected = true): void {}
 }
 
 /**

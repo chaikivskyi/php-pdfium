@@ -15,6 +15,8 @@ Features:
   point.
 - ``FormField::setValue()`` fills in a text field or an editable combo box, in place, and redraws
   the field's widgets on every page.
+- ``FormField::setChecked()`` checks or unchecks a checkbox or radio button, and
+  ``FormField::select()`` selects or deselects an option of a combo box or list box, in place.
 
 v0.3.0 (2026-11-21)
 -------------------

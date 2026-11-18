@@ -536,6 +536,107 @@ ZEND_METHOD(Pdfium_FormField, setValue)
 	}
 }
 
+ZEND_METHOD(Pdfium_FormField, setChecked)
+{
+	bool checked = true;
+	pdfium_form_field *f;
+	FPDF_FORMHANDLE form;
+
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(checked)
+	ZEND_PARSE_PARAMETERS_END();
+
+	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
+
+	if (!a) {
+		RETURN_THROWS();
+	}
+	int type = FPDFAnnot_GetFormFieldType(form, a);
+	bool button = type == FPDF_FORMFIELD_CHECKBOX || type == FPDF_FORMFIELD_RADIOBUTTON;
+	bool refused = false;
+	bool unchanged = false;
+	bool read_only = false;
+
+	if (button && (bool) FPDFAnnot_IsChecked(form, a) != checked) {
+		refused = !fill_begin(f, form, a) || !FORM_OnChar(form, f->ph->page, ' ', 0);
+		fill_end(f, form);
+		unchanged = (bool) FPDFAnnot_IsChecked(form, a) != checked;
+		read_only = field_flags(form, a) & FPDF_FORMFLAG_READONLY;
+	}
+	field_leave(a);
+	if (!button) {
+		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot check or uncheck %s %s field", field_type_article(type),
+			field_type_name(type));
+		RETURN_THROWS();
+	}
+	if (refused) {
+		zend_throw_exception(pdfium_ce_exception, "PDFium refused to edit the field", 0);
+		RETURN_THROWS();
+	}
+	if (unchanged) {
+		zend_throw_exception(pdfium_ce_exception, read_only ? "PDFium did not change the field; it is read-only"
+			: "PDFium did not change the field", 0);
+		RETURN_THROWS();
+	}
+}
+
+ZEND_METHOD(Pdfium_FormField, select)
+{
+	zend_long option;
+	bool selected = true;
+	pdfium_form_field *f;
+	FPDF_FORMHANDLE form;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_LONG(option)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(selected)
+	ZEND_PARSE_PARAMETERS_END();
+
+	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
+
+	if (!a) {
+		RETURN_THROWS();
+	}
+	int type = FPDFAnnot_GetFormFieldType(form, a);
+	bool choice = type == FPDF_FORMFIELD_COMBOBOX || type == FPDF_FORMFIELD_LISTBOX;
+	int count = choice ? FPDFAnnot_GetOptionCount(form, a) : 0;
+	bool in_range = option >= 0 && option < count;
+	bool refused = false;
+	bool changed = true;
+
+	if (in_range) {
+		refused = !fill_begin(f, form, a);
+		if (!refused) {
+			changed = FORM_SetIndexSelected(form, f->ph->page, (int) option, selected);
+		}
+		fill_end(f, form);
+	}
+	field_leave(a);
+	if (!choice) {
+		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot select an option of %s %s field", field_type_article(type),
+			field_type_name(type));
+		RETURN_THROWS();
+	}
+	if (!in_range) {
+		if (count > 0) {
+			zend_argument_value_error(1, "must be between 0 and %d", count - 1);
+		} else {
+			zend_argument_value_error(1, "must be an option index, but the field has no options");
+		}
+		RETURN_THROWS();
+	}
+	if (refused) {
+		zend_throw_exception(pdfium_ce_exception, "PDFium refused to edit the field", 0);
+		RETURN_THROWS();
+	}
+	if (!changed) {
+		zend_throw_exception(pdfium_ce_exception, "PDFium did not change the selection", 0);
+		RETURN_THROWS();
+	}
+}
+
 ZEND_METHOD(Pdfium_FormField, name)
 {
 	string_method(INTERNAL_FUNCTION_PARAM_PASSTHRU, name_get, false, false);
