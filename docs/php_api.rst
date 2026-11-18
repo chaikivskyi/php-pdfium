@@ -280,6 +280,36 @@ Document
       :throws PdfiumException: PDFium cannot add the page. If it may have changed the page order even so, the message says the page order is now undefined and every :php:class:`Page` held from before throws.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: insertPages(Document $source, ?array $indexes = null, ?int $index = null, bool $removeSecurity = false) -> void
+
+      Copies pages of ``$source`` into this document at ``$index``; :php:meth:`save` and
+      :php:meth:`toString` write the change. ``$indexes`` are int page indexes of ``$source`` in the
+      order wanted, duplicates kept; ``null`` copies every page. ``$source`` may be this document;
+      the pages then go through a temporary copy, so they are held twice in memory during the call.
+      A :php:class:`Page` held from before keeps working and its :php:meth:`Page::index` reports the
+      new position. Bookmarks, attachments and viewer preferences are not copied, and copied form
+      fields can no longer be filled in.
+
+      A copy that lacks a rotation or crop box takes the one a node of the page tree carries at
+      ``$index``, so its size and rotation can differ from its source page's.
+
+      :param Document $source: The document to copy from.
+      :param ?array $indexes: Page indexes of ``$source``; ``null`` means every page.
+      :param ?int $index: Where the pages go, from 0 to ``pageCount()``; ``null`` puts them after
+         the last page.
+      :param bool $removeSecurity: Needed only when ``$source`` is another, encrypted document:
+         ``true`` lets its pages go without the source's password. They take this document's
+         encryption, if any.
+      :throws \\ValueError: ``$source`` has no pages, ``$indexes`` is empty or holds an index
+         outside ``$source``'s pages, or ``$index`` is out of range.
+      :throws \\TypeError: An element of ``$indexes`` is not an int.
+      :throws UnsupportedException: ``$source`` is another, encrypted document and
+         ``$removeSecurity`` is false.
+      :throws MemoryException: The indexes would not fit under ``memory_limit``, or PDFium cannot
+         make the temporary copy that copying within this document needs.
+      :throws PdfiumException: PDFium cannot import the pages, or the page count did not rise by the number of pages asked for; if the page count changed even so, the message says the page order is now undefined and every :php:class:`Page` held from before throws.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. php:method:: pages() -> PageIterator
 
       An iterator over all pages. It loads one page at a time.
@@ -309,6 +339,8 @@ Document
       :throws \\ValueError: The list is empty, or an index is out of range.
       :throws \\TypeError: An element is not an ``int``.
       :throws UnsupportedException: This document is encrypted and ``$removeSecurity`` is ``false``.
+      :throws MemoryException: The indexes would not fit under ``memory_limit``, or PDFium cannot
+         create the new document.
       :throws PdfiumException: PDFium cannot copy the pages.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -1367,8 +1399,9 @@ these:
 
 .. php:exception:: UnsupportedException
 
-   The document uses an encryption PDFium does not support, or :php:meth:`Document::extractPages` or
-   :php:meth:`Document::merge` was given an encrypted document without ``removeSecurity: true``.
+   The document uses an encryption PDFium does not support, or :php:meth:`Document::extractPages`,
+   :php:meth:`Document::insertPages` or :php:meth:`Document::merge` was given an encrypted document
+   without ``removeSecurity: true``.
 
 .. php:exception:: MemoryException
 

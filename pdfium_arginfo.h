@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: bc17cd44e4b999546de33e846d7bf140a21329a3 */
+ * Stub hash: b3b61a51cfcffa6ae86a53fa70c8bf3b9989d11a */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -64,6 +64,13 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_addPage, 0,
 	ZEND_ARG_TYPE_INFO(0, width, IS_DOUBLE, 0)
 	ZEND_ARG_TYPE_INFO(0, height, IS_DOUBLE, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, index, IS_LONG, 1, "null")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_insertPages, 0, 1, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, source, Pdfium\\Document, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, indexes, IS_ARRAY, 1, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, index, IS_LONG, 1, "null")
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, removeSecurity, _IS_BOOL, 0, "false")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_pages, 0, 0, Pdfium\\PageIterator, 0)
@@ -260,6 +267,7 @@ ZEND_METHOD(Pdfium_Document, deleteAttachment);
 ZEND_METHOD(Pdfium_Document, page);
 ZEND_METHOD(Pdfium_Document, deletePage);
 ZEND_METHOD(Pdfium_Document, addPage);
+ZEND_METHOD(Pdfium_Document, insertPages);
 ZEND_METHOD(Pdfium_Document, pages);
 ZEND_METHOD(Pdfium_Document, extractPages);
 ZEND_METHOD(Pdfium_Document, merge);
@@ -343,6 +351,7 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 	ZEND_ME(Pdfium_Document, page, arginfo_class_Pdfium_Document_page, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, deletePage, arginfo_class_Pdfium_Document_deletePage, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, addPage, arginfo_class_Pdfium_Document_addPage, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, insertPages, arginfo_class_Pdfium_Document_insertPages, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, pages, arginfo_class_Pdfium_Document_pages, ZEND_ACC_PUBLIC)
 #if (PHP_VERSION_ID >= 80400)
 	ZEND_RAW_FENTRY("getIterator", zim_Pdfium_Document_pages, arginfo_class_Pdfium_Document_getIterator, ZEND_ACC_PUBLIC, NULL, NULL)

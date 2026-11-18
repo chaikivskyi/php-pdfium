@@ -202,6 +202,31 @@ final class Document implements \Countable, \IteratorAggregate
     public function addPage(float $width, float $height, ?int $index = null): Page {}
 
     /**
+     * Copies pages of $source into this document at $index (between 0 and pageCount(); null means
+     * after the last page). $indexes are int page indexes of $source in the order wanted, duplicates
+     * kept; null means every page. $source may be this document; the copied pages are then held
+     * twice in memory during the call. Bookmarks, attachments and viewer preferences are not
+     * copied, and copied form fields can no longer be filled in. A copy that lacks a rotation or
+     * crop box takes the one a node of the page tree carries at $index, so its size and rotation
+     * can differ from its source page's. The change is written by save() and toString().
+     *
+     * @param null|int[] $indexes
+     * @param bool $removeSecurity needed only when $source is another, encrypted document: true lets its
+     *        pages go without the source's password; they take this document's encryption, if any
+     * @throws \ValueError when $source has no pages, $indexes is empty or holds an index outside
+     *         $source's pages, or $index is outside 0..pageCount()
+     * @throws \TypeError when an element of $indexes is not an int
+     * @throws UnsupportedException when $source is another, encrypted document and $removeSecurity is false
+     * @throws MemoryException when the indexes would not fit under memory_limit, or PDFium cannot make the
+     *         temporary copy that copying within this document needs
+     * @throws PdfiumException when PDFium cannot import the pages, or the page count did not rise by the
+     *         number of pages asked for; if the page count changed even so, the message says the page
+     *         order is now undefined and every Page held from before throws
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function insertPages(Document $source, ?array $indexes = null, ?int $index = null, bool $removeSecurity = false): void {}
+
+    /**
      * Loads each page on demand and holds only the current one; rewind() restarts at 0.
      */
     public function pages(): PageIterator {}
@@ -225,6 +250,8 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when $indexes is empty or an index is outside 0..pageCount()-1
      * @throws \TypeError when an element is not an int
      * @throws UnsupportedException when this document is encrypted and $removeSecurity is false
+     * @throws MemoryException when the indexes would not fit under memory_limit, or PDFium cannot create
+     *         the new document
      * @throws PdfiumException when PDFium cannot import the pages
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */

@@ -147,6 +147,19 @@ function nodes_pdf(array $nodes, string $root = '', bool $pageResources = true, 
     return build_pdf($objs);
 }
 
+function untyped_pdf(string $type = ''): string
+{
+    return build_pdf([
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 /MediaBox [0 0 300 400] /Rotate 90 >>',
+        "<< $type /Parent 2 0 R /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>",
+        '<< /Parent 2 0 R /Rotate 180 /Resources << /Font << /F1 5 0 R >> >> /Contents 7 0 R >>',
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        stream_obj('BT /F1 24 Tf 10 10 Td (A) Tj ET'),
+        stream_obj('BT /F1 24 Tf 10 10 Td (B) Tj ET'),
+    ]);
+}
+
 function order(Pdfium\Document $doc): string
 {
     $s = '';

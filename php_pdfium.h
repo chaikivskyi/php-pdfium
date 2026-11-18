@@ -159,6 +159,13 @@ bool pdfium_slots_named(zend_class_entry *ce, const char *names);
 void pdfium_leave_or_throw(zval *return_value, const char *oom);
 void pdfium_index_error(uint32_t arg, int count, const char *one, const char *all);
 
+typedef enum { PDFIUM_INDEXES_OK, PDFIUM_INDEXES_NO_PAGES, PDFIUM_INDEXES_OUT_OF_RANGE } pdfium_indexes_status;
+pdfium_indexes_status pdfium_indexes_from(HashTable *ht, int page_count, int *out);
+void pdfium_throw_indexes_error(pdfium_indexes_status status, int page_count, uint32_t arg);
+void pdfium_indexes_memory_error(void);
+int *pdfium_indexes_checked(HashTable *ht, uint32_t arg, uint32_t *count);
+bool pdfium_is_encrypted(pdfium_doc_handle *h);
+
 bool pdfium_navigation_slots_match(void);
 
 void pdfium_bitmap_free_obj(zend_object *obj);

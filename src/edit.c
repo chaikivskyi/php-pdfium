@@ -4,6 +4,7 @@
 
 #include "php_pdfium.h"
 #include <fpdf_edit.h>
+#include <fpdf_ppo.h>
 #include <fpdf_transformpage.h>
 #include "zend_exceptions.h"
 
@@ -110,4 +111,90 @@ ZEND_METHOD(Pdfium_Document, addPage)
 	}
 	pdfium_pages_inserted(h, (int) index, 1);
 	RETURN_OBJ(pdfium_page_attach(obj, page, (int) index));
+}
+
+ZEND_METHOD(Pdfium_Document, insertPages)
+{
+	pdfium_doc_handle *h = pdfium_this_document(ZEND_THIS);
+	zval *zsource;
+	HashTable *ht = NULL;
+	zend_long index = 0;
+	bool index_is_null = true;
+	bool remove_security = false;
+
+	ZEND_PARSE_PARAMETERS_START(1, 4)
+		Z_PARAM_OBJECT_OF_CLASS(zsource, pdfium_ce_document)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_ARRAY_HT_OR_NULL(ht)
+		Z_PARAM_LONG_OR_NULL(index, index_is_null)
+		Z_PARAM_BOOL(remove_security)
+	ZEND_PARSE_PARAMETERS_END();
+
+	pdfium_doc_handle *src = pdfium_document_from_obj(Z_OBJ_P(zsource))->h;
+	uint32_t n = 0;
+	int *indexes = NULL;
+
+	if (ht && !(indexes = pdfium_indexes_checked(ht, 2, &n))) {
+		RETURN_THROWS();
+	}
+	if (!pdfium_enter()) {
+		efree(indexes);
+		RETURN_THROWS();
+	}
+	int source_count = FPDF_GetPageCount(src->doc);
+	int before = FPDF_GetPageCount(h->doc);
+
+	if (index_is_null) {
+		index = before;
+	}
+	bool no_pages = !ht && !source_count;
+	pdfium_indexes_status valid = ht ? pdfium_indexes_from(ht, source_count, indexes) : PDFIUM_INDEXES_OK;
+	bool placed = in_range(index, before);
+	bool refused = src != h && !remove_security && pdfium_is_encrypted(src);
+
+	if (no_pages || valid != PDFIUM_INDEXES_OK || !placed || refused) {
+		pdfium_leave();
+		efree(indexes);
+		if (no_pages) {
+			zend_argument_value_error(1, "must have pages");
+		} else if (valid != PDFIUM_INDEXES_OK) {
+			pdfium_throw_indexes_error(valid, source_count, 2);
+		} else if (!placed) {
+			zend_argument_value_error(3, "must be between 0 and %d", before);
+		} else {
+			zend_throw_exception(pdfium_ce_unsupported_exception, "The source document is encrypted and its pages "
+				"leave its encryption; pass removeSecurity: true to insert them", 0);
+		}
+		RETURN_THROWS();
+	}
+	bool imported, no_temporary = false;
+
+	if (src != h) {
+		imported = FPDF_ImportPagesByIndex(h->doc, src->doc, indexes, n, (int) index);
+	} else {
+		FPDF_DOCUMENT tmp = FPDF_CreateNewDocument();
+
+		no_temporary = !tmp;
+		imported = tmp && FPDF_ImportPagesByIndex(tmp, h->doc, indexes, n, 0)
+			&& FPDF_ImportPagesByIndex(h->doc, tmp, NULL, 0, (int) index);
+		if (tmp) {
+			FPDF_CloseDocument(tmp);
+		}
+	}
+	int after = FPDF_GetPageCount(h->doc);
+	int wanted = ht ? (int) n : source_count;
+
+	pdfium_leave();
+	efree(indexes);
+	if (no_temporary) {
+		zend_throw_exception(pdfium_ce_memory_exception,
+			"Cannot create the temporary document for copying pages within this document", 0);
+		RETURN_THROWS();
+	}
+	if (imported && after - before == wanted) {
+		pdfium_pages_inserted(h, (int) index, wanted);
+		return;
+	}
+	edit_failed(h, after != before, "Cannot import pages");
+	RETURN_THROWS();
 }
