@@ -876,8 +876,10 @@ FormField
       Sets the text of a text field or of a combo box with the ``editable`` flag, as if a user typed
       it, in place: :php:meth:`Document::save` or :php:meth:`Document::toString` writes it out.
       PDFium stores the value where the field keeps it and draws the new text into every widget of
-      the field, on this page and on the others; a :php:class:`Page` object already fetched for one
-      of them shows it too. An empty string clears the field.
+      the field, on this page and on the others. A page fetched afterwards always shows the new
+      value; a :php:class:`Page` object for another page that was fetched before the fill may keep
+      showing an earlier value in :php:meth:`Page::render`, so fetch that page again. An empty
+      string clears the field.
 
       PDFium cuts text longer than the field's length limit without saying so; compare
       :php:meth:`value` when it matters. A read-only field is changed all the same; check

@@ -1060,7 +1060,9 @@ final class FormField
 
     /**
      * Sets the text of a text field or an editable combo box, as if a user typed it, and rebuilds the
-     * appearance of every widget of the field, on this page and on others. An empty string clears the
+     * appearance of every widget of the field, on this page and on others. A page fetched afterwards
+     * always shows the new value; a Page object for another page that was fetched before the fill may
+     * keep showing an earlier value when rendered, so fetch that page again. An empty string clears the
      * field. PDFium cuts text longer than the field's length limit without saying so: compare value()
      * when it matters. A read-only field is changed all the same; check flags()->readOnly to refuse it.
      * No script runs, so fields calculated or formatted from this one are not updated. PDFium's form filler

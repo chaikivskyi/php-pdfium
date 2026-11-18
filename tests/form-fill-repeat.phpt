@@ -44,17 +44,44 @@ $again = Pdfium\Document::fromString($doc->toString());
 var_dump($again->page(0)->formFields()[0]->value(), $again->page(1)->formFields()[0]->value());
 var_dump(png($again, 1) === png($again, 0), png($again, 1) !== $untouched);
 
-echo "-- a Page for page 1 alive\n";
+foreach ([[0, 1], [1, 0]] as [$via, $other]) {
+    echo "-- filled through page $via, a Page for page $other listed and rendered before\n";
+    $doc = Pdfium\Document::fromString(repeat_pdf());
+    $old = $doc->page($other);
+    $oldField = $old->formFields()[0];
+    $shots = ['old' => $old->render(dpi: 72)->toPng()];
+    $field = $doc->page($via)->formFields()[0];
+    foreach (['A', 'B', 'C', 'D'] as $v) {
+        if ($v === 'D') {
+            echo "through the old Page's field\n";
+            $oldField->setValue($v);
+        } else {
+            $field->setValue($v);
+        }
+        $shots[$v] = png($doc, $via);
+        echo json_encode([$v, $field->value(), $oldField->value(), png($doc, $other) === $shots[$v],
+            array_search($old->render(dpi: 72)->toPng(), $shots, true)]), "\n";
+    }
+    $again = Pdfium\Document::fromString($doc->toString());
+    echo json_encode([$again->page(0)->formFields()[0]->value(), $again->page(1)->formFields()[0]->value(),
+        png($again, 0) === $shots['D'], png($again, 1) === $shots['D']]), "\n";
+    unset($doc, $old, $again);
+    var_dump($field->value());
+    unset($field);
+    var_dump($oldField->value());
+    unset($oldField);
+}
+
+echo "-- the only Page for page 1, rendered before\n";
 $doc = Pdfium\Document::fromString(repeat_pdf());
-$p1 = $doc->page(1);
-$other = $p1->formFields()[0];
-$before = $p1->render(dpi: 72)->toPng();
-$doc->page(0)->formFields()[0]->setValue('NEW');
-var_dump($other->value());
-var_dump(png($doc, 1) === png($doc, 0), png($doc, 1) !== $untouched);
-var_dump($p1->render(dpi: 72)->toPng() === png($doc, 0), $p1->render(dpi: 72)->toPng() !== $before);
-$again = Pdfium\Document::fromString($doc->toString());
-var_dump($again->page(1)->formFields()[0]->value(), png($again, 1) === png($again, 0));
+$only = $doc->page(1);
+$only->render(dpi: 72);
+$field = $doc->page(0)->formFields()[0];
+foreach (['A', 'B'] as $v) {
+    $field->setValue($v);
+    var_dump($only->render(dpi: 72)->toPng() === png($doc, 0));
+}
+unset($doc, $only, $field);
 
 echo "-- a field repeated on 30 pages\n";
 $doc = Pdfium\Document::fromString(many_pdf(30));
@@ -74,13 +101,26 @@ string(3) "NEW"
 string(3) "NEW"
 bool(true)
 bool(true)
--- a Page for page 1 alive
-string(3) "NEW"
+-- filled through page 0, a Page for page 1 listed and rendered before
+["A","A","A",true,"A"]
+["B","B","B",true,"A"]
+["C","C","C",true,"A"]
+through the old Page's field
+["D","D","D",true,"D"]
+["D","D",true,true]
+string(1) "D"
+string(1) "D"
+-- filled through page 1, a Page for page 0 listed and rendered before
+["A","A","A",true,"A"]
+["B","B","B",true,"A"]
+["C","C","C",true,"A"]
+through the old Page's field
+["D","D","D",true,"D"]
+["D","D",true,true]
+string(1) "D"
+string(1) "D"
+-- the only Page for page 1, rendered before
 bool(true)
-bool(true)
-bool(true)
-bool(true)
-string(3) "NEW"
 bool(true)
 -- a field repeated on 30 pages
 int(30)
