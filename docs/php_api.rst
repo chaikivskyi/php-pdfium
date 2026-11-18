@@ -11,8 +11,8 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
 
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
-:php:class:`Bitmap` and :php:class:`Attachment` cannot be cloned or serialized. The value classes
-(:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`,
+:php:class:`Bitmap`, :php:class:`Attachment` and :php:class:`FormField` cannot be cloned or
+serialized. The value classes (:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`,
 :php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`,
 :php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`, :php:class:`Destination`,
 :php:class:`Action`, :php:class:`AttachmentMetadata` and :php:class:`Signature`) are read-only and
@@ -279,6 +279,16 @@ Document
 
       :rtype: Signature[]
       :throws MemoryException: The list would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. rubric:: Forms
+
+   .. php:method:: formType() -> FormType
+
+      Which kind of form the document has, read from its catalog; see :php:class:`FormType`. Unlike
+      the other form methods, it leaves the document unchanged.
+
+      :rtype: FormType
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Pages
@@ -663,6 +673,26 @@ Page
       :throws MemoryException: The link would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. rubric:: Forms
+
+   .. php:method:: formFields() -> array
+
+      A :php:class:`FormField` for every widget on the page, back to front. A field with several
+      widgets, such as a radio group, gives one for each. Links and other annotations are not
+      listed. Empty when the page has no widgets or PDFium cannot set up its form. Like
+      :php:meth:`render`, this can add appearance streams that a later save writes; see
+      :ref:`pdfium-defaults`.
+
+      .. code-block:: php
+
+         foreach ($page->formFields() as $field) {
+             echo $field->name(), ' (', $field->type()->name, '): ', $field->value(), "\n";
+         }
+
+      :rtype: FormField[]
+      :throws MemoryException: The fields would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
 
 Attachment
 ----------
@@ -714,6 +744,125 @@ Attachment
       :throws PdfiumException: The document's attachments changed since this one was fetched.
       :throws MemoryException: An entry would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
+
+
+FormField
+---------
+
+.. php:class:: FormField
+
+   One widget of a form field, from :php:meth:`Page::formFields`. A field with several widgets,
+   such as a radio group, gives one ``FormField`` for each; :php:meth:`controlIndex` tells them
+   apart. It keeps its page and document alive and reads the field's current state on every call.
+   Every method throws :php:class:`PdfiumException` once its page is flattened, because the field is
+   gone.
+
+   .. php:method:: name() -> string
+
+      The field's fully qualified name, as UTF-8, such as ``parent.notes``. Empty when it has none.
+
+      :rtype: string
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws MemoryException: The name would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: alternateName() -> ?string
+
+      The field's tooltip, as UTF-8. ``null`` when it has none.
+
+      :rtype: ?string
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws MemoryException: The text would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: type() -> FormFieldType
+
+      The field's type.
+
+      :rtype: FormFieldType
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: value() -> string
+
+      The field's value exactly as PDFium reports it, as UTF-8; empty when there is none. For a
+      combo box this is the selected option's export value, not its label. For a list box it is
+      only the first selected option, when several are selected. For a checkbox or a radio group it
+      is the export value of the checked button, or ``Off``; use :php:meth:`isChecked` for the state
+      of one button.
+
+      :rtype: string
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws MemoryException: The value would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: exportValue() -> ?string
+
+      What the field's value is when this checkbox or radio button is checked, as UTF-8. ``null``
+      for any other type, and when the button gives none.
+
+      :rtype: ?string
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws MemoryException: The value would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: isChecked() -> bool
+
+      Whether this checkbox or radio button is checked. ``false`` for any other type.
+
+      :rtype: bool
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: rect() -> Rect
+
+      The widget's rectangle on its page, in points.
+
+      :rtype: Rect
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: controlIndex() -> int
+
+      This widget's place among the field's widgets, starting at 0.
+
+      :rtype: int
+      :throws PdfiumException: The field is gone, PDFium cannot set up form support, or PDFium
+         cannot tell the widget's place.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: controlCount() -> int
+
+      The number of widgets the field has.
+
+      :rtype: int
+      :throws PdfiumException: The field is gone, PDFium cannot set up form support, or PDFium
+         cannot tell the widget's place.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+
+FormType
+--------
+
+.. php:class:: FormType
+
+   An enum, returned by :php:meth:`Document::formType`. XFA forms are told apart but not
+   supported; see :ref:`forms`.
+
+   - ``None``: no form.
+   - ``AcroForm``: an ordinary form.
+   - ``XfaFull``: a full XFA form (the catalog has ``/NeedsRendering true``).
+   - ``XfaForeground``: an AcroForm that also carries XFA data (an ``/XFA`` entry).
+
+
+FormFieldType
+-------------
+
+.. php:class:: FormFieldType
+
+   An enum, returned by :php:meth:`FormField::type`, with the cases ``Unknown``, ``PushButton``,
+   ``Checkbox``, ``RadioButton``, ``ComboBox``, ``ListBox``, ``Text`` and ``Signature``. A type
+   PDFium reports that is not in this list is ``Unknown``.
 
 
 TextPage

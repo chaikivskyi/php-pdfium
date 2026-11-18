@@ -39,6 +39,7 @@ typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std;
 typedef struct { unsigned char *pixels; int width, height; bool alpha, gray; zend_object std; } pdfium_bitmap;
 typedef struct { pdfium_page_handle *ph; FPDF_TEXTPAGE tp; zend_object std; } pdfium_text_page;
 typedef struct { pdfium_doc_handle *h; FPDF_ATTACHMENT att; int index; uint64_t changes; zend_object std; } pdfium_attachment;
+typedef struct { pdfium_page_handle *ph; int page_index; int index; zend_object std; } pdfium_form_field;
 
 typedef struct { smart_str s; bool oom; } pdfium_buf;
 
@@ -52,6 +53,7 @@ extern zend_class_entry *pdfium_ce_bitmap;
 extern zend_class_entry *pdfium_ce_attachment;
 extern zend_class_entry *pdfium_ce_attachment_metadata;
 extern zend_class_entry *pdfium_ce_signature;
+extern zend_class_entry *pdfium_ce_form_field, *pdfium_ce_form_type, *pdfium_ce_form_field_type;
 extern zend_class_entry *pdfium_ce_metadata;
 extern zend_class_entry *pdfium_ce_permissions;
 extern zend_class_entry *pdfium_ce_rect;
@@ -125,12 +127,18 @@ static inline pdfium_attachment *pdfium_attachment_from_obj(zend_object *obj)
 	return (pdfium_attachment *)((char *)obj - XtOffsetOf(pdfium_attachment, std));
 }
 
+static inline pdfium_form_field *pdfium_form_field_from_obj(zend_object *obj)
+{
+	return (pdfium_form_field *)((char *)obj - XtOffsetOf(pdfium_form_field, std));
+}
+
 void pdfium_doc_handle_addref(pdfium_doc_handle *h);
 void pdfium_doc_handle_release(pdfium_doc_handle *h);
 FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h);
 void pdfium_document_free_obj(zend_object *obj);
 
 void pdfium_page_handle_addref(pdfium_page_handle *ph);
+FPDF_FORMHANDLE pdfium_page_form(pdfium_page_handle *ph);
 void pdfium_page_handle_release(pdfium_page_handle *ph);
 void pdfium_text_page_free_obj(zend_object *obj);
 bool pdfium_text_slots_match(void);
@@ -156,6 +164,8 @@ bool pdfium_attachment_slots_match(void);
 
 bool pdfium_signature_slots_match(void);
 
+void pdfium_form_field_free_obj(zend_object *obj);
+
 bool pdfium_memory_fits(size_t bytes);
 bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);
 bool pdfium_path_given(size_t len);
@@ -179,6 +189,8 @@ static inline uint32_t pdfium_surrogate_pair(uint32_t high, uint32_t low)
 
 zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count);
 typedef unsigned long (*pdfium_utf16le_getter)(void *source, unsigned short *buf, unsigned long bytes);
+size_t pdfium_utf16le_read(pdfium_utf16le_getter get, void *source, unsigned short *units, unsigned long bytes);
+zend_string *pdfium_utf16le_finish(unsigned short *units, size_t count);
 zend_string *pdfium_utf16le_fetch(pdfium_utf16le_getter get, void *source, unsigned long bytes);
 zend_string *pdfium_utf16le_fetch_under_limit(pdfium_utf16le_getter get, void *source, size_t *used, bool *oom);
 size_t pdfium_utf8_encode(uint32_t cp, char *out);

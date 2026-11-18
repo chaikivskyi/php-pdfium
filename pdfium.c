@@ -5,6 +5,7 @@
 #include "php_pdfium.h"
 #include "ext/spl/spl_exceptions.h"
 #include "ext/standard/info.h"
+#include "zend_enum.h"
 #include "zend_interfaces.h"
 #include "pdfium_arginfo.h"
 
@@ -16,6 +17,9 @@ zend_class_entry *pdfium_ce_bitmap;
 zend_class_entry *pdfium_ce_attachment;
 zend_class_entry *pdfium_ce_attachment_metadata;
 zend_class_entry *pdfium_ce_signature;
+zend_class_entry *pdfium_ce_form_field;
+zend_class_entry *pdfium_ce_form_type;
+zend_class_entry *pdfium_ce_form_field_type;
 zend_class_entry *pdfium_ce_metadata;
 zend_class_entry *pdfium_ce_permissions;
 zend_class_entry *pdfium_ce_rect;
@@ -43,6 +47,7 @@ static zend_object_handlers page_iterator_handlers;
 static zend_object_handlers text_page_handlers;
 static zend_object_handlers bitmap_handlers;
 static zend_object_handlers attachment_handlers;
+static zend_object_handlers form_field_handlers;
 
 static zend_object *object_create(zend_class_entry *ce, size_t size, const zend_object_handlers *handlers)
 {
@@ -82,6 +87,11 @@ static zend_object *bitmap_create(zend_class_entry *ce)
 static zend_object *attachment_create(zend_class_entry *ce)
 {
 	return object_create(ce, sizeof(pdfium_attachment), &attachment_handlers);
+}
+
+static zend_object *form_field_create(zend_class_entry *ce)
+{
+	return object_create(ce, sizeof(pdfium_form_field), &form_field_handlers);
 }
 
 static void init_handlers(zend_object_handlers *h, int offset, zend_object_free_obj_t free_obj)
@@ -154,6 +164,12 @@ PHP_MINIT_FUNCTION(pdfium)
 	init_handlers(&attachment_handlers, XtOffsetOf(pdfium_attachment, std), pdfium_attachment_free_obj);
 	pdfium_ce_attachment = register_class_Pdfium_Attachment();
 	pdfium_ce_attachment->create_object = attachment_create;
+
+	pdfium_ce_form_type = register_class_Pdfium_FormType();
+	pdfium_ce_form_field_type = register_class_Pdfium_FormFieldType();
+	init_handlers(&form_field_handlers, XtOffsetOf(pdfium_form_field, std), pdfium_form_field_free_obj);
+	pdfium_ce_form_field = register_class_Pdfium_FormField();
+	pdfium_ce_form_field->create_object = form_field_create;
 
 	if (!pdfium_text_slots_match()) {
 		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/text.c do not match pdfium.stub.php");

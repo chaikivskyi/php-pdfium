@@ -109,3 +109,38 @@ function sig_field(string $value): string
 {
     return "<< /FT /Sig /T (Sig) /V $value >>";
 }
+
+function form_pdf(array $fields, array $extra = [], array $page2Annots = []): string
+{
+    $objs = $fields + $extra;
+    $annots = [];
+    $roots = [];
+    ksort($objs);
+    foreach ($objs as $n => $body) {
+        $widget = str_contains($body, '/Subtype /Widget');
+        if ($widget && in_array($n, $page2Annots, true)) {
+            continue;
+        }
+        if ($widget || str_contains($body, '/Subtype /Link')) {
+            $annots[] = "$n 0 R";
+        }
+        if (isset($fields[$n]) && !str_contains($body, '/Parent')) {
+            $roots[] = "$n 0 R";
+        }
+    }
+    $p2 = implode(' ', array_map(fn($n) => "$n 0 R", $page2Annots));
+    $all = [
+        1 => '<< /Type /Catalog /Pages 2 0 R /AcroForm 4 0 R >>',
+        2 => '<< /Type /Pages /Kids [3 0 R 6 0 R] /Count 2 >>',
+        3 => '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [' . implode(' ', $annots) . '] >>',
+        4 => '<< /Fields [' . implode(' ', $roots) . '] /DA (/Helv 12 Tf 0 g) /DR << /Font << /Helv 5 0 R >> >> >>',
+        5 => '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        6 => "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Annots [$p2] >>",
+    ];
+    $objs = $extra + $fields + $all;
+    $list = [];
+    for ($i = 1, $max = max(array_keys($objs)); $i <= $max; $i++) {
+        $list[] = $objs[$i] ?? 'null';
+    }
+    return build_pdf($list);
+}

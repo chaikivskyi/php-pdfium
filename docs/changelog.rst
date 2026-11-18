@@ -1,6 +1,16 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Features:
+
+- ``Page::formFields()`` lists a page's form fields as ``FormField`` objects, which read the name,
+  tooltip, type, value, export value, checked state, rectangle and place in a group;
+  ``Document::formType()`` tells AcroForm, XFA and no form apart. The enums ``FormType`` and
+  ``FormFieldType`` are the extension's first.
+
 v0.3.0 (2026-11-21)
 -------------------
 
