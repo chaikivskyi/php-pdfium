@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 73a6d1e8eb66dae0d7efe4053c8342dfe2cfdae9 */
+ * Stub hash: 8d3bbf5047c81ecf44d933df8ddac5a2c12c5961 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -51,6 +51,10 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_deleteAtta
 	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
 ZEND_END_ARG_INFO()
 
+#define arginfo_class_Pdfium_Document_signatureCount arginfo_class_Pdfium_Document_pageCount
+
+#define arginfo_class_Pdfium_Document_signatures arginfo_class_Pdfium_Document_bookmarks
+
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_page, 0, 1, Pdfium\\Page, 0)
 	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
 ZEND_END_ARG_INFO()
@@ -82,6 +86,8 @@ ZEND_END_ARG_INFO()
 #define arginfo_class_Pdfium_Metadata___construct arginfo_class_Pdfium_Document___construct
 
 #define arginfo_class_Pdfium_AttachmentMetadata___construct arginfo_class_Pdfium_Document___construct
+
+#define arginfo_class_Pdfium_Signature___construct arginfo_class_Pdfium_Document___construct
 
 #define arginfo_class_Pdfium_Permissions___construct arginfo_class_Pdfium_Document___construct
 
@@ -245,6 +251,8 @@ ZEND_METHOD(Pdfium_Document, attachments);
 ZEND_METHOD(Pdfium_Document, attachment);
 ZEND_METHOD(Pdfium_Document, addAttachment);
 ZEND_METHOD(Pdfium_Document, deleteAttachment);
+ZEND_METHOD(Pdfium_Document, signatureCount);
+ZEND_METHOD(Pdfium_Document, signatures);
 ZEND_METHOD(Pdfium_Document, page);
 ZEND_METHOD(Pdfium_Document, pages);
 ZEND_METHOD(Pdfium_Document, extractPages);
@@ -253,6 +261,7 @@ ZEND_METHOD(Pdfium_Document, save);
 ZEND_METHOD(Pdfium_Document, toString);
 ZEND_METHOD(Pdfium_Metadata, __construct);
 ZEND_METHOD(Pdfium_AttachmentMetadata, __construct);
+ZEND_METHOD(Pdfium_Signature, __construct);
 ZEND_METHOD(Pdfium_Permissions, __construct);
 ZEND_METHOD(Pdfium_Rect, __construct);
 ZEND_METHOD(Pdfium_Color, __construct);
@@ -325,6 +334,8 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 	ZEND_ME(Pdfium_Document, attachment, arginfo_class_Pdfium_Document_attachment, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, addAttachment, arginfo_class_Pdfium_Document_addAttachment, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, deleteAttachment, arginfo_class_Pdfium_Document_deleteAttachment, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, signatureCount, arginfo_class_Pdfium_Document_signatureCount, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, signatures, arginfo_class_Pdfium_Document_signatures, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, page, arginfo_class_Pdfium_Document_page, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, pages, arginfo_class_Pdfium_Document_pages, ZEND_ACC_PUBLIC)
 #if (PHP_VERSION_ID >= 80400)
@@ -346,6 +357,11 @@ static const zend_function_entry class_Pdfium_Metadata_methods[] = {
 
 static const zend_function_entry class_Pdfium_AttachmentMetadata_methods[] = {
 	ZEND_ME(Pdfium_AttachmentMetadata, __construct, arginfo_class_Pdfium_AttachmentMetadata___construct, ZEND_ACC_PRIVATE)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_Signature_methods[] = {
+	ZEND_ME(Pdfium_Signature, __construct, arginfo_class_Pdfium_Signature___construct, ZEND_ACC_PRIVATE)
 	ZEND_FE_END
 };
 
@@ -692,6 +708,57 @@ static zend_class_entry *register_class_Pdfium_AttachmentMetadata(void)
 	zend_string *property_checksum_name = zend_string_init("checksum", sizeof("checksum") - 1, 1);
 	zend_declare_typed_property(class_entry, property_checksum_name, &property_checksum_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
 	zend_string_release(property_checksum_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_Signature(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Signature", class_Pdfium_Signature_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS;
+#endif
+
+	zval property_contents_default_value;
+	ZVAL_UNDEF(&property_contents_default_value);
+	zend_string *property_contents_name = zend_string_init("contents", sizeof("contents") - 1, 1);
+	zend_declare_typed_property(class_entry, property_contents_name, &property_contents_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string_release(property_contents_name);
+
+	zval property_byteRange_default_value;
+	ZVAL_UNDEF(&property_byteRange_default_value);
+	zend_string *property_byteRange_name = zend_string_init("byteRange", sizeof("byteRange") - 1, 1);
+	zend_declare_typed_property(class_entry, property_byteRange_name, &property_byteRange_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_byteRange_name);
+
+	zval property_subFilter_default_value;
+	ZVAL_UNDEF(&property_subFilter_default_value);
+	zend_string *property_subFilter_name = zend_string_init("subFilter", sizeof("subFilter") - 1, 1);
+	zend_declare_typed_property(class_entry, property_subFilter_name, &property_subFilter_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string_release(property_subFilter_name);
+
+	zval property_reason_default_value;
+	ZVAL_UNDEF(&property_reason_default_value);
+	zend_string *property_reason_name = zend_string_init("reason", sizeof("reason") - 1, 1);
+	zend_declare_typed_property(class_entry, property_reason_name, &property_reason_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string_release(property_reason_name);
+
+	zval property_time_default_value;
+	ZVAL_UNDEF(&property_time_default_value);
+	zend_string *property_time_name = zend_string_init("time", sizeof("time") - 1, 1);
+	zend_declare_typed_property(class_entry, property_time_name, &property_time_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string_release(property_time_name);
+
+	zval property_docMdpPermission_default_value;
+	ZVAL_UNDEF(&property_docMdpPermission_default_value);
+	zend_string *property_docMdpPermission_name = zend_string_init("docMdpPermission", sizeof("docMdpPermission") - 1, 1);
+	zend_declare_typed_property(class_entry, property_docMdpPermission_name, &property_docMdpPermission_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG|MAY_BE_NULL));
+	zend_string_release(property_docMdpPermission_name);
 
 	return class_entry;
 }
