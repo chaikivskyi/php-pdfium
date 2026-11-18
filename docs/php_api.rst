@@ -884,10 +884,12 @@ FormField
       ``flags()->readOnly`` to refuse it. No script runs, so fields calculated or formatted from
       this one are not updated.
 
+      PDFium's form filler does not store characters outside the Basic Multilingual Plane (above
+      U+FFFF, such as most emoji) correctly: they come back from :php:meth:`value` as a different
+      character. Check :php:meth:`value` when the text may contain them.
+
       :param string $value: The text, as UTF-8.
-      :throws \\ValueError: ``$value`` is not valid UTF-8, contains a null byte, or contains a
-         character outside the Basic Multilingual Plane (above U+FFFF, such as most emoji): PDFium's
-         form filler cannot store those and would keep a different character instead.
+      :throws \\ValueError: ``$value`` is not valid UTF-8 or contains a null byte.
       :throws PdfiumException: The field is gone, or PDFium cannot set up form support. Also when
          the field's type cannot take text (a combo box without the ``editable`` flag included), and
          when PDFium refuses to edit the field.
