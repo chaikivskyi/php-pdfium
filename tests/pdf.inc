@@ -90,6 +90,21 @@ function nav_pdf(string $catalog = '', array $extra = [], array $pageExtra = [''
     ], $pages, $extra), $trailer);
 }
 
+function annots_pdf(string ...$annots): string
+{
+    $refs = [];
+    $objs = [];
+    foreach ($annots as $a) {
+        if (str_starts_with($a, '!')) {
+            $refs[] = substr($a, 1);
+        } else {
+            $refs[] = (6 + count($objs)) . ' 0 R';
+            $objs[] = $a;
+        }
+    }
+    return nav_pdf(extra: $objs, pageExtra: ['/Annots [' . implode(' ', $refs) . ']', '', '']);
+}
+
 function attach_pdf(string $names, array $extra = [], string $catalog = ''): string
 {
     return nav_pdf("/Names << /EmbeddedFiles << /Names [$names] >> >> $catalog", $extra);
@@ -108,4 +123,14 @@ function sig_pdf(string $fields, array $extra = []): string
 function sig_field(string $value): string
 {
     return "<< /FT /Sig /T (Sig) /V $value >>";
+}
+
+function attempt(callable $f): void
+{
+    try {
+        $f();
+        echo "no exception\n";
+    } catch (Throwable $e) {
+        echo get_class($e), ': ', $e->getMessage(), "\n";
+    }
 }

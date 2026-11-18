@@ -408,10 +408,10 @@ void pdfium_leave_or_throw(zval *return_value, const char *oom)
 	}
 }
 
-void pdfium_index_error(uint32_t arg, int count, const char *one, const char *all)
+void pdfium_index_error(uint32_t arg, int count, const char *one, const char *none)
 {
 	if (!count) {
-		zend_argument_value_error(arg, "must be %s index, but the document has no %s", one, all);
+		zend_argument_value_error(arg, "must be %s, but %s", one, none);
 	} else {
 		zend_argument_value_error(arg, "must be between 0 and %d", count - 1);
 	}

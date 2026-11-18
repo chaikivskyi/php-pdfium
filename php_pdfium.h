@@ -24,6 +24,8 @@ typedef struct pdfium_doc_handle {
 	zend_string *buffer;
 	uint32_t refs;
 	uint64_t attachment_changes;
+	uint64_t annotation_removals;
+	uint64_t annotation_file_changes;
 } pdfium_doc_handle;
 
 typedef struct pdfium_page_handle {
@@ -39,6 +41,7 @@ typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std;
 typedef struct { unsigned char *pixels; int width, height; bool alpha, gray; zend_object std; } pdfium_bitmap;
 typedef struct { pdfium_page_handle *ph; FPDF_TEXTPAGE tp; zend_object std; } pdfium_text_page;
 typedef struct { pdfium_doc_handle *h; FPDF_ATTACHMENT att; int index; uint64_t changes; zend_object std; } pdfium_attachment;
+typedef struct { pdfium_page_handle *ph; FPDF_ANNOTATION annot; uint64_t removals; bool removed; zend_object std; } pdfium_annotation;
 
 typedef struct { smart_str s; bool oom; } pdfium_buf;
 
@@ -52,6 +55,7 @@ extern zend_class_entry *pdfium_ce_bitmap;
 extern zend_class_entry *pdfium_ce_attachment;
 extern zend_class_entry *pdfium_ce_attachment_metadata;
 extern zend_class_entry *pdfium_ce_signature;
+extern zend_class_entry *pdfium_ce_annotation;
 extern zend_class_entry *pdfium_ce_metadata;
 extern zend_class_entry *pdfium_ce_permissions;
 extern zend_class_entry *pdfium_ce_rect;
@@ -125,6 +129,11 @@ static inline pdfium_attachment *pdfium_attachment_from_obj(zend_object *obj)
 	return (pdfium_attachment *)((char *)obj - XtOffsetOf(pdfium_attachment, std));
 }
 
+static inline pdfium_annotation *pdfium_annotation_from_obj(zend_object *obj)
+{
+	return (pdfium_annotation *)((char *)obj - XtOffsetOf(pdfium_annotation, std));
+}
+
 void pdfium_doc_handle_addref(pdfium_doc_handle *h);
 void pdfium_doc_handle_release(pdfium_doc_handle *h);
 FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h);
@@ -145,7 +154,7 @@ zval *pdfium_slot(zend_object *obj, int index);
 void pdfium_rect_init(zval *zv, double x1, double y1, double x2, double y2);
 bool pdfium_slots_named(zend_class_entry *ce, const char *names);
 void pdfium_leave_or_throw(zval *return_value, const char *oom);
-void pdfium_index_error(uint32_t arg, int count, const char *one, const char *all);
+void pdfium_index_error(uint32_t arg, int count, const char *one, const char *none);
 
 bool pdfium_navigation_slots_match(void);
 
@@ -155,6 +164,7 @@ void pdfium_attachment_free_obj(zend_object *obj);
 bool pdfium_attachment_slots_match(void);
 
 bool pdfium_signature_slots_match(void);
+void pdfium_annotation_free_obj(zend_object *obj);
 
 bool pdfium_memory_fits(size_t bytes);
 bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);

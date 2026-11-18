@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: eb89fa433f5fecf6d2809757978a3663ff60c237 */
+ * Stub hash: c0844c9bc5abda73dd8401c9899164d6a7b79a49 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -164,6 +164,25 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Page_linkAt, 0, 2, P
 	ZEND_ARG_TYPE_INFO(0, y, IS_DOUBLE, 0)
 ZEND_END_ARG_INFO()
 
+#define arginfo_class_Pdfium_Page_annotationCount arginfo_class_Pdfium_Document_pageCount
+
+#define arginfo_class_Pdfium_Page_annotations arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Page_annotation, 0, 1, Pdfium\\Annotation, 0)
+	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation___construct arginfo_class_Pdfium_Document___construct
+
+#define arginfo_class_Pdfium_Annotation_index arginfo_class_Pdfium_Document_pageCount
+
+#define arginfo_class_Pdfium_Annotation_type arginfo_class_Pdfium_Page_text
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_rect, 0, 0, Pdfium\\Rect, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_flags arginfo_class_Pdfium_Document_pageCount
+
 #define arginfo_class_Pdfium_Attachment___construct arginfo_class_Pdfium_Document___construct
 
 #define arginfo_class_Pdfium_Attachment_index arginfo_class_Pdfium_Document_pageCount
@@ -297,6 +316,14 @@ ZEND_METHOD(Pdfium_Page, openAction);
 ZEND_METHOD(Pdfium_Page, closeAction);
 ZEND_METHOD(Pdfium_Page, links);
 ZEND_METHOD(Pdfium_Page, linkAt);
+ZEND_METHOD(Pdfium_Page, annotationCount);
+ZEND_METHOD(Pdfium_Page, annotations);
+ZEND_METHOD(Pdfium_Page, annotation);
+ZEND_METHOD(Pdfium_Annotation, __construct);
+ZEND_METHOD(Pdfium_Annotation, index);
+ZEND_METHOD(Pdfium_Annotation, type);
+ZEND_METHOD(Pdfium_Annotation, rect);
+ZEND_METHOD(Pdfium_Annotation, flags);
 ZEND_METHOD(Pdfium_Attachment, __construct);
 ZEND_METHOD(Pdfium_Attachment, index);
 ZEND_METHOD(Pdfium_Attachment, name);
@@ -452,6 +479,18 @@ static const zend_function_entry class_Pdfium_Page_methods[] = {
 	ZEND_ME(Pdfium_Page, closeAction, arginfo_class_Pdfium_Page_closeAction, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, links, arginfo_class_Pdfium_Page_links, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, linkAt, arginfo_class_Pdfium_Page_linkAt, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, annotationCount, arginfo_class_Pdfium_Page_annotationCount, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, annotations, arginfo_class_Pdfium_Page_annotations, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, annotation, arginfo_class_Pdfium_Page_annotation, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_Annotation_methods[] = {
+	ZEND_ME(Pdfium_Annotation, __construct, arginfo_class_Pdfium_Annotation___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Pdfium_Annotation, index, arginfo_class_Pdfium_Annotation_index, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, type, arginfo_class_Pdfium_Annotation_type, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, rect, arginfo_class_Pdfium_Annotation_rect, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, flags, arginfo_class_Pdfium_Annotation_flags, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -1436,6 +1475,93 @@ static zend_class_entry *register_class_Pdfium_Page(void)
 	class_entry = zend_register_internal_class_ex(&ce, NULL);
 	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE;
 #endif
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_Annotation(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Annotation", class_Pdfium_Annotation_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE;
+#endif
+
+	zval const_FLAG_INVISIBLE_value;
+	ZVAL_LONG(&const_FLAG_INVISIBLE_value, 1);
+	zend_string *const_FLAG_INVISIBLE_name = zend_string_init_interned("FLAG_INVISIBLE", sizeof("FLAG_INVISIBLE") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_INVISIBLE_name, &const_FLAG_INVISIBLE_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_INVISIBLE_name);
+
+	zval const_FLAG_HIDDEN_value;
+	ZVAL_LONG(&const_FLAG_HIDDEN_value, 2);
+	zend_string *const_FLAG_HIDDEN_name = zend_string_init_interned("FLAG_HIDDEN", sizeof("FLAG_HIDDEN") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_HIDDEN_name, &const_FLAG_HIDDEN_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_HIDDEN_name);
+
+	zval const_FLAG_PRINT_value;
+	ZVAL_LONG(&const_FLAG_PRINT_value, 4);
+	zend_string *const_FLAG_PRINT_name = zend_string_init_interned("FLAG_PRINT", sizeof("FLAG_PRINT") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_PRINT_name, &const_FLAG_PRINT_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_PRINT_name);
+
+	zval const_FLAG_NO_ZOOM_value;
+	ZVAL_LONG(&const_FLAG_NO_ZOOM_value, 8);
+	zend_string *const_FLAG_NO_ZOOM_name = zend_string_init_interned("FLAG_NO_ZOOM", sizeof("FLAG_NO_ZOOM") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_NO_ZOOM_name, &const_FLAG_NO_ZOOM_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_NO_ZOOM_name);
+
+	zval const_FLAG_NO_ROTATE_value;
+	ZVAL_LONG(&const_FLAG_NO_ROTATE_value, 16);
+	zend_string *const_FLAG_NO_ROTATE_name = zend_string_init_interned("FLAG_NO_ROTATE", sizeof("FLAG_NO_ROTATE") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_NO_ROTATE_name, &const_FLAG_NO_ROTATE_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_NO_ROTATE_name);
+
+	zval const_FLAG_NO_VIEW_value;
+	ZVAL_LONG(&const_FLAG_NO_VIEW_value, 32);
+	zend_string *const_FLAG_NO_VIEW_name = zend_string_init_interned("FLAG_NO_VIEW", sizeof("FLAG_NO_VIEW") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_NO_VIEW_name, &const_FLAG_NO_VIEW_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_NO_VIEW_name);
+
+	zval const_FLAG_READ_ONLY_value;
+	ZVAL_LONG(&const_FLAG_READ_ONLY_value, 64);
+	zend_string *const_FLAG_READ_ONLY_name = zend_string_init_interned("FLAG_READ_ONLY", sizeof("FLAG_READ_ONLY") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_READ_ONLY_name, &const_FLAG_READ_ONLY_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_READ_ONLY_name);
+
+	zval const_FLAG_LOCKED_value;
+	ZVAL_LONG(&const_FLAG_LOCKED_value, 128);
+	zend_string *const_FLAG_LOCKED_name = zend_string_init_interned("FLAG_LOCKED", sizeof("FLAG_LOCKED") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_LOCKED_name, &const_FLAG_LOCKED_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_LOCKED_name);
+
+	zval const_FLAG_TOGGLE_NO_VIEW_value;
+	ZVAL_LONG(&const_FLAG_TOGGLE_NO_VIEW_value, 256);
+	zend_string *const_FLAG_TOGGLE_NO_VIEW_name = zend_string_init_interned("FLAG_TOGGLE_NO_VIEW", sizeof("FLAG_TOGGLE_NO_VIEW") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_TOGGLE_NO_VIEW_name, &const_FLAG_TOGGLE_NO_VIEW_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_TOGGLE_NO_VIEW_name);
+
+	zval const_APPEARANCE_NORMAL_value;
+	ZVAL_LONG(&const_APPEARANCE_NORMAL_value, 0);
+	zend_string *const_APPEARANCE_NORMAL_name = zend_string_init_interned("APPEARANCE_NORMAL", sizeof("APPEARANCE_NORMAL") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_APPEARANCE_NORMAL_name, &const_APPEARANCE_NORMAL_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_APPEARANCE_NORMAL_name);
+
+	zval const_APPEARANCE_ROLLOVER_value;
+	ZVAL_LONG(&const_APPEARANCE_ROLLOVER_value, 1);
+	zend_string *const_APPEARANCE_ROLLOVER_name = zend_string_init_interned("APPEARANCE_ROLLOVER", sizeof("APPEARANCE_ROLLOVER") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_APPEARANCE_ROLLOVER_name, &const_APPEARANCE_ROLLOVER_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_APPEARANCE_ROLLOVER_name);
+
+	zval const_APPEARANCE_DOWN_value;
+	ZVAL_LONG(&const_APPEARANCE_DOWN_value, 2);
+	zend_string *const_APPEARANCE_DOWN_name = zend_string_init_interned("APPEARANCE_DOWN", sizeof("APPEARANCE_DOWN") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_APPEARANCE_DOWN_name, &const_APPEARANCE_DOWN_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_APPEARANCE_DOWN_name);
 
 	return class_entry;
 }

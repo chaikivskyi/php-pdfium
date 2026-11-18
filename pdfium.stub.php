@@ -802,6 +802,125 @@ final class Page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function linkAt(float $x, float $y): ?Link {}
+
+    /**
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function annotationCount(): int {}
+
+    /**
+     * Every annotation on the page, in the page's order (back to front), keyed by the index
+     * annotation() takes. An entry of a damaged list that is not an annotation is left out, so keys
+     * can skip numbers. Each call returns new objects.
+     *
+     * @return array<int, Annotation>
+     * @throws MemoryException when the list would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function annotations(): array {}
+
+    /**
+     * @throws \ValueError when $index is outside 0..annotationCount()-1
+     * @throws FormatException when the entry is not an annotation, in a damaged list
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function annotation(int $index): Annotation {}
+}
+
+/**
+ * An annotation on a page. It keeps its page and document alive. Two objects for the same
+ * annotation see each other's changes, but are not ==; compare index().
+ *
+ * @strict-properties
+ * @not-serializable
+ */
+final class Annotation
+{
+    /**
+     * @var int
+     */
+    public const FLAG_INVISIBLE = 1;
+    /**
+     * @var int
+     */
+    public const FLAG_HIDDEN = 2;
+    /**
+     * @var int
+     */
+    public const FLAG_PRINT = 4;
+    /**
+     * @var int
+     */
+    public const FLAG_NO_ZOOM = 8;
+    /**
+     * @var int
+     */
+    public const FLAG_NO_ROTATE = 16;
+    /**
+     * @var int
+     */
+    public const FLAG_NO_VIEW = 32;
+    /**
+     * @var int
+     */
+    public const FLAG_READ_ONLY = 64;
+    /**
+     * @var int
+     */
+    public const FLAG_LOCKED = 128;
+    /**
+     * @var int
+     */
+    public const FLAG_TOGGLE_NO_VIEW = 256;
+
+    /**
+     * @var int
+     */
+    public const APPEARANCE_NORMAL = 0;
+    /**
+     * @var int
+     */
+    public const APPEARANCE_ROLLOVER = 1;
+    /**
+     * @var int
+     */
+    public const APPEARANCE_DOWN = 2;
+
+    private function __construct() {}
+
+    /**
+     * The annotation's current position on its page, starting at 0.
+     *
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function index(): int {}
+
+    /**
+     * The PDF subtype name, such as "Text", "Highlight" or "Widget"; "Unknown" for a subtype
+     * PDFium does not know.
+     *
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function type(): string {}
+
+    /**
+     * The annotation's rectangle in points, with left below right and bottom below top. PDFium gives
+     * 0, 0, 0, 0 for an annotation without one; null when PDFium cannot read it.
+     *
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function rect(): ?Rect {}
+
+    /**
+     * The annotation flags, a combination of the FLAG_* constants.
+     *
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function flags(): int {}
 }
 
 /**

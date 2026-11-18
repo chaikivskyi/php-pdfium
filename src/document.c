@@ -392,7 +392,7 @@ ZEND_METHOD(Pdfium_Document, page)
 		RETURN_OBJ(obj);
 	}
 	if (!EG(exception)) {
-		pdfium_index_error(1, page_count, "a page", "pages");
+		pdfium_index_error(1, page_count, "a page index", "the document has no pages");
 	}
 	RETURN_THROWS();
 }

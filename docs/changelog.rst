@@ -1,6 +1,15 @@
 Changelog
 =========
 
+Unreleased
+----------
+
+Features:
+
+- ``Page::annotationCount()``, ``annotations()`` and ``annotation()``: a page's annotations, as
+  ``Annotation`` objects with ``type()``, ``index()``, ``rect()`` and ``flags()``, and the
+  ``Annotation::FLAG_*`` constants for the flags.
+
 v0.3.0 (2026-11-21)
 -------------------
 

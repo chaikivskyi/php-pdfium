@@ -161,7 +161,7 @@ ZEND_METHOD(Pdfium_Document, attachment)
 
 	pdfium_leave();
 	if (!in_range) {
-		pdfium_index_error(1, count, "an attachment", "attachments");
+		pdfium_index_error(1, count, "an attachment index", "the document has no attachments");
 		RETURN_THROWS();
 	}
 	if (!att) {
@@ -275,7 +275,7 @@ ZEND_METHOD(Pdfium_Document, deleteAttachment)
 	}
 	pdfium_leave();
 	if (!in_range) {
-		pdfium_index_error(1, count, "an attachment", "attachments");
+		pdfium_index_error(1, count, "an attachment index", "the document has no attachments");
 		RETURN_THROWS();
 	}
 	if (!deleted) {

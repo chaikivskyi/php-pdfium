@@ -16,6 +16,7 @@ zend_class_entry *pdfium_ce_bitmap;
 zend_class_entry *pdfium_ce_attachment;
 zend_class_entry *pdfium_ce_attachment_metadata;
 zend_class_entry *pdfium_ce_signature;
+zend_class_entry *pdfium_ce_annotation;
 zend_class_entry *pdfium_ce_metadata;
 zend_class_entry *pdfium_ce_permissions;
 zend_class_entry *pdfium_ce_rect;
@@ -43,6 +44,7 @@ static zend_object_handlers page_iterator_handlers;
 static zend_object_handlers text_page_handlers;
 static zend_object_handlers bitmap_handlers;
 static zend_object_handlers attachment_handlers;
+static zend_object_handlers annotation_handlers;
 
 static zend_object *object_create(zend_class_entry *ce, size_t size, const zend_object_handlers *handlers)
 {
@@ -82,6 +84,11 @@ static zend_object *bitmap_create(zend_class_entry *ce)
 static zend_object *attachment_create(zend_class_entry *ce)
 {
 	return object_create(ce, sizeof(pdfium_attachment), &attachment_handlers);
+}
+
+static zend_object *annotation_create(zend_class_entry *ce)
+{
+	return object_create(ce, sizeof(pdfium_annotation), &annotation_handlers);
 }
 
 static void init_handlers(zend_object_handlers *h, int offset, zend_object_free_obj_t free_obj)
@@ -154,6 +161,10 @@ PHP_MINIT_FUNCTION(pdfium)
 	init_handlers(&attachment_handlers, XtOffsetOf(pdfium_attachment, std), pdfium_attachment_free_obj);
 	pdfium_ce_attachment = register_class_Pdfium_Attachment();
 	pdfium_ce_attachment->create_object = attachment_create;
+
+	init_handlers(&annotation_handlers, XtOffsetOf(pdfium_annotation, std), pdfium_annotation_free_obj);
+	pdfium_ce_annotation = register_class_Pdfium_Annotation();
+	pdfium_ce_annotation->create_object = annotation_create;
 
 	if (!pdfium_text_slots_match()) {
 		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/text.c do not match pdfium.stub.php");

@@ -11,11 +11,11 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
 
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
-:php:class:`Bitmap` and :php:class:`Attachment` cannot be cloned or serialized. The value classes
-(:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`,
-:php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`,
-:php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`, :php:class:`Destination`,
-:php:class:`Action`, :php:class:`AttachmentMetadata` and :php:class:`Signature`) are read-only and
+:php:class:`Bitmap`, :php:class:`Attachment` and :php:class:`Annotation` cannot be cloned or
+serialized. The value classes (:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`,
+:php:class:`Char`, :php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`,
+:php:class:`WebLink`, :php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`,
+:php:class:`Destination`, :php:class:`Action`, :php:class:`AttachmentMetadata` and :php:class:`Signature`) are read-only and
 can be cloned and serialized.
 
 
@@ -663,6 +663,42 @@ Page
       :throws MemoryException: The link would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. rubric:: Annotations
+
+   .. php:method:: annotationCount() -> int
+
+      The number of annotations on the page, of every type, including form fields (Widget
+      annotations).
+
+      :rtype: int
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: annotations() -> array
+
+      Every annotation on the page as an :php:class:`Annotation`, back to front, keyed by the index
+      that :php:meth:`annotation` takes. An entry of a damaged list that is not an annotation is
+      left out, so keys can skip numbers. Each call returns new objects.
+
+      .. code-block:: php
+
+         foreach ($page->annotations() as $index => $a) {
+             echo $index, ' ', $a->type(), "\n";
+         }
+
+      :rtype: Annotation[]
+      :throws MemoryException: The list would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: annotation(int $index) -> Annotation
+
+      One annotation, as a new object.
+
+      :param int $index: Annotation number, starting at 0.
+      :rtype: Annotation
+      :throws \\ValueError: The index is out of range.
+      :throws FormatException: The entry is not an annotation, in a damaged list.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
 
 Attachment
 ----------
@@ -713,6 +749,73 @@ Attachment
       :rtype: AttachmentMetadata
       :throws PdfiumException: The document's attachments changed since this one was fetched.
       :throws MemoryException: An entry would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+
+Annotation
+----------
+
+.. php:class:: Annotation
+
+   An annotation on a :php:class:`Page`, from :php:meth:`Page::annotations` or
+   :php:meth:`Page::annotation`. It keeps its page and document alive. Two objects for the same
+   annotation see each other's changes, but they are not ``==``; compare :php:meth:`index` instead.
+
+   The bits of :php:meth:`flags`, as the PDF standard defines them:
+
+   .. php:const:: FLAG_INVISIBLE
+   .. php:const:: FLAG_HIDDEN
+   .. php:const:: FLAG_PRINT
+   .. php:const:: FLAG_NO_ZOOM
+   .. php:const:: FLAG_NO_ROTATE
+   .. php:const:: FLAG_NO_VIEW
+   .. php:const:: FLAG_READ_ONLY
+   .. php:const:: FLAG_LOCKED
+   .. php:const:: FLAG_TOGGLE_NO_VIEW
+
+   Appearance modes, for how the annotation looks normally, under the pointer and when pressed:
+
+   .. php:const:: APPEARANCE_NORMAL
+   .. php:const:: APPEARANCE_ROLLOVER
+   .. php:const:: APPEARANCE_DOWN
+
+   .. php:method:: index() -> int
+
+      The annotation's current position on its page, starting at 0.
+
+      :rtype: int
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: type() -> string
+
+      The PDF subtype: ``"Text"``, ``"Link"``, ``"FreeText"``, ``"Line"``, ``"Square"``,
+      ``"Circle"``, ``"Polygon"``, ``"PolyLine"``, ``"Highlight"``, ``"Underline"``,
+      ``"Squiggly"``, ``"StrikeOut"``, ``"Stamp"``, ``"Caret"``, ``"Ink"``, ``"Popup"``,
+      ``"FileAttachment"``, ``"Sound"``, ``"Movie"``, ``"Widget"``, ``"Screen"``,
+      ``"PrinterMark"``, ``"TrapNet"``, ``"Watermark"``, ``"3D"``, ``"RichMedia"``,
+      ``"XFAWidget"``, ``"Redact"``, or ``"Unknown"`` for any other.
+
+      :rtype: string
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: rect() -> ?Rect
+
+      Where the annotation is on the page, in points, with left below right and bottom below top.
+      PDFium gives 0, 0, 0, 0 for an annotation without a rectangle; ``null`` when it cannot read
+      one.
+
+      :rtype: ?Rect
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: flags() -> int
+
+      The annotation flags, a combination of the ``FLAG_*`` constants, from 0 to 4294967295.
+
+      :rtype: int
+      :throws PdfiumException: The annotation was removed from its page.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
 
@@ -968,10 +1071,10 @@ Rect
 .. php:class:: Rect
 
    A rectangle in points, with ``y`` growing upwards: a final, read-only value. See
-   :ref:`text-positions`. :php:meth:`TextPage::chars`, :php:meth:`TextPage::search` and
-   :php:meth:`TextPage::webLinks` return them, as does :php:attr:`Link::rect`, and you create one
-   to pass to
-   :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
+   :ref:`text-positions`. :php:meth:`TextPage::chars`, :php:meth:`TextPage::search`,
+   :php:meth:`TextPage::webLinks` and :php:meth:`Annotation::rect` return them, as does
+   :php:attr:`Link::rect`, and you create one to pass to :php:meth:`TextPage::textIn`,
+   :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
 
    .. php:method:: __construct(float $left, float $bottom, float $right, float $top)
 
@@ -1404,7 +1507,7 @@ these:
 .. php:exception:: FormatException
 
    The data is not a PDF, or it is too damaged to read. Also thrown when a page or its text cannot
-   be loaded.
+   be loaded, or when an entry of a page's annotation list is not an annotation.
 
 .. php:exception:: PasswordException
 
@@ -1425,11 +1528,11 @@ these:
    ZTS PHP only. Another thread is using PDFium, and nothing was done. It is safe to retry, except
    that :php:meth:`Document::fromFile` has already read the file. See :ref:`threads`.
 
-   Every :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage` and
-   :php:class:`PageIterator` method can throw it, including ``current()`` and ``valid()`` in the
-   middle of a ``foreach``, except :php:meth:`Document::pages`, :php:meth:`Document::getIterator`,
-   :php:meth:`Page::index`, :php:meth:`PageIterator::key`, :php:meth:`PageIterator::next` and
-   :php:meth:`PageIterator::rewind`. :php:class:`Bitmap` and the value classes never throw it.
-   :php:class:`Bitmap` methods never throw it.
+   Every :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
+   :php:class:`Attachment` and :php:class:`Annotation` method can throw it, including
+   ``current()`` and ``valid()`` in the middle of a ``foreach``, except :php:meth:`Document::pages`,
+   :php:meth:`Document::getIterator`, :php:meth:`Page::index`, :php:meth:`PageIterator::key`,
+   :php:meth:`PageIterator::next` and :php:meth:`PageIterator::rewind`. :php:class:`Bitmap` and the
+   value classes never throw it.
 
 The exception class says what went wrong; ``$e->getCode()`` is always 0.
