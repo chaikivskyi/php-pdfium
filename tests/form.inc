@@ -64,3 +64,12 @@ function field(Pdfium\Page|Pdfium\Document $in, string $name): Pdfium\FormField
     }
     throw new LogicException($name);
 }
+
+function fields(Pdfium\Page|Pdfium\Document $in): array
+{
+    $out = [];
+    foreach (($in instanceof Pdfium\Document ? $in->page(0) : $in)->formFields() as $f) {
+        $out[$f->name()] = $f;
+    }
+    return $out;
+}

@@ -898,6 +898,37 @@ FormField
       :throws MemoryException: The text would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: setChecked(bool $checked = true) -> void
+
+      Checks or unchecks a checkbox or radio button, as if a user clicked it, in place. Nothing is
+      done when the button is already in the requested state. Checking a radio button unchecks the
+      others of its group; the widgets of one field that share an export value change together.
+      A radio group that forbids unchecking (``NoToggleToOff``) cannot have its checked button
+      unchecked: the call throws.
+
+      A read-only button is not changed and the call throws, because PDFium ignores the click; text
+      fields and lists are changed all the same, and only buttons throw.
+
+      :param bool $checked: The state to leave the button in.
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support. Also when
+         the field is not a checkbox or radio button, and when PDFium did not leave the button in the
+         requested state.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: select(int $option, bool $selected = true) -> void
+
+      Selects or deselects one option of a combo box or list box, as if a user picked it, in place.
+      In a list box that allows several selections the other options keep their state; selecting an
+      option of a combo box replaces its selection. PDFium does not deselect the chosen option of a
+      combo box: the call throws. A read-only field is changed all the same.
+
+      :param int $option: The index into :php:meth:`options`.
+      :param bool $selected: Whether the option ends up selected.
+      :throws \\ValueError: ``$option`` is not an option index of the field.
+      :throws PdfiumException: The field is gone, or PDFium cannot set up form support. Also when
+         the field is not a combo box or list box, and when PDFium does not change the selection.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
 
 FormFieldOption
 ---------------

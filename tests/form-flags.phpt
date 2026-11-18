@@ -6,10 +6,7 @@ pdfium
 <?php
 require __DIR__ . '/form.inc';
 $doc = Pdfium\Document::fromString(standard_form());
-$by = [];
-foreach ($doc->page(0)->formFields() as $f) {
-    $by[$f->name()] = $f;
-}
+$by = fields($doc);
 foreach (['name', 'locked', 'parent.notes', 'city', 'langs', 'country'] as $n) {
     $set = array_keys(array_filter((array) $by[$n]->flags()));
     echo $n, ': ', json_encode($set), "\n";

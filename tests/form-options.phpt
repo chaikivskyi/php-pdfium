@@ -6,10 +6,7 @@ pdfium
 <?php
 require __DIR__ . '/form.inc';
 $doc = Pdfium\Document::fromString(standard_form());
-$by = [];
-foreach ($doc->page(0)->formFields() as $f) {
-    $by[$f->name()] = $f;
-}
+$by = fields($doc);
 foreach (['country', 'langs', 'name', 'agree'] as $n) {
     echo $n, ': ', json_encode(array_map(fn($o) => [$o->label, $o->selected], $by[$n]->options())), "\n";
 }
