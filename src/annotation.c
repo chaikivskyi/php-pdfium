@@ -207,6 +207,132 @@ ZEND_METHOD(Pdfium_Page, annotation)
 	RETURN_OBJ(annotation_new(ph, annot));
 }
 
+static FPDF_ANNOTATION_SUBTYPE type_of(const zend_string *name)
+{
+	for (size_t i = FPDF_ANNOT_UNKNOWN + 1; i < sizeof(type_names) / sizeof(type_names[0]); i++) {
+		size_t len = strlen(type_names[i]);
+
+		if (ZSTR_LEN(name) == len && !memcmp(ZSTR_VAL(name), type_names[i], len)) {
+			return (FPDF_ANNOTATION_SUBTYPE) i;
+		}
+	}
+	return FPDF_ANNOT_UNKNOWN;
+}
+
+static const char *rect_read(const zval *zr, FS_RECTF *out)
+{
+	double sides[RECT_SLOTS];
+	const char *fault = pdfium_rect_fault(zr, sides);
+
+	if (fault) {
+		return fault;
+	}
+	out->left = pdfium_float_side(sides[RECT_LEFT]);
+	out->top = pdfium_float_side(sides[RECT_TOP]);
+	out->right = pdfium_float_side(sides[RECT_RIGHT]);
+	out->bottom = pdfium_float_side(sides[RECT_BOTTOM]);
+	return NULL;
+}
+
+static bool annotation_remove(pdfium_page_handle *ph, int index)
+{
+	FPDF_ANNOTATION annot = FPDFPage_GetAnnot(ph->page, index);
+	FPDF_ANNOTATION_SUBTYPE subtype = FPDF_ANNOT_UNKNOWN;
+
+	if (annot) {
+		subtype = FPDFAnnot_GetSubtype(annot);
+		FPDFPage_CloseAnnot(annot);
+	}
+	if (!FPDFPage_RemoveAnnot(ph->page, index)) {
+		return false;
+	}
+	ph->h->annotation_removals++;
+	if (subtype == FPDF_ANNOT_WIDGET) {
+		ph->h->form_changes++;
+	}
+	return true;
+}
+
+ZEND_METHOD(Pdfium_Page, addAnnotation)
+{
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+	zend_string *name;
+	zval *zr;
+	FS_RECTF r;
+
+	ZEND_PARSE_PARAMETERS_START(2, 2)
+		Z_PARAM_STR(name)
+		Z_PARAM_OBJECT_OF_CLASS(zr, pdfium_ce_rect)
+	ZEND_PARSE_PARAMETERS_END();
+
+	FPDF_ANNOTATION_SUBTYPE subtype = type_of(name);
+
+	if (subtype == FPDF_ANNOT_UNKNOWN) {
+		zend_argument_value_error(1, "must be an annotation type name, such as \"Highlight\"");
+		RETURN_THROWS();
+	}
+	const char *fault = rect_read(zr, &r);
+
+	if (fault) {
+		zend_argument_value_error(2, "must have %s", fault);
+		RETURN_THROWS();
+	}
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	if (!FPDFAnnot_IsSupportedSubtype(subtype)) {
+		pdfium_leave();
+		zend_throw_exception_ex(pdfium_ce_unsupported_exception, 0,
+			"PDFium cannot create %s annotations; it creates Text, Link, FreeText, Square, Circle, Highlight, "
+			"Underline, Squiggly, StrikeOut, Stamp, Ink, Popup and FileAttachment", type_name(subtype));
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION annot = FPDFPage_CreateAnnot(ph->page, subtype);
+
+	if (annot && !FPDFAnnot_SetRect(annot, &r)) {
+		int index = FPDFPage_GetAnnotIndex(ph->page, annot);
+
+		if (index >= 0) {
+			annotation_remove(ph, index);
+		}
+		FPDFPage_CloseAnnot(annot);
+		annot = NULL;
+	}
+	pdfium_leave();
+	if (!annot) {
+		zend_throw_exception(pdfium_ce_exception, "Cannot add the annotation", 0);
+		RETURN_THROWS();
+	}
+	RETURN_OBJ(annotation_new(ph, annot));
+}
+
+ZEND_METHOD(Pdfium_Page, removeAnnotation)
+{
+	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
+	zend_long index;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_LONG(index)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	int count = annotation_count(ph->page);
+	bool in_range = index >= 0 && index < count;
+	bool removed = in_range && annotation_remove(ph, (int) index);
+
+	pdfium_leave();
+	if (!in_range) {
+		annotation_index_error(count);
+		RETURN_THROWS();
+	}
+	if (!removed) {
+		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot remove annotation %d", (int) index);
+		RETURN_THROWS();
+	}
+}
+
 ZEND_METHOD(Pdfium_Annotation, index)
 {
 	int index;
@@ -569,6 +695,26 @@ ZEND_METHOD(Pdfium_Annotation, appearance)
 	appearance_source ap = {a->annot, (FPDF_ANNOT_APPEARANCEMODE) mode};
 
 	utf16_return(return_value, appearance_get, &ap, "The appearance needs");
+}
+
+ZEND_METHOD(Pdfium_Annotation, remove)
+{
+	int index;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	pdfium_annotation *a = annotation_enter_at(Z_OBJ_P(ZEND_THIS), &index);
+
+	if (!a) {
+		RETURN_THROWS();
+	}
+	bool removed = annotation_remove(a->ph, index);
+
+	a->removed = removed;
+	pdfium_leave();
+	if (!removed) {
+		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot remove annotation %d", index);
+		RETURN_THROWS();
+	}
 }
 
 void pdfium_annotation_free_obj(zend_object *obj)

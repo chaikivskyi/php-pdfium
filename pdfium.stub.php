@@ -854,11 +854,36 @@ final class Page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function annotation(int $index): Annotation {}
+
+    /**
+     * Adds an annotation of a type such as "Highlight" at the end of the page's list, in place. It
+     * has no colour, contents or appearance yet, and its flags are 0 (add FLAG_PRINT for viewers to
+     * print it). PDFium creates Text, Link, FreeText, Square, Circle, Highlight, Underline, Squiggly,
+     * StrikeOut, Stamp, Ink, Popup and FileAttachment.
+     *
+     * @throws \ValueError when $type is not a type name type() gives, or is "Unknown", or a side of
+     *         $rect is unset or one its constructor refuses, as in one made without it
+     * @throws UnsupportedException when PDFium cannot create annotations of that type
+     * @throws PdfiumException when PDFium cannot add the annotation
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function addAnnotation(string $type, Rect $rect): Annotation {}
+
+    /**
+     * Removes an annotation from the page, in place. The annotations after it move down one index,
+     * and every Annotation for the removed one throws from then on.
+     *
+     * @throws \ValueError when $index is outside 0..annotationCount()-1
+     * @throws PdfiumException when PDFium cannot remove the annotation
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function removeAnnotation(int $index): void {}
 }
 
 /**
  * An annotation on a page. It keeps its page and document alive. Two objects for the same
- * annotation see each other's changes, but are not ==; compare index().
+ * annotation see each other's changes, but are not ==; compare index(). Once the annotation is
+ * removed from its page, every method throws.
  *
  * @strict-properties
  * @not-serializable
@@ -1068,6 +1093,15 @@ final class Annotation
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function appearance(int $mode = Annotation::APPEARANCE_NORMAL): ?string {}
+
+    /**
+     * Removes the annotation from its page, as Page::removeAnnotation() does with its index.
+     *
+     * @throws PdfiumException when the annotation was already removed from its page, or PDFium
+     *         cannot remove it
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function remove(): void {}
 }
 
 /**

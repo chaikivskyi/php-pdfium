@@ -27,12 +27,14 @@ typedef struct pdfium_doc_handle {
 	uint64_t attachment_changes;
 	uint64_t annotation_removals;
 	uint64_t annotation_file_changes;
+	uint64_t form_changes;
 } pdfium_doc_handle;
 
 typedef struct pdfium_page_handle {
 	pdfium_doc_handle *h;
 	FPDF_PAGE page;
 	bool form_loaded;
+	uint64_t form_changes;
 	uint32_t refs;
 } pdfium_page_handle;
 
@@ -145,6 +147,7 @@ void pdfium_document_free_obj(zend_object *obj);
 
 void pdfium_page_handle_addref(pdfium_page_handle *ph);
 void pdfium_page_handle_release(pdfium_page_handle *ph);
+FPDF_FORMHANDLE pdfium_page_form_view(pdfium_page_handle *ph);
 void pdfium_text_page_free_obj(zend_object *obj);
 bool pdfium_text_slots_match(void);
 zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count);

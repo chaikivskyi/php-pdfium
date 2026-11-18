@@ -14,6 +14,9 @@ Features:
   ``valueType()``, ``stringValue()`` and ``numberValue()``: its dictionary, by key.
   ``appearance()``: its appearance stream for one of the ``Annotation::APPEARANCE_*`` modes.
 - Value classes ``Point`` and ``Border``. ``Point`` and ``Quad`` can be created with ``new``.
+- ``Page::addAnnotation()``: add an annotation of one of the 13 types PDFium creates.
+  ``Page::removeAnnotation()`` and ``Annotation::remove()``: take one off its page, after which
+  every ``Annotation`` for it throws.
 
 v0.3.0 (2026-11-21)
 -------------------

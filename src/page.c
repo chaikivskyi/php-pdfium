@@ -123,6 +123,14 @@ void pdfium_page_handle_addref(pdfium_page_handle *ph)
 	ph->refs++;
 }
 
+static void form_view_unload(pdfium_page_handle *ph)
+{
+	if (ph->form_loaded) {
+		FORM_OnBeforeClosePage(ph->page, ph->h->form);
+		ph->form_loaded = false;
+	}
+}
+
 void pdfium_page_handle_release(pdfium_page_handle *ph)
 {
 	if (--ph->refs) {
@@ -130,14 +138,27 @@ void pdfium_page_handle_release(pdfium_page_handle *ph)
 	}
 	if (ph->page) {
 		pdfium_enter_wait();
-		if (ph->form_loaded) {
-			FORM_OnBeforeClosePage(ph->page, ph->h->form);
-		}
+		form_view_unload(ph);
 		FPDF_ClosePage(ph->page);
 		pdfium_leave();
 	}
 	pdfium_doc_handle_release(ph->h);
 	efree(ph);
+}
+
+FPDF_FORMHANDLE pdfium_page_form_view(pdfium_page_handle *ph)
+{
+	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
+
+	if (ph->form_changes != ph->h->form_changes) {
+		form_view_unload(ph);
+	}
+	if (form && !ph->form_loaded) {
+		FORM_OnAfterLoadPage(ph->page, form);
+		ph->form_loaded = true;
+		ph->form_changes = ph->h->form_changes;
+	}
+	return form;
 }
 
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h)

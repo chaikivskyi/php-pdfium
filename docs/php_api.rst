@@ -700,6 +700,41 @@ Page
       :throws FormatException: The entry is not an annotation, in a damaged list.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: addAnnotation(string $type, Rect $rect) -> Annotation
+
+      Adds an annotation at the end of the page's list, in place: :php:meth:`Document::save` or
+      :php:meth:`Document::toString` writes it out. It has no colour, contents or appearance yet,
+      and its flags are 0: add :php:const:`FLAG_PRINT <Annotation::FLAG_PRINT>` for viewers to
+      print it. PDFium creates ``"Text"``, ``"Link"``, ``"FreeText"``, ``"Square"``, ``"Circle"``,
+      ``"Highlight"``, ``"Underline"``, ``"Squiggly"``, ``"StrikeOut"``, ``"Stamp"``, ``"Ink"``,
+      ``"Popup"`` and ``"FileAttachment"`` annotations.
+
+      .. code-block:: php
+
+         $note = $page->addAnnotation('Text', new Pdfium\Rect(100, 650, 120, 670));
+         echo $note->index();   // the last index
+
+      :param string $type: A type name as :php:meth:`Annotation::type` gives it, with the same case.
+      :param Rect $rect: Where the annotation goes on the page, in points.
+      :rtype: Annotation
+      :throws \\ValueError: ``$type`` is not such a name, or is ``"Unknown"``; or a side of
+         ``$rect`` is unset or one its constructor refuses, as in one made without its constructor.
+      :throws UnsupportedException: PDFium cannot create annotations of that type, such as
+         ``"Line"`` or ``"Widget"``.
+      :throws PdfiumException: PDFium cannot add the annotation.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: removeAnnotation(int $index) -> void
+
+      Removes an annotation from the page, in place. The annotations after it move down one index,
+      and every :php:class:`Annotation` for the removed one throws from then on; the others stay
+      usable. To remove several by index, remove from the highest down.
+
+      :param int $index: Annotation number, starting at 0.
+      :throws \\ValueError: The index is out of range.
+      :throws PdfiumException: PDFium cannot remove the annotation.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
 
 Attachment
 ----------
@@ -759,8 +794,11 @@ Annotation
 .. php:class:: Annotation
 
    An annotation on a :php:class:`Page`, from :php:meth:`Page::annotations` or
-   :php:meth:`Page::annotation`. It keeps its page and document alive. Two objects for the same
-   annotation see each other's changes, but they are not ``==``; compare :php:meth:`index` instead.
+   :php:meth:`Page::annotation` or :php:meth:`Page::addAnnotation`. It keeps its page and document
+   alive. Two objects for the same annotation see each other's changes, but they are not ``==``;
+   compare :php:meth:`index` instead. Once the annotation is removed from its page, by
+   :php:meth:`remove` or :php:meth:`Page::removeAnnotation`, every method throws
+   :php:class:`PdfiumException`.
 
    The bits of :php:meth:`flags`, as the PDF standard defines them:
 
@@ -942,6 +980,24 @@ Annotation
       :throws \\ValueError: ``$mode`` is not one of the ``APPEARANCE_*`` constants.
       :throws PdfiumException: The annotation was removed from its page.
       :throws MemoryException: The stream would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: remove() -> void
+
+      Removes the annotation from its page, in place, as :php:meth:`Page::removeAnnotation` does
+      with its index. The annotations after it move down one index; this object and every other
+      one for the same annotation throw from then on.
+
+      .. code-block:: php
+
+         foreach ($page->annotations() as $a) {
+             if ($a->type() === 'Popup') {
+                 $a->remove();
+             }
+         }
+
+      :throws PdfiumException: The annotation was already removed from its page, or PDFium cannot
+         remove it.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
 
@@ -1200,7 +1256,7 @@ Rect
    :ref:`text-positions`. :php:meth:`TextPage::chars`, :php:meth:`TextPage::search`,
    :php:meth:`TextPage::webLinks` and :php:meth:`Annotation::rect` return them, as does
    :php:attr:`Link::rect`, and you create one to pass to :php:meth:`TextPage::textIn`,
-   :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
+   :php:meth:`TextPage::textInEach`, :php:meth:`Page::render` or :php:meth:`Page::addAnnotation`.
 
    .. php:method:: __construct(float $left, float $bottom, float $right, float $top)
 
@@ -1667,7 +1723,9 @@ these:
 
    Base class for all exceptions below. Extends ``\RuntimeException``.
 
-   Also thrown on its own when PDFium cannot copy pages, write a document or encode a bitmap.
+   Also thrown on its own when PDFium cannot copy pages, write a document or encode a bitmap, or
+   refuses a change to an annotation; by an :php:class:`Annotation` once its annotation is removed
+   from its page; and by a stale :php:class:`Attachment`.
 
 .. php:exception:: FileException
 
@@ -1690,7 +1748,8 @@ these:
 .. php:exception:: UnsupportedException
 
    The document uses an encryption PDFium does not support, or :php:meth:`Document::extractPages` or
-   :php:meth:`Document::merge` was given an encrypted document without ``removeSecurity: true``.
+   :php:meth:`Document::merge` was given an encrypted document without ``removeSecurity: true``,
+   or :php:meth:`Page::addAnnotation` was given a type PDFium cannot create.
 
 .. php:exception:: MemoryException
 
