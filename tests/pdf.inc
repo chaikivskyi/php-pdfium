@@ -99,3 +99,13 @@ function file_spec(string $name, int $stream, string $more = ''): string
 {
     return "<< /Type /Filespec /F ($name) /UF ($name) /EF << /F $stream 0 R >> $more >>";
 }
+
+function sig_pdf(string $fields, array $extra = []): string
+{
+    return nav_pdf("/AcroForm << /Fields [$fields] /SigFlags 3 >>", $extra);
+}
+
+function sig_field(string $value): string
+{
+    return "<< /FT /Sig /T (Sig) /V $value >>";
+}
