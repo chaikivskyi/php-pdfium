@@ -8,6 +8,7 @@ $f = __DIR__ . '/fixtures/text-3pages.pdf';
 $docs = [
     'extractPages' => Pdfium\Document::fromFile($f)->extractPages([1]),
     'merge' => Pdfium\Document::merge([Pdfium\Document::fromFile($f)]),
+    'create' => Pdfium\Document::create(),
 ];
 foreach ($docs as $name => $doc) {
     echo $name, ' ', json_encode($doc->permissions()), "\n";
@@ -19,3 +20,5 @@ extractPages {"print":true,"modify":true,"copy":true,"annotate":true,"fillForms"
 extractPages reopened {"print":true,"modify":true,"copy":true,"annotate":true,"fillForms":true,"extractForAccessibility":true,"assemble":true,"printHighQuality":true}
 merge {"print":true,"modify":true,"copy":true,"annotate":true,"fillForms":true,"extractForAccessibility":true,"assemble":true,"printHighQuality":true}
 merge reopened {"print":true,"modify":true,"copy":true,"annotate":true,"fillForms":true,"extractForAccessibility":true,"assemble":true,"printHighQuality":true}
+create {"print":true,"modify":true,"copy":true,"annotate":true,"fillForms":true,"extractForAccessibility":true,"assemble":true,"printHighQuality":true}
+create reopened {"print":true,"modify":true,"copy":true,"annotate":true,"fillForms":true,"extractForAccessibility":true,"assemble":true,"printHighQuality":true}

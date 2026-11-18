@@ -6,9 +6,11 @@ PHP API
 All classes are in the ``Pdfium`` namespace. The exact signatures are in ``pdfium.stub.php``.
 
 Except for :php:class:`Rect`, you cannot create these classes with ``new``. Get a
-:php:class:`Document` from :php:meth:`Document::fromFile` or :php:meth:`Document::fromString`, and
-everything else from the document. You create a :php:class:`Rect` to pass to
-:php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
+:php:class:`Document` from :php:meth:`Document::fromFile`, :php:meth:`Document::fromString` or
+:php:meth:`Document::create`, or from :php:meth:`Document::extractPages` or
+:php:meth:`Document::merge`, which return a new one; get everything else from the document. You
+create a :php:class:`Rect` to pass to :php:meth:`TextPage::textIn`,
+:php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
 
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
 :php:class:`Bitmap` and :php:class:`Attachment` cannot be cloned or serialized. The value classes
@@ -45,6 +47,16 @@ Document
       :throws FormatException: The file is not a PDF or is corrupted.
       :throws PasswordException: A password is needed, or the password is wrong.
       :throws UnsupportedException: The document uses an encryption PDFium does not support.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:staticmethod:: create() -> Document
+
+      A new document with no pages, and no metadata beyond what PDFium writes. Add pages with
+      :php:meth:`addPage`; :php:meth:`save` and :php:meth:`toString` write it out, and a document
+      with no pages opens again with ``pageCount()`` of ``0``.
+
+      :rtype: Document
+      :throws MemoryException: PDFium cannot create a document.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:staticmethod:: fromString(string $bytes, ?string $password = null) -> Document
@@ -246,6 +258,26 @@ Document
       :param int $index: Page number, starting at 0.
       :throws \\ValueError: The index is out of range.
       :throws PdfiumException: PDFium did not remove the page. If the page count changed even so, the message says the page order is now undefined and every :php:class:`Page` held from before throws.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: addPage(float $width, float $height, ?int $index = null) -> Page
+
+      Adds a blank page of ``$width`` by ``$height`` points and returns it.
+      :php:meth:`save` and :php:meth:`toString` write the change. A :php:class:`Page` held from
+      before keeps working and its :php:meth:`Page::index` reports the new position.
+
+      The page is unrotated and of the size asked for, also where the page tree sets a rotation or
+      crop box for the pages around it: it gets its own rotation of 0 and, where needed, its own
+      crop box the size of the page.
+
+      :param float $width: Width in points; finite and greater than 0.
+      :param float $height: Height in points; finite and greater than 0.
+      :param ?int $index: Where the page goes, from 0 to ``pageCount()``; ``null`` puts it after
+         the last page.
+      :rtype: Page
+      :throws \\ValueError: A size is not finite or not above 0 once rounded to a float, or the
+         index is out of range.
+      :throws PdfiumException: PDFium cannot add the page. If it may have changed the page order even so, the message says the page order is now undefined and every :php:class:`Page` held from before throws.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: pages() -> PageIterator

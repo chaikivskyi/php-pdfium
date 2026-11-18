@@ -134,6 +134,7 @@ void pdfium_doc_handle_addref(pdfium_doc_handle *h);
 void pdfium_doc_handle_release(pdfium_doc_handle *h);
 FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h);
 void pdfium_document_free_obj(zend_object *obj);
+bool pdfium_page_size_args(const double *size, float *sides);
 
 void pdfium_page_handle_addref(pdfium_page_handle *ph);
 void pdfium_page_handle_release(pdfium_page_handle *ph);

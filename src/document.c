@@ -536,6 +536,39 @@ ZEND_METHOD(Pdfium_Document, merge)
 	RETURN_OBJ(obj);
 }
 
+ZEND_METHOD(Pdfium_Document, create)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+
+	pdfium_doc_handle *out = doc_handle_create(NULL);
+	zend_object *obj = new_document(out);
+
+	if (!pdfium_enter()) {
+		OBJ_RELEASE(obj);
+		RETURN_THROWS();
+	}
+	out->doc = FPDF_CreateNewDocument();
+	pdfium_leave();
+	if (!out->doc) {
+		OBJ_RELEASE(obj);
+		zend_throw_exception(pdfium_ce_memory_exception, "Cannot create a document", 0);
+		RETURN_THROWS();
+	}
+	RETURN_OBJ(obj);
+}
+
+bool pdfium_page_size_args(const double *size, float *sides)
+{
+	for (uint32_t k = 0; k < 2; k++) {
+		sides[k] = pdfium_float_side(size[k]);
+		if (!zend_finite(size[k]) || sides[k] <= 0) {
+			zend_argument_value_error(k + 1, "must be finite and greater than 0");
+			return false;
+		}
+	}
+	return true;
+}
+
 typedef struct {
 	FPDF_FILEWRITE fw;
 	pdfium_buf out;

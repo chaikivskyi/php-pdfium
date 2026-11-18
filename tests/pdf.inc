@@ -124,6 +124,29 @@ function tree_pdf(int $letters, string $kids, int $count, array $extra = []): st
     return build_pdf(array_merge($objs, $extra));
 }
 
+/** @param array<array{string, int}> $nodes */
+function nodes_pdf(array $nodes, string $root = '', bool $pageResources = true, string $font = 'Helvetica'): string
+{
+    $objs = ['<< /Type /Catalog /Pages 2 0 R >>', '', "<< /Type /Font /Subtype /Type1 /BaseFont /$font >>"];
+    $kids = [];
+    $letter = 0;
+    foreach ($nodes as [$attributes, $count]) {
+        $node = count($objs) + 1;
+        $kids[] = "$node 0 R";
+        $objs[] = '';
+        $pages = [];
+        for ($i = 0; $i < $count; $i++) {
+            $pages[] = (count($objs) + 1) . ' 0 R';
+            $objs[] = "<< /Type /Page /Parent $node 0 R " . ($pageResources ? '/Resources << /Font << /F1 3 0 R >> >> ' : '')
+                . '/Contents ' . (count($objs) + 2) . ' 0 R >>';
+            $objs[] = stream_obj('BT /F1 24 Tf 10 10 Td (' . chr(65 + $letter++) . ') Tj ET');
+        }
+        $objs[$node - 1] = '<< /Type /Pages /Parent 2 0 R /Kids [' . implode(' ', $pages) . "] /Count $count $attributes >>";
+    }
+    $objs[1] = '<< /Type /Pages /Kids [' . implode(' ', $kids) . "] /Count $letter $root >>";
+    return build_pdf($objs);
+}
+
 function order(Pdfium\Document $doc): string
 {
     $s = '';

@@ -45,6 +45,15 @@ final class Document implements \Countable, \IteratorAggregate
     public static function fromFile(string $path, ?string $password = null): Document {}
 
     /**
+     * A new document with no pages, and no metadata beyond the creator and creation date PDFium
+     * sets.
+     *
+     * @throws MemoryException when PDFium cannot create a document
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public static function create(): Document {}
+
+    /**
      * The document keeps $bytes alive for its whole life.
      *
      * @throws \ValueError when $bytes is empty
@@ -177,6 +186,20 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function deletePage(int $index): void {}
+
+    /**
+     * Adds a blank, unrotated page of $width by $height points and returns it. $index is where it goes,
+     * between 0 and pageCount(); null means after the last page. Pages held from before report their new
+     * index(). The page gets its own rotation of 0 and, where the page tree sets a crop box that would
+     * clip it, its own crop box the size of the page. The change is written by save() and toString().
+     *
+     * @throws \ValueError when a size is not finite or not above 0 once rounded to a float, or $index
+     *         is outside 0..pageCount()
+     * @throws PdfiumException when PDFium cannot add the page; if it may have changed the page order even
+     *         so, the message says the page order is now undefined and every Page held from before throws
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function addPage(float $width, float $height, ?int $index = null): Page {}
 
     /**
      * Loads each page on demand and holds only the current one; rewind() restarts at 0.
