@@ -472,6 +472,16 @@ static void fill_end(pdfium_form_field *f, FPDF_FORMHANDLE form)
 	*fill = (struct pdfium_fill) {0};
 }
 
+static bool beyond_bmp(const zend_string *s)
+{
+	for (size_t i = 0; i < ZSTR_LEN(s); i++) {
+		if ((unsigned char) ZSTR_VAL(s)[i] >= 0xF0) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static const char *field_type_name(int type)
 {
 	return case_name(field_type_cases, sizeof(field_type_cases) / sizeof(field_type_cases[0]), type);
@@ -498,6 +508,10 @@ ZEND_METHOD(Pdfium_FormField, setValue)
 
 	if ((bad = pdfium_utf8_to_utf16le(value, NULL, &count))) {
 		zend_argument_value_error(1, "%s", bad);
+		RETURN_THROWS();
+	}
+	if (beyond_bmp(value)) {
+		zend_argument_value_error(1, "must not contain characters outside the Basic Multilingual Plane; PDFium's form filler cannot store them");
 		RETURN_THROWS();
 	}
 	if (!pdfium_memory_fits((count + 1) * sizeof(unsigned short))) {

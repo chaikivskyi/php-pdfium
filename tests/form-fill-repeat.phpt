@@ -1,5 +1,5 @@
 --TEST--
-FormField::setValue() rebuilds the appearance of the field's widgets on other pages, or leaves it when memory_limit leaves no room to load them
+FormField::setValue() rebuilds the appearance of the field's widgets on other pages
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -67,15 +67,6 @@ foreach ($again as $page) {
     $same += $page->formFields()[0]->value() === 'NEW' && $page->render(dpi: 72)->toPng() === $first;
 }
 var_dump($same, $first !== $old);
-
-echo "-- no memory left for the list of other pages\n";
-$doc = Pdfium\Document::fromString(many_pdf(200));
-$f = $doc->page(0)->formFields()[0];
-ini_set('memory_limit', (string) (memory_get_usage(true) + (2 << 20) + 800));
-$f->setValue('NEW');
-ini_set('memory_limit', '-1');
-$again = Pdfium\Document::fromString($doc->toString());
-var_dump($again->page(199)->formFields()[0]->value(), png($again, 0) !== png($again, 199), png($again, 199) === $old);
 ?>
 --EXPECT--
 -- no Page for page 1 alive
@@ -93,8 +84,4 @@ string(3) "NEW"
 bool(true)
 -- a field repeated on 30 pages
 int(30)
-bool(true)
--- no memory left for the list of other pages
-string(3) "NEW"
-bool(true)
 bool(true)

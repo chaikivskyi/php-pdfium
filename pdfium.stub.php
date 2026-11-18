@@ -1065,7 +1065,8 @@ final class FormField
      * when it matters. A read-only field is changed all the same; check flags()->readOnly to refuse it.
      * No script runs, so fields calculated or formatted from this one are not updated.
      *
-     * @throws \ValueError when $value is not valid UTF-8 or contains a NUL byte
+     * @throws \ValueError when $value is not valid UTF-8, contains a NUL byte, or contains a character outside the
+     *         Basic Multilingual Plane (above U+FFFF, such as most emoji), which PDFium's form filler cannot store
      * @throws PdfiumException when the field is gone: its page may have been flattened, or PDFium cannot set up form
      *         support; when the field's type cannot take text; or when PDFium refuses to edit the field
      * @throws MemoryException when the text would not fit under memory_limit

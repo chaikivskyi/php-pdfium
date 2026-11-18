@@ -885,7 +885,9 @@ FormField
       this one are not updated.
 
       :param string $value: The text, as UTF-8.
-      :throws \\ValueError: ``$value`` is not valid UTF-8 or contains a null byte.
+      :throws \\ValueError: ``$value`` is not valid UTF-8, contains a null byte, or contains a
+         character outside the Basic Multilingual Plane (above U+FFFF, such as most emoji): PDFium's
+         form filler cannot store those and would keep a different character instead.
       :throws PdfiumException: The field is gone, or PDFium cannot set up form support. Also when
          the field's type cannot take text (a combo box without the ``editable`` flag included), and
          when PDFium refuses to edit the field.

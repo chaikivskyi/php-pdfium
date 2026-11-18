@@ -61,7 +61,7 @@ foreach (["a\r\nb", "a\rb", "a\tb"] as $v) {
     $notes->setValue($v);
     var_dump(bin2hex($notes->value()));
 }
-foreach (["a\nb", "a\r\nb", "\u{1F600}x"] as $v) {
+foreach (["a\nb", "a\r\nb"] as $v) {
     $name->setValue($v);
     var_dump(bin2hex($name->value()));
 }
@@ -71,6 +71,7 @@ foreach (['country', 'agree', 'sig', 'go', 'langs'] as $n) {
 }
 attempt($doc, 'name', "a\0b");
 attempt($doc, 'name', "\xFF");
+attempt($doc, 'name', "\u{1F600}x");
 ?>
 --EXPECT--
 string(4) "Jane"
@@ -91,7 +92,6 @@ string(8) "610d0a62"
 string(6) "612062"
 string(4) "6162"
 string(4) "6162"
-string(8) "ef988078"
 country: Pdfium\PdfiumException: Cannot set the text of a ComboBox field that is not editable
 bool(true)
 bool(true)
@@ -117,6 +117,10 @@ bool(true)
 bool(true)
 string(2) "ok"
 name: ValueError: Pdfium\FormField::setValue(): Argument #1 ($value) must be valid UTF-8
+bool(true)
+bool(true)
+string(2) "ok"
+name: ValueError: Pdfium\FormField::setValue(): Argument #1 ($value) must not contain characters outside the Basic Multilingual Plane; PDFium's form filler cannot store them
 bool(true)
 bool(true)
 string(2) "ok"
