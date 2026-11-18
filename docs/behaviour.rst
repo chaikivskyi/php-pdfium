@@ -239,6 +239,13 @@ PDFium decodes a file in its own memory, which ``memory_limit`` does not count, 
 the process's memory before ``MemoryException`` is thrown. ``addAttachment()`` also gives PDFium a
 copy of ``$contents`` outside ``memory_limit``.
 
+A file added to an encrypted document is encrypted with it on save, unless you pass
+``removeSecurity: true``.
+
+A damaged list, one that loops or nests too deeply, is read as far as PDFium can follow it. Entries
+past that point are not counted, and ``addAttachment()`` throws ``PdfiumException`` on a list that
+nests too deeply.
+
 ``extractPages()`` and ``merge()`` copy pages only, so their results have no attachments.
 
 

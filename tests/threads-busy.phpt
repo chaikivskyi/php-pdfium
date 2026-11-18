@@ -1,5 +1,5 @@
 --TEST--
-While another thread is inside PDFium, a method that needs it throws BusyException and does nothing; Bitmap methods, an iterator's already loaded page and releasing objects never do
+While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -16,6 +16,8 @@ $doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf');
 $bitmap = $doc->page(0)->render(dpi: 72);
 $it = $doc->pages();
 $page = $it->current();
+$adoc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
+$held = $adoc->addAttachment('held', 'h');
 
 $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
 $future = $runtime->run(static function (string $fixture, string $stop): int {
@@ -29,10 +31,10 @@ $future = $runtime->run(static function (string $fixture, string $stop): int {
     return $renders;
 }, [__DIR__ . '/fixtures/a4.pdf', $stop]);
 
-$busy = $saveBusy = false;
+$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
-while ((!$busy || !$saveBusy) && microtime(true) < $end) {
+while ((!$busyMessage || !$saveBusy || !$addBusy) && microtime(true) < $end) {
     try {
         $it->next();
         unset($page);
@@ -63,7 +65,18 @@ while ((!$busy || !$saveBusy) && microtime(true) < $end) {
     try {
         $doc->pageCount();
     } catch (Pdfium\BusyException $e) {
-        $busy = $busy || $e->getMessage() === 'PDFium is in use by another thread';
+        $busyMessage = $busyMessage || $e->getMessage() === 'PDFium is in use by another thread';
+    }
+    if (!$addBusy) {
+        try {
+            $added = $adoc->addAttachment('busy', 'x');
+            with_retry(fn () => $adoc->deleteAttachment($added->index()));
+            $held = with_retry(fn () => $adoc->attachment(0));
+        } catch (Pdfium\BusyException $e) {
+            $addBusy = true;
+            $addBusyChangedNothing = with_retry(fn () => $adoc->attachmentCount()) === 1
+                && with_retry(fn () => $held->name()) === 'held';
+        }
     }
     try {
         $doc->save($target);
@@ -78,8 +91,9 @@ touch($stop);
 $renders = $future->value();
 unlink($stop);
 var_dump($renders > 0);
-echo 'busy: ', $busy ? 'yes' : 'no', "\n";
+echo 'busy: ', $busyMessage ? 'yes' : 'no', "\n";
 echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no', "\n";
+echo 'busy add changed nothing: ', $addBusy && $addBusyChangedNothing ? 'yes' : 'no', "\n";
 echo 'bitmap never busy: ', $bitmapNeverBusy ? 'yes' : 'no', "\n";
 echo 'release never busy: ', $releaseNeverBusy ? 'yes' : 'no', "\n";
 echo 'loaded current never busy: ', $currentNeverBusy ? 'yes' : 'no', "\n";
@@ -89,6 +103,7 @@ echo 'type error never busy: ', $typeErrorNeverBusy ? 'yes' : 'no', "\n";
 bool(true)
 busy: yes
 save busy left no file: yes
+busy add changed nothing: yes
 bitmap never busy: yes
 release never busy: yes
 loaded current never busy: yes
