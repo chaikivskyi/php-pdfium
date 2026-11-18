@@ -246,6 +246,16 @@ A damaged list, one that loops or nests too deeply, is read as far as PDFium can
 past that point are not counted, and ``addAttachment()`` throws ``PdfiumException`` on a list that
 nests too deeply.
 
+A crafted PDF of a few kilobytes can keep ``attachments()``, ``attachment()``, ``addAttachment()``
+and ``deleteAttachment()`` busy for minutes, and ``index()`` of an added file too.
+``attachmentCount()`` and the other ``Attachment`` methods stay fast. The extension cannot detect
+such a file, and ``max_execution_time`` does not stop PDFium; on ZTS PHP, other threads get
+``BusyException`` meanwhile. With PDFs you do not trust, run this work where it can be killed from
+outside, for example under PHP-FPM's ``request_terminate_timeout``.
+
+Ordinary large lists can be slow too: ``attachments()`` takes about two seconds for 20,000 files
+stored as a tree of nested parts of 50 entries each. A flat list stays fast.
+
 ``extractPages()`` and ``merge()`` copy pages only, so their results have no attachments.
 
 

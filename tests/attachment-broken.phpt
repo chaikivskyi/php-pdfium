@@ -1,5 +1,5 @@
 --TEST--
-A broken attachment list (a /Kids loop, a node listing itself twice, 40 levels of nesting, or /EmbeddedFiles of the wrong type) neither crashes nor hangs any attachment method
+A broken attachment list (a /Kids loop, a node listing itself twice, nodes sharing a kid 10 levels deep, 40 levels of nesting, or /EmbeddedFiles of the wrong type) neither crashes nor hangs any attachment method
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -12,6 +12,13 @@ for ($i = 0; $i < 40; $i++) {
 $deep[] = '<< /Names [(a) 47 0 R] >>';
 $deep[] = file_spec('a', 48);
 $deep[] = stream_obj('a');
+$shared = ['<< /Kids [7 0 R 18 0 R] >>'];
+for ($i = 0; $i < 11; $i++) {
+    $shared[] = $i === 10 ? '<< >>' : '<< /Kids [' . (8 + $i) . ' 0 R ' . (8 + $i) . ' 0 R] >>';
+}
+$shared[] = '<< /Names [(a) 19 0 R] >>';
+$shared[] = file_spec('a', 20);
+$shared[] = stream_obj('a');
 $cases = [
     'loop' => nav_pdf('/Names << /EmbeddedFiles 6 0 R >>', [
         '<< /Kids [6 0 R 7 0 R] >>',
@@ -25,6 +32,7 @@ $cases = [
         file_spec('a', 9),
         stream_obj('a'),
     ]),
+    'shared kids' => nav_pdf('/Names << /EmbeddedFiles 6 0 R >>', $shared),
     'deep' => nav_pdf('/Names << /EmbeddedFiles 6 0 R >>', $deep),
     'wrong type' => nav_pdf('/Names << /EmbeddedFiles 5 >>'),
 ];
@@ -56,6 +64,13 @@ loop
   delete: NULL
   count: 1
 self twice
+  count: 1
+  list: 1
+  get: 'a'
+  add: 'z'
+  delete: NULL
+  count: 1
+shared kids
   count: 1
   list: 1
   get: 'a'
