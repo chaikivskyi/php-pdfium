@@ -8,7 +8,6 @@
 #include <fpdf_text.h>
 #include <fpdf_searchex.h>
 #include "zend_exceptions.h"
-#include "ext/standard/html.h"
 #include "unicode_tables.h"
 
 #define CHAR_BYTES 1024
@@ -1087,33 +1086,6 @@ ZEND_METHOD(Pdfium_TextPage, textInEach)
 	efree(sides);
 }
 
-static const char *needle_units(const zend_string *needle, unsigned short *units, size_t *count)
-{
-	size_t pos = 0, n = 0;
-	bool nul = false, invalid = false;
-
-	while (pos < ZSTR_LEN(needle)) {
-		zend_result status;
-		unsigned int cp = php_next_utf8_char((const unsigned char *) ZSTR_VAL(needle), ZSTR_LEN(needle), &pos, &status);
-
-		invalid |= status != SUCCESS;
-		nul |= status == SUCCESS && !cp;
-		if (cp >= 0x10000) {
-			if (units) {
-				units[n] = (unsigned short) (0xD800 | ((cp - 0x10000) >> 10));
-			}
-			n++;
-			cp = 0xDC00 | ((cp - 0x10000) & 0x3FF);
-		}
-		if (units) {
-			units[n] = (unsigned short) cp;
-		}
-		n++;
-	}
-	*count = n;
-	return nul ? "must not contain any null bytes" : invalid ? "must be valid UTF-8" : NULL;
-}
-
 ZEND_METHOD(Pdfium_TextPage, search)
 {
 	zend_string *needle;
@@ -1132,7 +1104,7 @@ ZEND_METHOD(Pdfium_TextPage, search)
 		RETURN_THROWS();
 	}
 	size_t count;
-	const char *bad = needle_units(needle, NULL, &count);
+	const char *bad = pdfium_utf8_to_utf16le(needle, NULL, &count);
 
 	if (bad) {
 		zend_argument_value_error(1, "%s", bad);
@@ -1142,9 +1114,8 @@ ZEND_METHOD(Pdfium_TextPage, search)
 		zend_throw_exception(pdfium_ce_memory_exception, "The needle needs more memory than memory_limit leaves", 0);
 		RETURN_THROWS();
 	}
-	unsigned short *units = safe_emalloc(count, sizeof(*units), 0);
+	unsigned short *units = pdfium_utf8_to_utf16le_alloc(needle);
 
-	needle_units(needle, units, &count);
 	if (pdfium_enter()) {
 		pdfium_leave_or_throw(return_value, search_of(this_text_page(ZEND_THIS), units, count, match_case, whole_word, overlapping,
 			return_value));

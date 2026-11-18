@@ -12,6 +12,7 @@ What it does
   and get every character with its position, font and colour.
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
   transparent.
+- List, extract and add embedded files (attachments).
 - Split, merge and save documents.
 
 It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
@@ -191,6 +192,22 @@ Split, merge and save
 
 The new documents keep only the pages: no encryption, bookmarks, viewer preferences or metadata
 beyond what PDFium writes, and form fields can no longer be filled in. See :ref:`pdfium-defaults`.
+
+Embedded files
+~~~~~~~~~~~~~~
+
+.. code-block:: php
+
+   foreach ($doc->attachments() as $a) {
+       $type = $a->metadata()->subtype ?? 'unknown type';
+       echo $a->name(), " ($type): ", strlen($a->contents() ?? ''), " bytes\n";
+   }
+
+   // Changes this document in place; save() or toString() writes it out:
+   $doc->addAttachment('data.csv', $csv, 'Raw figures');
+   $doc->save('/tmp/with-data.pdf');
+
+Adding a file can move the others, so fetch attachments again after it; see :ref:`attachments`.
 
 Free a document
 ~~~~~~~~~~~~~~~

@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: a828b902a35987e04d9df8f0641da9fc7f361920 */
+ * Stub hash: da6f1dae4a334ff1d6eb82bf6b767928aa116603 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -39,6 +39,12 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_attachment, 0, 1, Pdfium\\Attachment, 0)
 	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_addAttachment, 0, 2, Pdfium\\Attachment, 0)
+	ZEND_ARG_TYPE_INFO(0, name, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, contents, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, description, IS_STRING, 1, "null")
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_page, 0, 1, Pdfium\\Page, 0)
@@ -233,6 +239,7 @@ ZEND_METHOD(Pdfium_Document, bookmarks);
 ZEND_METHOD(Pdfium_Document, attachmentCount);
 ZEND_METHOD(Pdfium_Document, attachments);
 ZEND_METHOD(Pdfium_Document, attachment);
+ZEND_METHOD(Pdfium_Document, addAttachment);
 ZEND_METHOD(Pdfium_Document, page);
 ZEND_METHOD(Pdfium_Document, pages);
 ZEND_METHOD(Pdfium_Document, extractPages);
@@ -311,6 +318,7 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 	ZEND_ME(Pdfium_Document, attachmentCount, arginfo_class_Pdfium_Document_attachmentCount, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, attachments, arginfo_class_Pdfium_Document_attachments, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, attachment, arginfo_class_Pdfium_Document_attachment, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, addAttachment, arginfo_class_Pdfium_Document_addAttachment, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, page, arginfo_class_Pdfium_Document_page, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, pages, arginfo_class_Pdfium_Document_pages, ZEND_ACC_PUBLIC)
 #if (PHP_VERSION_ID >= 80400)

@@ -11,8 +11,9 @@ There is no ``close()``. PHP frees a document when nothing refers to it any more
 document alive:
 
 - the :php:class:`Document <Pdfium\\Document>` object itself;
-- any :php:class:`Page <Pdfium\\Page>`, :php:class:`TextPage <Pdfium\\TextPage>` or
-  :php:class:`PageIterator <Pdfium\\PageIterator>` from it.
+- any :php:class:`Page <Pdfium\\Page>`, :php:class:`TextPage <Pdfium\\TextPage>`,
+  :php:class:`PageIterator <Pdfium\\PageIterator>` or :php:class:`Attachment <Pdfium\\Attachment>`
+  from it.
 
 A :php:class:`TextPage <Pdfium\\TextPage>` also keeps its page loaded.
 
@@ -24,7 +25,8 @@ These do **not** keep a document alive:
 - a document made from it with ``extractPages()`` or ``merge()``. The pages are copied, so you can
   free the source right away.
 
-To free a document, ``unset()`` it and every page, text page and iterator taken from it.
+To free a document, ``unset()`` it and every page, text page, iterator and attachment taken from
+it.
 
 
 .. _pdfium-defaults:
@@ -209,6 +211,26 @@ Actions PDFium does not read, such as JavaScript, form submission and named acti
 page*, have the type ``"Unsupported"`` and nothing else set.
 
 
+.. _attachments:
+
+Attachments
+-----------
+
+``addAttachment()`` changes the loaded document, never the file or string it came from;
+``save()`` or ``toString()`` writes the change out.
+
+The list is kept sorted by name, so adding a file can shift the indexes of the others. After
+that, every :php:class:`Attachment <Pdfium\\Attachment>` fetched before it is stale: its methods
+throw ``PdfiumException`` instead of reading a different file. Fetch it again with
+``attachments()`` or ``attachment()``. The one ``addAttachment()`` returns is current.
+
+Strictly, the list is sorted and checked by a key PDFium does not show. PDFium sets it to the file
+name, but other tools may not, so two entries can have the same ``name()``, and ``addAttachment()``
+can refuse a name that no ``name()`` shows.
+
+``extractPages()`` and ``merge()`` copy pages only, so their results have no attachments.
+
+
 .. _memory-limit:
 
 Memory limit
@@ -237,6 +259,7 @@ Rough memory needed:
 - ``attachments()``: about 100 bytes per attachment.
 - ``Attachment::name()`` and ``metadata()``: about 5 bytes per character.
 - ``Attachment::contents()``: the size of the file.
+- ``addAttachment()``: 2 bytes per character of the name and description.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 
 With ``memory_limit = -1`` there are no checks.

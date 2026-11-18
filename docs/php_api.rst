@@ -178,6 +178,25 @@ Document
       :throws FormatException: PDFium cannot read the entry.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: addAttachment(string $name, string $contents, ?string $description = null) -> Attachment
+
+      Embeds a file in this document, in place: :php:meth:`save` or :php:meth:`toString` writes it
+      out. PDFium sets the size, creation date and checksum; the MIME type, relationship and
+      modification date stay empty. The new file can take any index, and every
+      :php:class:`Attachment` fetched before is now stale; see :ref:`attachments`.
+
+      :param string $name: The file name, as UTF-8.
+      :param string $contents: The file's bytes.
+      :param ?string $description: Shown by viewers next to the file, as UTF-8.
+      :rtype: Attachment
+      :throws \\ValueError: ``$name`` is empty, ``$name`` or ``$description`` is not valid UTF-8
+         or contains a null byte, or ``$contents`` is longer than 2147483646 bytes.
+      :throws PdfiumException: PDFium refuses: the name may already be used, or the list of
+         attachments is damaged. Also when PDFium cannot store the contents or description; the new
+         entry is then removed if possible, and the message says when it stays.
+      :throws MemoryException: The name or description would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. rubric:: Pages
 
    .. php:method:: page(int $index) -> Page
@@ -525,20 +544,25 @@ Attachment
 
 .. php:class:: Attachment
 
-   A file embedded in a :php:class:`Document`, from :php:meth:`Document::attachments` or
-   :php:meth:`Document::attachment`. It keeps its document alive.
+   A file embedded in a :php:class:`Document`, from :php:meth:`Document::attachments`,
+   :php:meth:`Document::attachment` or :php:meth:`Document::addAttachment`. It keeps its document
+   alive. Once a file is added to the document, it is stale and must be fetched
+   again; see :ref:`attachments`.
 
    .. php:method:: index() -> int
 
-      The attachment's position in its document, starting at 0.
+      The attachment's position in its document, starting at 0. For one returned by
+      :php:meth:`Document::addAttachment`, each call searches the list, so keep the result.
 
       :rtype: int
-      :throws PdfiumException: The document's attachments changed since this one was fetched.
+      :throws PdfiumException: The document's attachments changed since this one was fetched, or
+         PDFium cannot find it in a damaged list.
+      :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: name() -> string
 
       The file name the entry gives, as UTF-8; empty when it gives none. It can differ from the key
-      the list is sorted by, which PDFium does not show.
+      the list is sorted by; see :ref:`attachments`.
 
       :rtype: string
       :throws PdfiumException: The document's attachments changed since this one was fetched.

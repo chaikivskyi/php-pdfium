@@ -3,6 +3,7 @@
 #endif
 
 #include "php_pdfium.h"
+#include "ext/standard/html.h"
 
 zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count)
 {
@@ -87,4 +88,43 @@ size_t pdfium_utf8_encode(uint32_t cp, char *out)
 	out[2] = (char) (0x80 | ((cp >> 6) & 0x3F));
 	out[3] = (char) (0x80 | (cp & 0x3F));
 	return 4;
+}
+
+const char *pdfium_utf8_to_utf16le(const zend_string *s, unsigned short *units, size_t *count)
+{
+	size_t pos = 0, n = 0;
+	bool nul = false, invalid = false;
+
+	while (pos < ZSTR_LEN(s)) {
+		zend_result status;
+		unsigned int cp = php_next_utf8_char((const unsigned char *) ZSTR_VAL(s), ZSTR_LEN(s), &pos, &status);
+
+		invalid |= status != SUCCESS;
+		nul |= status == SUCCESS && !cp;
+		if (cp >= 0x10000) {
+			if (units) {
+				units[n] = (unsigned short) (0xD800 | ((cp - 0x10000) >> 10));
+			}
+			n++;
+			cp = 0xDC00 | ((cp - 0x10000) & 0x3FF);
+		}
+		if (units) {
+			units[n] = (unsigned short) cp;
+		}
+		n++;
+	}
+	*count = n;
+	return nul ? "must not contain any null bytes" : invalid ? "must be valid UTF-8" : NULL;
+}
+
+unsigned short *pdfium_utf8_to_utf16le_alloc(const zend_string *s)
+{
+	size_t count;
+
+	pdfium_utf8_to_utf16le(s, NULL, &count);
+	unsigned short *units = safe_emalloc(count + 1, sizeof(*units), 0);
+
+	pdfium_utf8_to_utf16le(s, units, &count);
+	units[count] = 0;
+	return units;
 }

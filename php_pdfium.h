@@ -179,5 +179,7 @@ typedef unsigned long (*pdfium_utf16le_getter)(void *source, unsigned short *buf
 zend_string *pdfium_utf16le_fetch(pdfium_utf16le_getter get, void *source, unsigned long bytes);
 zend_string *pdfium_utf16le_fetch_under_limit(pdfium_utf16le_getter get, void *source, size_t *used, bool *oom);
 size_t pdfium_utf8_encode(uint32_t cp, char *out);
+const char *pdfium_utf8_to_utf16le(const zend_string *s, unsigned short *units, size_t *count);
+unsigned short *pdfium_utf8_to_utf16le_alloc(const zend_string *s);
 
 #endif

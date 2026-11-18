@@ -135,6 +135,20 @@ final class Document implements \Countable, \IteratorAggregate
     public function attachment(int $index): Attachment {}
 
     /**
+     * Embeds a file in this document, in place: save() or toString() writes it out. PDFium sets the
+     * size, creation date and checksum; the MIME type, relationship and modification date stay empty.
+     * The new file can take any index, and every Attachment fetched before is now stale.
+     *
+     * @throws \ValueError when $name is empty, or $name or $description is not valid UTF-8 or contains a null
+     *         byte, or $contents is longer than 2147483646 bytes
+     * @throws PdfiumException when PDFium refuses: the name may already be used, or the attachment list is damaged;
+     *         or when PDFium cannot store the contents or description (the message says if the entry stays)
+     * @throws MemoryException when the name or description would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function addAttachment(string $name, string $contents, ?string $description = null): Attachment {}
+
+    /**
      * @throws \ValueError when $index is outside 0..pageCount()-1
      * @throws FormatException when PDFium cannot load the page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -591,9 +605,12 @@ final class Attachment
     private function __construct() {}
 
     /**
-     * The attachment's position in its document, starting at 0.
+     * The attachment's position in its document, starting at 0. For one addAttachment() returned,
+     * each call searches the list, so keep the result.
      *
-     * @throws PdfiumException when the document's attachments changed since it was fetched
+     * @throws PdfiumException when the document's attachments changed since it was fetched, or PDFium
+     *         cannot find it in a damaged list
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function index(): int {}
 
