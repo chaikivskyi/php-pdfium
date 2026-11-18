@@ -8,6 +8,7 @@
 #include <fpdf_formfill.h>
 
 #define PHP_PDFIUM_VERSION "0.3.0"
+#define PDFIUM_QUAD_BYTES 256
 
 extern zend_module_entry pdfium_module_entry;
 #define phpext_pdfium_ptr &pdfium_module_entry
@@ -46,6 +47,7 @@ typedef struct { pdfium_page_handle *ph; FPDF_ANNOTATION annot; uint64_t removal
 typedef struct { smart_str s; bool oom; } pdfium_buf;
 
 enum { RECT_LEFT, RECT_BOTTOM, RECT_RIGHT, RECT_TOP, RECT_SLOTS };
+enum { COLOR_SLOTS = 4 };
 
 extern zend_class_entry *pdfium_ce_document;
 extern zend_class_entry *pdfium_ce_page;
@@ -67,6 +69,8 @@ extern zend_class_entry *pdfium_ce_web_link;
 extern zend_class_entry *pdfium_ce_bookmark;
 extern zend_class_entry *pdfium_ce_link;
 extern zend_class_entry *pdfium_ce_quad;
+extern zend_class_entry *pdfium_ce_point;
+extern zend_class_entry *pdfium_ce_border;
 extern zend_class_entry *pdfium_ce_destination;
 extern zend_class_entry *pdfium_ce_action;
 extern zend_class_entry *pdfium_ce_exception;
@@ -150,13 +154,16 @@ void pdfium_page_iterator_free_obj(zend_object *obj);
 double pdfium_points(float value);
 float pdfium_float_side(double value);
 const char *pdfium_rect_fault(const zval *zr, double *sides);
+bool pdfium_coords_construct(zval *self, zend_class_entry *ce, const char *const *names, const double *coords, uint32_t count);
 zval *pdfium_slot(zend_object *obj, int index);
 void pdfium_rect_init(zval *zv, double x1, double y1, double x2, double y2);
+void pdfium_color_init(zval *zv, const zend_long *rgba);
 bool pdfium_slots_named(zend_class_entry *ce, const char *names);
 void pdfium_leave_or_throw(zval *return_value, const char *oom);
 void pdfium_index_error(uint32_t arg, int count, const char *one, const char *none);
 
 bool pdfium_navigation_slots_match(void);
+void pdfium_quad_init(zval *zv, const FS_QUADPOINTSF *q);
 
 void pdfium_bitmap_free_obj(zend_object *obj);
 
@@ -165,6 +172,7 @@ bool pdfium_attachment_slots_match(void);
 
 bool pdfium_signature_slots_match(void);
 void pdfium_annotation_free_obj(zend_object *obj);
+bool pdfium_annotation_slots_match(void);
 
 bool pdfium_memory_fits(size_t bytes);
 bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);

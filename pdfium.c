@@ -28,6 +28,8 @@ zend_class_entry *pdfium_ce_web_link;
 zend_class_entry *pdfium_ce_bookmark;
 zend_class_entry *pdfium_ce_link;
 zend_class_entry *pdfium_ce_quad;
+zend_class_entry *pdfium_ce_point;
+zend_class_entry *pdfium_ce_border;
 zend_class_entry *pdfium_ce_destination;
 zend_class_entry *pdfium_ce_action;
 zend_class_entry *pdfium_ce_exception;
@@ -132,6 +134,8 @@ PHP_MINIT_FUNCTION(pdfium)
 	pdfium_ce_bookmark = register_class_Pdfium_Bookmark();
 	pdfium_ce_link = register_class_Pdfium_Link();
 	pdfium_ce_quad = register_class_Pdfium_Quad();
+	pdfium_ce_point = register_class_Pdfium_Point();
+	pdfium_ce_border = register_class_Pdfium_Border();
 	pdfium_ce_destination = register_class_Pdfium_Destination();
 	pdfium_ce_action = register_class_Pdfium_Action();
 	pdfium_ce_attachment_metadata = register_class_Pdfium_AttachmentMetadata();
@@ -180,6 +184,10 @@ PHP_MINIT_FUNCTION(pdfium)
 	}
 	if (!pdfium_signature_slots_match()) {
 		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/signature.c do not match pdfium.stub.php");
+		return FAILURE;
+	}
+	if (!pdfium_annotation_slots_match()) {
+		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/annotation.c do not match pdfium.stub.php");
 		return FAILURE;
 	}
 	return SUCCESS;

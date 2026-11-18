@@ -1,10 +1,10 @@
 --TEST--
-Document, Page, PageIterator, Bitmap, Attachment and Annotation cannot be created except through the API; the read-only values cannot be created with new, except Rect, but can be cloned and serialized
+Document, Page, PageIterator, Bitmap, Attachment and Annotation cannot be created except through the API; the read-only values cannot be created with new, except Rect, Quad and Point, but can be cloned and serialized
 --EXTENSIONS--
 pdfium
 --FILE--
 <?php
-foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'Annotation', 'Metadata', 'AttachmentMetadata', 'Signature', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Rect'] as $c) {
+foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'Annotation', 'Metadata', 'AttachmentMetadata', 'Signature', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Border', 'Rect', 'Point'] as $c) {
     $fq = "Pdfium\\$c";
     $r = new ReflectionClass($fq);
     echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true),
@@ -91,8 +91,8 @@ Link final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created
-Quad final=true cloneable=true instantiable=false abstract=false
-  Error
+Quad final=true cloneable=true instantiable=true abstract=false
+  ArgumentCountError
   created
   created
 Destination final=true cloneable=true instantiable=false abstract=false
@@ -103,7 +103,15 @@ Action final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created
+Border final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
 Rect final=true cloneable=true instantiable=true abstract=false
+  ArgumentCountError
+  created
+  created
+Point final=true cloneable=true instantiable=true abstract=false
   ArgumentCountError
   created
   created

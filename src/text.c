@@ -23,7 +23,6 @@ enum {
 	CHAR_FONT_FLAGS, CHAR_FILL_COLOR, CHAR_STROKE_COLOR, CHAR_ANGLE, CHAR_MATRIX, CHAR_GENERATED, CHAR_HYPHEN,
 	CHAR_UNICODE_MAP_ERROR,
 };
-enum { COLOR_SLOTS = 4 };
 enum { MATRIX_A, MATRIX_B, MATRIX_C, MATRIX_D, MATRIX_E, MATRIX_F };
 enum { MATCH_INDEX, MATCH_LENGTH, MATCH_TEXT, MATCH_RECTS };
 enum { WEB_LINK_URL, WEB_LINK_INDEX, WEB_LINK_LENGTH, WEB_LINK_RECTS };
@@ -104,10 +103,37 @@ ZEND_METHOD(Pdfium_WebLink, __construct)
 	ZEND_PARSE_PARAMETERS_NONE();
 }
 
+static bool coords_finite(const double *coords, uint32_t count)
+{
+	for (uint32_t i = 0; i < count; i++) {
+		if (!zend_finite(coords[i])) {
+			zend_argument_value_error(i + 1, "must be finite");
+			return false;
+		}
+	}
+	return true;
+}
+
+static bool coords_write(zval *self, zend_class_entry *ce, const char *const *names, const double *coords, uint32_t count)
+{
+	for (uint32_t i = 0; i < count; i++) {
+		zend_update_property_double(ce, Z_OBJ_P(self), names[i], strlen(names[i]), coords[i]);
+		if (EG(exception)) {
+			return false;
+		}
+	}
+	return true;
+}
+
+bool pdfium_coords_construct(zval *self, zend_class_entry *ce, const char *const *names, const double *coords, uint32_t count)
+{
+	return coords_finite(coords, count) && coords_write(self, ce, names, coords, count);
+}
+
 ZEND_METHOD(Pdfium_Rect, __construct)
 {
-	static const char *names[] = {"left", "bottom", "right", "top"};
-	double sides[4];
+	static const char *const names[] = {"left", "bottom", "right", "top"};
+	double sides[RECT_SLOTS];
 
 	ZEND_PARSE_PARAMETERS_START(4, 4)
 		Z_PARAM_DOUBLE(sides[RECT_LEFT])
@@ -116,11 +142,8 @@ ZEND_METHOD(Pdfium_Rect, __construct)
 		Z_PARAM_DOUBLE(sides[RECT_TOP])
 	ZEND_PARSE_PARAMETERS_END();
 
-	for (uint32_t i = 0; i < 4; i++) {
-		if (!zend_finite(sides[i])) {
-			zend_argument_value_error(i + 1, "must be finite");
-			RETURN_THROWS();
-		}
+	if (!coords_finite(sides, RECT_SLOTS)) {
+		RETURN_THROWS();
 	}
 	if (sides[RECT_LEFT] > sides[RECT_RIGHT]) {
 		zend_argument_value_error(1, "must not be greater than argument #3 ($right)");
@@ -130,11 +153,8 @@ ZEND_METHOD(Pdfium_Rect, __construct)
 		zend_argument_value_error(2, "must not be greater than argument #4 ($top)");
 		RETURN_THROWS();
 	}
-	for (int i = 0; i < 4; i++) {
-		zend_update_property_double(pdfium_ce_rect, Z_OBJ_P(ZEND_THIS), names[i], strlen(names[i]), sides[i]);
-		if (EG(exception)) {
-			RETURN_THROWS();
-		}
+	if (!coords_write(ZEND_THIS, pdfium_ce_rect, names, sides, RECT_SLOTS)) {
+		RETURN_THROWS();
 	}
 }
 
@@ -235,11 +255,18 @@ static void color_set(zval *zv, object_run *run, FPDF_BOOL got, const unsigned i
 	if (run_reuse(zv, run, rgba, 4 * sizeof(*rgba))) {
 		return;
 	}
+	zend_long channels[COLOR_SLOTS] = {rgba[0], rgba[1], rgba[2], rgba[3]};
+
+	pdfium_color_init(zv, channels);
+	run_keep(zv, run, rgba, 4 * sizeof(*rgba));
+}
+
+void pdfium_color_init(zval *zv, const zend_long *rgba)
+{
 	object_init_ex(zv, pdfium_ce_color);
 	for (int i = 0; i < COLOR_SLOTS; i++) {
 		ZVAL_LONG(pdfium_slot(Z_OBJ_P(zv), i), rgba[i]);
 	}
-	run_keep(zv, run, rgba, 4 * sizeof(*rgba));
 }
 
 static void matrix_set(zval *zv, object_run *run, FPDF_BOOL got, const FS_MATRIX *m)

@@ -5,18 +5,19 @@ PHP API
 
 All classes are in the ``Pdfium`` namespace. The exact signatures are in ``pdfium.stub.php``.
 
-Except for :php:class:`Rect`, you cannot create these classes with ``new``. Get a
-:php:class:`Document` from :php:meth:`Document::fromFile` or :php:meth:`Document::fromString`, and
-everything else from the document. You create a :php:class:`Rect` to pass to
-:php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or :php:meth:`Page::render`.
+Except for :php:class:`Rect`, :php:class:`Quad` and :php:class:`Point`, you cannot create these
+classes with ``new``. Get a :php:class:`Document` from :php:meth:`Document::fromFile` or
+:php:meth:`Document::fromString`, and everything else from the document. You create a
+:php:class:`Rect` to pass to :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or
+:php:meth:`Page::render`.
 
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
 :php:class:`Bitmap`, :php:class:`Attachment` and :php:class:`Annotation` cannot be cloned or
 serialized. The value classes (:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`,
 :php:class:`Char`, :php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`,
 :php:class:`WebLink`, :php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`,
-:php:class:`Destination`, :php:class:`Action`, :php:class:`AttachmentMetadata` and :php:class:`Signature`) are read-only and
-can be cloned and serialized.
+:php:class:`Destination`, :php:class:`Action`, :php:class:`AttachmentMetadata`, :php:class:`Border`,
+:php:class:`Signature` and :php:class:`Point`) are read-only and can be cloned and serialized.
 
 
 Document
@@ -818,6 +819,131 @@ Annotation
       :throws PdfiumException: The annotation was removed from its page.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: color() -> ?Color
+
+      The colour (``/C``), with the opacity ``/CA`` as alpha, rounded down: 0.5 is 127. A
+      component below 0 in the file reads as 0, one above 1 as 255; one far above 1 may read as 0
+      instead. Without ``/C``, PDFium gives yellow (255, 255, 0) for a Highlight and black for other
+      types. ``null`` while the annotation has a normal appearance stream, whatever ``/C`` holds.
+
+      :rtype: ?Color
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: interiorColor() -> ?Color
+
+      The interior colour (``/IC``), read as :php:meth:`color` reads ``/C``: with ``/CA`` as alpha,
+      yellow for a Highlight and black for other types when there is no ``/IC``, and ``null`` while
+      the annotation has a normal appearance stream.
+
+      :rtype: ?Color
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: border() -> ?Border
+
+      The border (``/Border``); ``null`` when the annotation has none, or one with fewer than three
+      numbers.
+
+      :rtype: ?Border
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: quadPoints() -> array
+
+      The quad points of a Highlight, Underline, Squiggly, StrikeOut or Link annotation: the areas
+      it covers. Empty when the annotation has none.
+
+      :rtype: Quad[]
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws MemoryException: The list would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: vertices() -> array
+
+      The vertices (``/Vertices``) of a Polygon or PolyLine annotation; empty for other types.
+
+      :rtype: Point[]
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws MemoryException: The list would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: line() -> ?array
+
+      The start and end points (``/L``) of a Line annotation, in that order; ``null`` for other
+      types and for a Line without a valid ``/L``.
+
+      :rtype: ?Point[]
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: inkStrokes() -> array
+
+      The strokes (``/InkList``) of an Ink annotation, one list of :php:class:`Point` per stroke;
+      empty for other types.
+
+      :rtype: Point[][]
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws MemoryException: The strokes would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: hasKey(string $key) -> bool
+
+      Whether the annotation's dictionary has the key.
+
+      :param string $key: A PDF key without the slash, such as ``"Contents"``, ``"T"`` (the author),
+         ``"M"`` (the modification date), ``"Subj"``, ``"NM"`` or ``"CreationDate"``.
+      :rtype: bool
+      :throws \\ValueError: ``$key`` is empty or contains a null byte.
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: valueType(string $key) -> string
+
+      The type of the key's value: ``"Boolean"``, ``"Number"``, ``"String"``, ``"Name"``,
+      ``"Array"``, ``"Dictionary"``, ``"Stream"``, ``"Null"``, ``"Reference"`` (an indirect
+      reference, such as ``/Popup``, even when the object it names does not exist), or
+      ``"Unknown"`` when the key is missing.
+
+      :param string $key: A PDF key without the slash, as for :php:meth:`hasKey`.
+      :rtype: string
+      :throws \\ValueError: ``$key`` is empty or contains a null byte.
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: stringValue(string $key) -> ?string
+
+      The key's string or name value as UTF-8; ``null`` when the key is missing, the value is
+      empty, or it is of another type, such as a number.
+
+      :param string $key: A PDF key without the slash, as for :php:meth:`hasKey`.
+      :rtype: ?string
+      :throws \\ValueError: ``$key`` is empty or contains a null byte.
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws MemoryException: The value would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: numberValue(string $key) -> ?float
+
+      The key's number value; ``null`` when the key is missing or not a number.
+
+      :param string $key: A PDF key without the slash, as for :php:meth:`hasKey`.
+      :rtype: ?float
+      :throws \\ValueError: ``$key`` is empty or contains a null byte.
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: appearance(int $mode = Annotation::APPEARANCE_NORMAL) -> ?string
+
+      The content of the annotation's appearance stream for one mode; ``null`` when there is none.
+
+      :param int $mode: One of the ``APPEARANCE_*`` constants.
+      :rtype: ?string
+      :throws \\ValueError: ``$mode`` is not one of the ``APPEARANCE_*`` constants.
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws MemoryException: The stream would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
 
 TextPage
 --------
@@ -1192,9 +1318,10 @@ Color
 
 .. php:class:: Color
 
-   A colour from :php:attr:`Char::fillColor`, :php:attr:`Char::strokeColor` or
-   :php:attr:`Bookmark::color`, as RGB with values from 0 to 255: a final, read-only value. PDFium
-   converts other colour spaces, such as CMYK, to RGB.
+   A colour from :php:attr:`Char::fillColor`, :php:attr:`Char::strokeColor`,
+   :php:attr:`Bookmark::color`, :php:meth:`Annotation::color` or
+   :php:meth:`Annotation::interiorColor`, as RGB with values from 0 to 255: a final, read-only
+   value. PDFium converts other colour spaces, such as CMYK, to RGB.
 
    .. php:attr:: red
 
@@ -1374,8 +1501,13 @@ Quad
 
 .. php:class:: Quad
 
-   The four corners of a quadrilateral, in points, from :php:attr:`Link::quadPoints`: a final,
-   read-only value. The corners are ``x1, y1`` to ``x4, y4``, in the order the PDF gives them.
+   The four corners of a quadrilateral, in points, from :php:attr:`Link::quadPoints` or
+   :php:meth:`Annotation::quadPoints`: a final, read-only value. The corners are ``x1, y1`` to
+   ``x4, y4``, in the order the PDF gives them.
+
+   .. php:method:: __construct(float $x1, float $y1, float $x2, float $y2, float $x3, float $y3, float $x4, float $y4)
+
+      :throws \\ValueError: A coordinate is not finite.
 
    .. php:attr:: x1
 
@@ -1408,6 +1540,48 @@ Quad
    .. php:attr:: y4
 
       ``float``
+
+
+Point
+-----
+
+.. php:class:: Point
+
+   A point, with ``x`` and ``y`` in points and ``y`` growing upwards: a final, read-only value.
+   :php:meth:`Annotation::vertices`, :php:meth:`Annotation::line` and
+   :php:meth:`Annotation::inkStrokes` return them.
+
+   .. php:method:: __construct(float $x, float $y)
+
+      :throws \\ValueError: A coordinate is not finite.
+
+   .. php:attr:: x
+
+      ``float``
+
+   .. php:attr:: y
+
+      ``float``
+
+
+Border
+------
+
+.. php:class:: Border
+
+   An annotation's border, from :php:meth:`Annotation::border`: a final, read-only value, in points.
+
+   .. php:attr:: horizontalRadius
+
+      ``float``: the horizontal radius of the rounded corners.
+
+   .. php:attr:: verticalRadius
+
+      ``float``: the vertical radius of the rounded corners.
+
+   .. php:attr:: width
+
+      ``float``: the line width.
 
 
 Destination

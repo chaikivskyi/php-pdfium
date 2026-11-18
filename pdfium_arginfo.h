@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: c0844c9bc5abda73dd8401c9899164d6a7b79a49 */
+ * Stub hash: 731511acfb4fa50213aec28f3fbc39323d8c54c0 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -121,7 +121,23 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Link___construct arginfo_class_Pdfium_Document___construct
 
-#define arginfo_class_Pdfium_Quad___construct arginfo_class_Pdfium_Document___construct
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Quad___construct, 0, 0, 8)
+	ZEND_ARG_TYPE_INFO(0, x1, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y1, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, x2, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y2, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, x3, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y3, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, x4, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y4, IS_DOUBLE, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Point___construct, 0, 0, 2)
+	ZEND_ARG_TYPE_INFO(0, x, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y, IS_DOUBLE, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Border___construct arginfo_class_Pdfium_Document___construct
 
 #define arginfo_class_Pdfium_Destination___construct arginfo_class_Pdfium_Document___construct
 
@@ -182,6 +198,43 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_rect, 0, 
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Annotation_flags arginfo_class_Pdfium_Document_pageCount
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_color, 0, 0, Pdfium\\Color, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_interiorColor arginfo_class_Pdfium_Annotation_color
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_border, 0, 0, Pdfium\\Border, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_quadPoints arginfo_class_Pdfium_Document_bookmarks
+
+#define arginfo_class_Pdfium_Annotation_vertices arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_line, 0, 0, IS_ARRAY, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_inkStrokes arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_hasKey, 0, 1, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_valueType, 0, 1, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_stringValue, 0, 1, IS_STRING, 1)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_numberValue, 0, 1, IS_DOUBLE, 1)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_appearance, 0, 0, IS_STRING, 1)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, mode, IS_LONG, 0, "Pdfium\\Annotation::APPEARANCE_NORMAL")
+ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Attachment___construct arginfo_class_Pdfium_Document___construct
 
@@ -302,6 +355,8 @@ ZEND_METHOD(Pdfium_WebLink, __construct);
 ZEND_METHOD(Pdfium_Bookmark, __construct);
 ZEND_METHOD(Pdfium_Link, __construct);
 ZEND_METHOD(Pdfium_Quad, __construct);
+ZEND_METHOD(Pdfium_Point, __construct);
+ZEND_METHOD(Pdfium_Border, __construct);
 ZEND_METHOD(Pdfium_Destination, __construct);
 ZEND_METHOD(Pdfium_Action, __construct);
 ZEND_METHOD(Pdfium_Page, __construct);
@@ -324,6 +379,18 @@ ZEND_METHOD(Pdfium_Annotation, index);
 ZEND_METHOD(Pdfium_Annotation, type);
 ZEND_METHOD(Pdfium_Annotation, rect);
 ZEND_METHOD(Pdfium_Annotation, flags);
+ZEND_METHOD(Pdfium_Annotation, color);
+ZEND_METHOD(Pdfium_Annotation, interiorColor);
+ZEND_METHOD(Pdfium_Annotation, border);
+ZEND_METHOD(Pdfium_Annotation, quadPoints);
+ZEND_METHOD(Pdfium_Annotation, vertices);
+ZEND_METHOD(Pdfium_Annotation, line);
+ZEND_METHOD(Pdfium_Annotation, inkStrokes);
+ZEND_METHOD(Pdfium_Annotation, hasKey);
+ZEND_METHOD(Pdfium_Annotation, valueType);
+ZEND_METHOD(Pdfium_Annotation, stringValue);
+ZEND_METHOD(Pdfium_Annotation, numberValue);
+ZEND_METHOD(Pdfium_Annotation, appearance);
 ZEND_METHOD(Pdfium_Attachment, __construct);
 ZEND_METHOD(Pdfium_Attachment, index);
 ZEND_METHOD(Pdfium_Attachment, name);
@@ -452,7 +519,17 @@ static const zend_function_entry class_Pdfium_Link_methods[] = {
 };
 
 static const zend_function_entry class_Pdfium_Quad_methods[] = {
-	ZEND_ME(Pdfium_Quad, __construct, arginfo_class_Pdfium_Quad___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Pdfium_Quad, __construct, arginfo_class_Pdfium_Quad___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_Point_methods[] = {
+	ZEND_ME(Pdfium_Point, __construct, arginfo_class_Pdfium_Point___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_Border_methods[] = {
+	ZEND_ME(Pdfium_Border, __construct, arginfo_class_Pdfium_Border___construct, ZEND_ACC_PRIVATE)
 	ZEND_FE_END
 };
 
@@ -491,6 +568,18 @@ static const zend_function_entry class_Pdfium_Annotation_methods[] = {
 	ZEND_ME(Pdfium_Annotation, type, arginfo_class_Pdfium_Annotation_type, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, rect, arginfo_class_Pdfium_Annotation_rect, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, flags, arginfo_class_Pdfium_Annotation_flags, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, color, arginfo_class_Pdfium_Annotation_color, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, interiorColor, arginfo_class_Pdfium_Annotation_interiorColor, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, border, arginfo_class_Pdfium_Annotation_border, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, quadPoints, arginfo_class_Pdfium_Annotation_quadPoints, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, vertices, arginfo_class_Pdfium_Annotation_vertices, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, line, arginfo_class_Pdfium_Annotation_line, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, inkStrokes, arginfo_class_Pdfium_Annotation_inkStrokes, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, hasKey, arginfo_class_Pdfium_Annotation_hasKey, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, valueType, arginfo_class_Pdfium_Annotation_valueType, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, stringValue, arginfo_class_Pdfium_Annotation_stringValue, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, numberValue, arginfo_class_Pdfium_Annotation_numberValue, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, appearance, arginfo_class_Pdfium_Annotation_appearance, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -1369,6 +1458,66 @@ static zend_class_entry *register_class_Pdfium_Quad(void)
 	zend_string *property_y4_name = zend_string_init("y4", sizeof("y4") - 1, 1);
 	zend_declare_typed_property(class_entry, property_y4_name, &property_y4_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
 	zend_string_release(property_y4_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_Point(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Point", class_Pdfium_Point_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS;
+#endif
+
+	zval property_x_default_value;
+	ZVAL_UNDEF(&property_x_default_value);
+	zend_string *property_x_name = zend_string_init("x", sizeof("x") - 1, 1);
+	zend_declare_typed_property(class_entry, property_x_name, &property_x_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_x_name);
+
+	zval property_y_default_value;
+	ZVAL_UNDEF(&property_y_default_value);
+	zend_string *property_y_name = zend_string_init("y", sizeof("y") - 1, 1);
+	zend_declare_typed_property(class_entry, property_y_name, &property_y_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_y_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_Border(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Border", class_Pdfium_Border_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS;
+#endif
+
+	zval property_horizontalRadius_default_value;
+	ZVAL_UNDEF(&property_horizontalRadius_default_value);
+	zend_string *property_horizontalRadius_name = zend_string_init("horizontalRadius", sizeof("horizontalRadius") - 1, 1);
+	zend_declare_typed_property(class_entry, property_horizontalRadius_name, &property_horizontalRadius_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_horizontalRadius_name);
+
+	zval property_verticalRadius_default_value;
+	ZVAL_UNDEF(&property_verticalRadius_default_value);
+	zend_string *property_verticalRadius_name = zend_string_init("verticalRadius", sizeof("verticalRadius") - 1, 1);
+	zend_declare_typed_property(class_entry, property_verticalRadius_name, &property_verticalRadius_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_verticalRadius_name);
+
+	zval property_width_default_value;
+	ZVAL_UNDEF(&property_width_default_value);
+	zend_string *property_width_name = zend_string_init("width", sizeof("width") - 1, 1);
+	zend_declare_typed_property(class_entry, property_width_name, &property_width_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_width_name);
 
 	return class_entry;
 }

@@ -18,6 +18,11 @@ function stream_obj(string $data, string $dict = ''): string
     return "<< $dict/Length " . strlen($data) . " >>\nstream\n$data\nendstream";
 }
 
+function form_xobject(string $content, int $w, int $h): string
+{
+    return stream_obj($content, "/Type /XObject /Subtype /Form /BBox [0 0 $w $h] ");
+}
+
 /** One page whose content stream is $content, with Helvetica as /F1 and $resources added. */
 function page_pdf(int $w, int $h, string $content, string $resources = '', array $extra = []): string
 {
@@ -74,7 +79,7 @@ function annot_pdf(): string
         '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 100 100] /Contents 4 0 R /Annots [5 0 R] >>',
         stream_obj(''),
         '<< /Type /Annot /Subtype /Square /Rect [10 60 40 90] /F 4 /AP << /N 6 0 R >> >>',
-        stream_obj('0 g 0 0 30 30 re f', '/Type /XObject /Subtype /Form /BBox [0 0 30 30] '),
+        form_xobject('0 g 0 0 30 30 re f', 30, 30),
     ]);
 }
 
@@ -133,4 +138,19 @@ function attempt(callable $f): void
     } catch (Throwable $e) {
         echo get_class($e), ': ', $e->getMessage(), "\n";
     }
+}
+
+function color(?Pdfium\Color $c): string
+{
+    return $c ? "$c->red,$c->green,$c->blue,$c->alpha" : 'null';
+}
+
+function point(Pdfium\Point $p): string
+{
+    return "$p->x,$p->y";
+}
+
+function quad(Pdfium\Quad $q): string
+{
+    return "$q->x1 $q->y1 $q->x2 $q->y2 $q->x3 $q->y3 $q->x4 $q->y4";
 }

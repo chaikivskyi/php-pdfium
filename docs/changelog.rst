@@ -9,6 +9,11 @@ Features:
 - ``Page::annotationCount()``, ``annotations()`` and ``annotation()``: a page's annotations, as
   ``Annotation`` objects with ``type()``, ``index()``, ``rect()`` and ``flags()``, and the
   ``Annotation::FLAG_*`` constants for the flags.
+- ``Annotation::color()``, ``interiorColor()``, ``border()``, ``quadPoints()``, ``vertices()``,
+  ``line()`` and ``inkStrokes()``: an annotation's colours, border and geometry. ``hasKey()``,
+  ``valueType()``, ``stringValue()`` and ``numberValue()``: its dictionary, by key.
+  ``appearance()``: its appearance stream for one of the ``Annotation::APPEARANCE_*`` modes.
+- Value classes ``Point`` and ``Border``. ``Point`` and ``Quad`` can be created with ``new``.
 
 v0.3.0 (2026-11-21)
 -------------------

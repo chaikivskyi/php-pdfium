@@ -620,6 +620,35 @@ final readonly class Quad
     public float $x4;
     public float $y4;
 
+    /**
+     * @throws \ValueError when a coordinate is not finite
+     */
+    public function __construct(float $x1, float $y1, float $x2, float $y2, float $x3, float $y3, float $x4, float $y4) {}
+}
+
+/**
+ * A point, with x and y in points and y growing upwards.
+ */
+final readonly class Point
+{
+    public float $x;
+    public float $y;
+
+    /**
+     * @throws \ValueError when a coordinate is not finite
+     */
+    public function __construct(float $x, float $y) {}
+}
+
+/**
+ * An annotation's border, in points: the corner radii and the line width.
+ */
+final readonly class Border
+{
+    public float $horizontalRadius;
+    public float $verticalRadius;
+    public float $width;
+
     private function __construct() {}
 }
 
@@ -921,6 +950,124 @@ final class Annotation
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function flags(): int {}
+
+    /**
+     * The colour (/C), with /CA as alpha; without /C, yellow for a Highlight and black for other types.
+     * A component far above 1 may read as 0. Null while the annotation has a normal appearance stream.
+     *
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function color(): ?Color {}
+
+    /**
+     * The interior colour (/IC), read as color() reads /C; null while the annotation has a normal
+     * appearance stream.
+     *
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function interiorColor(): ?Color {}
+
+    /**
+     * The border (/Border); null when the annotation has none or it has fewer than three numbers.
+     *
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function border(): ?Border {}
+
+    /**
+     * The quad points of a Highlight, Underline, Squiggly, StrikeOut or Link annotation: the areas it
+     * covers. Empty when it has none.
+     *
+     * @return Quad[]
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws MemoryException when the list would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function quadPoints(): array {}
+
+    /**
+     * The vertices (/Vertices) of a Polygon or PolyLine annotation; empty for other types.
+     *
+     * @return Point[]
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws MemoryException when the list would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function vertices(): array {}
+
+    /**
+     * The start and end points (/L) of a Line annotation, in that order; null for other types and for
+     * a Line without a valid /L.
+     *
+     * @return Point[]|null
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function line(): ?array {}
+
+    /**
+     * The strokes (/InkList) of an Ink annotation, as one list of points per stroke; empty for other
+     * types.
+     *
+     * @return Point[][]
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws MemoryException when the strokes would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function inkStrokes(): array {}
+
+    /**
+     * Whether the annotation's dictionary has the key, such as "Contents".
+     *
+     * @throws \ValueError when $key is empty or contains a null byte
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function hasKey(string $key): bool {}
+
+    /**
+     * The type of the key's value: "Boolean", "Number", "String", "Name", "Array", "Dictionary",
+     * "Stream", "Null", "Reference", or "Unknown" when the key is missing.
+     *
+     * @throws \ValueError when $key is empty or contains a null byte
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function valueType(string $key): string {}
+
+    /**
+     * The key's string or name value as UTF-8, such as "Contents", "T" (the author), "M" (the
+     * modification date) or "NM"; null when the key is missing, empty or of another type.
+     *
+     * @throws \ValueError when $key is empty or contains a null byte
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws MemoryException when the value would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function stringValue(string $key): ?string {}
+
+    /**
+     * The key's number value; null when the key is missing or not a number.
+     *
+     * @throws \ValueError when $key is empty or contains a null byte
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function numberValue(string $key): ?float {}
+
+    /**
+     * The content of the appearance stream for one of the APPEARANCE_* modes; null when there is
+     * none.
+     *
+     * @throws \ValueError when $mode is not one of the APPEARANCE_* constants
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws MemoryException when the stream would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function appearance(int $mode = Annotation::APPEARANCE_NORMAL): ?string {}
 }
 
 /**
