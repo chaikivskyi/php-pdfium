@@ -234,7 +234,9 @@ final class Document implements \Countable, \IteratorAggregate
     public function toString(bool $removeSecurity = false): string {}
 }
 
-/** The document information dictionary, as UTF-8. Dates stay in raw PDF form ("D:..."). */
+/**
+ * The document information dictionary, as UTF-8. Dates stay in raw PDF form ("D:...").
+ */
 final readonly class Metadata
 {
     public ?string $title;
@@ -249,15 +251,24 @@ final readonly class Metadata
     private function __construct() {}
 }
 
-/** An embedded file's details as UTF-8 strings; null when missing or empty. */
+/**
+ * An embedded file's details as UTF-8 strings; null when missing or empty.
+ */
 final readonly class AttachmentMetadata
 {
     public ?string $description;
-    /** The MIME type, such as "application/pdf". */
+    /**
+     * The MIME type, such as "application/pdf".
+     */
     public ?string $subtype;
-    /** How the file relates to the document: "Source", "Data", "Alternative", "Supplement", "Unspecified" or another name. */
+    /**
+     * How the file relates to the document: "Source", "Data", "Alternative", "Supplement",
+     * "Unspecified" or another name.
+     */
     public ?string $afRelationship;
-    /** As stored in the PDF, such as "D:20261031120000Z", like the Metadata dates. */
+    /**
+     * As stored in the PDF, such as "D:20261031120000Z", like the Metadata dates.
+     */
     public ?string $creationDate;
     public ?string $modDate;
     /**
@@ -269,7 +280,9 @@ final readonly class AttachmentMetadata
     private function __construct() {}
 }
 
-/** The document's permission flags. They are reported, never enforced. */
+/**
+ * The document's permission flags. They are reported, never enforced.
+ */
 final readonly class Permissions
 {
     public bool $print;
@@ -284,7 +297,9 @@ final readonly class Permissions
     private function __construct() {}
 }
 
-/** A rectangle in PDF points, with y growing upwards. */
+/**
+ * A rectangle in PDF points, with y growing upwards.
+ */
 final readonly class Rect
 {
     public float $left;
@@ -298,7 +313,9 @@ final readonly class Rect
     public function __construct(float $left, float $bottom, float $right, float $top) {}
 }
 
-/** An RGB colour with alpha, each from 0 to 255; alpha 255 is opaque. */
+/**
+ * An RGB colour with alpha, each from 0 to 255; alpha 255 is opaque.
+ */
 final readonly class Color
 {
     public int $red;
@@ -309,7 +326,9 @@ final readonly class Color
     private function __construct() {}
 }
 
-/** A PDF transformation matrix [a b c d e f]: x' = a*x + c*y + e, y' = b*x + d*y + f. */
+/**
+ * A PDF transformation matrix [a b c d e f]: x' = a*x + c*y + e, y' = b*x + d*y + f.
+ */
 final readonly class Matrix
 {
     public float $a;
@@ -322,7 +341,9 @@ final readonly class Matrix
     private function __construct() {}
 }
 
-/** One character of a page's text, as TextPage::chars() returns it. */
+/**
+ * One character of a page's text, as TextPage::chars() returns it.
+ */
 final readonly class Char
 {
     /**
@@ -330,84 +351,138 @@ final readonly class Char
      * a character outside the Basic Multilingual Plane, which PDFium counts as two.
      */
     public string $text;
-    /** The tight bounds of the glyph; zero-sized for a space. */
+    /**
+     * The tight bounds of the glyph; zero-sized for a space.
+     */
     public Rect $box;
-    /** The bounds of the glyph's whole cell, from the font's ascent to its descent. */
+    /**
+     * The bounds of the glyph's whole cell, from the font's ascent to its descent.
+     */
     public Rect $looseBox;
-    /** The x coordinate of the glyph origin. */
+    /**
+     * The x coordinate of the glyph origin.
+     */
     public float $x;
-    /** The y coordinate of the glyph origin, on the baseline. */
+    /**
+     * The y coordinate of the glyph origin, on the baseline.
+     */
     public float $y;
     public float $fontSize;
     public ?string $fontName;
     public ?int $fontWeight;
-    /** The PDF font descriptor flags (PDF 1.7, 9.8.2); 0 when unknown. */
+    /**
+     * The PDF font descriptor flags (PDF 1.7, 9.8.2); 0 when unknown.
+     */
     public int $fontFlags;
-    /** The colour the glyph is filled with; null when PDFium cannot tell. */
+    /**
+     * The colour the glyph is filled with; null when PDFium cannot tell.
+     */
     public ?Color $fillColor;
-    /** The colour the glyph is outlined with; null when PDFium cannot tell. */
+    /**
+     * The colour the glyph is outlined with; null when PDFium cannot tell.
+     */
     public ?Color $strokeColor;
-    /** Counter-clockwise rotation in degrees, from 0 up to 360, rounded to four decimal places. */
+    /**
+     * Counter-clockwise rotation in degrees, from 0 up to 360, rounded to four decimal places.
+     */
     public float $angle;
     /**
      * The matrix of the text object the character is in: its text matrix and the page transformation,
      * without the font size or the character's offset along the line; null when PDFium cannot tell.
      */
     public ?Matrix $matrix;
-    /** Whether PDFium added the character, such as a space between words or a line break. */
+    /**
+     * Whether PDFium added the character, such as a space between words or a line break.
+     */
     public bool $generated;
-    /** Whether this is a hyphen that splits a word across two lines; PDFium joins the word and its text is "-". */
+    /**
+     * Whether this is a hyphen that splits a word across two lines; PDFium joins the word and its
+     * text is "-".
+     */
     public bool $hyphen;
-    /** Whether the font maps this character to Unicode wrongly. */
+    /**
+     * Whether the font maps this character to Unicode wrongly.
+     */
     public bool $unicodeMapError;
 
     private function __construct() {}
 }
 
-/** One match of TextPage::search(). */
+/**
+ * One match of TextPage::search().
+ */
 final readonly class TextMatch
 {
-    /** The index in TextPage::chars() of the first character. */
+    /**
+     * The index in TextPage::chars() of the first character.
+     */
     public int $index;
-    /** How many character indexes it covers. */
+    /**
+     * How many character indexes it covers.
+     */
     public int $length;
     public string $text;
-    /** @var Rect[] one per line the match covers */
+    /**
+     * @var Rect[] one per line the match covers
+     */
     public array $rects;
 
     private function __construct() {}
 }
 
-/** A URL written in a page's text, as TextPage::webLinks() returns it. */
+/**
+ * A URL written in a page's text, as TextPage::webLinks() returns it.
+ */
 final readonly class WebLink
 {
     public string $url;
-    /** The index in TextPage::chars() of the first character. */
+    /**
+     * The index in TextPage::chars() of the first character.
+     */
     public int $index;
-    /** How many character indexes it covers. */
+    /**
+     * How many character indexes it covers.
+     */
     public int $length;
-    /** @var Rect[] one per line the URL covers */
+    /**
+     * @var Rect[] one per line the URL covers
+     */
     public array $rects;
 
     private function __construct() {}
 }
 
-/** One entry of the document outline, as Document::bookmarks() returns it. */
+/**
+ * One entry of the document outline, as Document::bookmarks() returns it.
+ */
 final readonly class Bookmark
 {
-    /** The title as UTF-8. */
+    /**
+     * The title as UTF-8.
+     */
     public string $title;
-    /** Whether its children are shown by default. */
+    /**
+     * Whether its children are shown by default.
+     */
     public bool $open;
-    /** The colour of the title; null when there is none (viewers then use black) or it is invalid. */
+    /**
+     * The colour of the title; null when there is none (viewers then use black) or it is invalid.
+     */
     public ?Color $color;
     public bool $italic;
     public bool $bold;
-    /** Where the entry leads in this document; null when it leads elsewhere or nowhere. */
+    /**
+     * Where the entry leads in this document; null when it leads elsewhere or nowhere.
+     */
     public ?Destination $destination;
-    /** What the entry does, when it has an action rather than a plain destination; null when it has none. */
+    /**
+     * What the entry does, when it has an action rather than a plain destination; null when it has
+     * none.
+     */
     public ?Action $action;
-    /** @var Bookmark[] */
+    /**
+     * @var Bookmark[]
+     */
     public array $children;
 
     private function __construct() {}
@@ -419,19 +494,30 @@ final readonly class Bookmark
  */
 final readonly class Link
 {
-    /** The annotation's rectangle. */
+    /**
+     * The annotation's rectangle.
+     */
     public Rect $rect;
-    /** @var Quad[] the areas that activate the link; empty when the annotation has none */
+    /**
+     * @var Quad[] the areas that activate the link; empty when the annotation has none
+     */
     public array $quadPoints;
-    /** Where the link leads in this document; null when it leads elsewhere or nowhere. */
+    /**
+     * Where the link leads in this document; null when it leads elsewhere or nowhere.
+     */
     public ?Destination $destination;
-    /** What the link does, when it has an action rather than a plain destination; null when it has none. */
+    /**
+     * What the link does, when it has an action rather than a plain destination; null when it has
+     * none.
+     */
     public ?Action $action;
 
     private function __construct() {}
 }
 
-/** The four corners of a quadrilateral, in points. */
+/**
+ * The four corners of a quadrilateral, in points.
+ */
 final readonly class Quad
 {
     public float $x1;
@@ -446,29 +532,49 @@ final readonly class Quad
     private function __construct() {}
 }
 
-/** Where a bookmark, link or action leads in this document. */
+/**
+ * Where a bookmark, link or action leads in this document.
+ */
 final readonly class Destination
 {
-    /** The 0-based index of the target page. */
+    /**
+     * The 0-based index of the target page.
+     */
     public int $pageIndex;
-    /** "XYZ", "Fit", "FitH", "FitV", "FitR", "FitB", "FitBH" or "FitBV"; null when PDFium cannot tell. */
+    /**
+     * "XYZ", "Fit", "FitH", "FitV", "FitR", "FitB", "FitBH" or "FitBV"; null when PDFium cannot
+     * tell.
+     */
     public ?string $view;
-    /** @var float[] the view's numbers, at most 4; 0 for an absent XYZ value */
+    /**
+     * @var float[] the view's numbers, at most 4; 0 for an absent XYZ value
+     */
     public array $params;
-    /** The left edge to show, in points, for an XYZ view; null when absent or for another view. */
+    /**
+     * The left edge to show, in points, for an XYZ view; null when absent or for another view.
+     */
     public ?float $x;
-    /** The top edge to show, in points, for an XYZ view; null when absent or for another view. */
+    /**
+     * The top edge to show, in points, for an XYZ view; null when absent or for another view.
+     */
     public ?float $y;
-    /** The zoom factor, for an XYZ view; null when absent or for another view. */
+    /**
+     * The zoom factor, for an XYZ view; null when absent or for another view.
+     */
     public ?float $zoom;
 
     private function __construct() {}
 }
 
-/** What a bookmark, link or page event does. */
+/**
+ * What a bookmark, link or page event does.
+ */
 final readonly class Action
 {
-    /** "GoTo", "GoToR", "URI", "Launch", "GoToE", or "Unsupported" for every type PDFium does not read. */
+    /**
+     * "GoTo", "GoToR", "URI", "Launch", "GoToE", or "Unsupported" for every type PDFium does not
+     * read.
+     */
     public string $type;
     /**
      * The URI, for a URI action: the bytes as written, which may not be UTF-8, with the document's
@@ -481,7 +587,9 @@ final readonly class Action
      * the embedded one; null when the action names none, and for every other type.
      */
     public ?string $filePath;
-    /** Where a GoTo action leads; null for every other type. */
+    /**
+     * Where a GoTo action leads; null for every other type.
+     */
     public ?Destination $destination;
 
     private function __construct() {}
@@ -495,7 +603,9 @@ final class Page
 {
     private function __construct() {}
 
-    /** The page's 0-based position in its document. */
+    /**
+     * The page's 0-based position in its document.
+     */
     public function index(): int {}
 
     /**
