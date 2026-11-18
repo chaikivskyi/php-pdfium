@@ -11,7 +11,7 @@ $doc = Pdfium\Document::fromString(attach_pdf(
         file_spec('a.txt', 7),
         stream_obj('hello'),
         file_spec('b.bin', 9),
-        stream_obj(gzcompress("\0\1\2"), '/Filter /FlateDecode '),
+        stream_obj('000102>', '/Filter /ASCIIHexDecode '),
         '<< /Type /Filespec /F (http://example.com/x) >>',
         stream_obj('direct'),
         file_spec('e.txt', 13),
