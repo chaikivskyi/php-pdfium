@@ -33,6 +33,7 @@ Features:
   pages of any size at any position.
 - ``Document::insertPages()``: copy pages of another document, or of the same one, into a document
   at any position.
+- ``Document::movePages()``: reorder pages.
 - A ``Page`` held from before an edit follows its page to its new index. Once its page is deleted,
   or a failed edit leaves its position unknown, the ``Page`` and every ``TextPage`` made from it
   throw ``PdfiumException`` from every method. ``PageIterator::current()`` gives the page at

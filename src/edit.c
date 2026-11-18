@@ -198,3 +198,78 @@ ZEND_METHOD(Pdfium_Document, insertPages)
 	edit_failed(h, after != before, "Cannot import pages");
 	RETURN_THROWS();
 }
+
+static int compare_moved(const void *a, const void *b)
+{
+	int x = ((const pdfium_moved_page *) a)->index, y = ((const pdfium_moved_page *) b)->index;
+
+	return (x > y) - (x < y);
+}
+
+ZEND_METHOD(Pdfium_Document, movePages)
+{
+	pdfium_doc_handle *h = pdfium_this_document(ZEND_THIS);
+	HashTable *ht;
+	zend_long to;
+
+	ZEND_PARSE_PARAMETERS_START(2, 2)
+		Z_PARAM_ARRAY_HT(ht)
+		Z_PARAM_LONG(to)
+	ZEND_PARSE_PARAMETERS_END();
+
+	uint32_t n;
+	int *indexes = pdfium_indexes_checked(ht, 1, &n);
+
+	if (!indexes) {
+		RETURN_THROWS();
+	}
+	if (!pdfium_memory_fits((size_t) n * sizeof(pdfium_moved_page))) {
+		efree(indexes);
+		pdfium_indexes_memory_error();
+		RETURN_THROWS();
+	}
+	pdfium_moved_page *sorted = safe_emalloc(n, sizeof(*sorted), 0);
+
+	if (!pdfium_enter()) {
+		efree(indexes);
+		efree(sorted);
+		RETURN_THROWS();
+	}
+	int page_count = FPDF_GetPageCount(h->doc);
+	pdfium_indexes_status valid = pdfium_indexes_from(ht, page_count, indexes);
+	bool twice = false;
+
+	if (valid == PDFIUM_INDEXES_OK) {
+		for (uint32_t k = 0; k < n; k++) {
+			sorted[k].index = indexes[k];
+			sorted[k].order = (int) k;
+		}
+		qsort(sorted, n, sizeof(*sorted), compare_moved);
+		for (uint32_t k = 1; k < n && !twice; k++) {
+			twice = sorted[k].index == sorted[k - 1].index;
+		}
+	}
+	if (valid != PDFIUM_INDEXES_OK || twice || !in_range(to, page_count - (int) n)) {
+		pdfium_leave();
+		efree(indexes);
+		efree(sorted);
+		if (valid != PDFIUM_INDEXES_OK) {
+			pdfium_throw_indexes_error(valid, page_count, 1);
+		} else if (twice) {
+			zend_argument_value_error(1, "must not contain an index twice");
+		} else {
+			zend_argument_value_error(2, "must be between 0 and %d", page_count - (int) n);
+		}
+		RETURN_THROWS();
+	}
+	bool moved = FPDF_MovePages(h->doc, indexes, n, (int) to) && FPDF_GetPageCount(h->doc) == page_count;
+
+	pdfium_leave();
+	efree(indexes);
+	if (moved) {
+		pdfium_pages_moved(h, sorted, (int) n, (int) to);
+	} else {
+		edit_failed(h, true, "Cannot move the pages");
+	}
+	efree(sorted);
+}

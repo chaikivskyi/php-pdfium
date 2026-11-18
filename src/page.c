@@ -190,6 +190,33 @@ void pdfium_pages_inserted(pdfium_doc_handle *h, int index, int count)
 	}
 }
 
+void pdfium_pages_moved(pdfium_doc_handle *h, const pdfium_moved_page *sorted, int count, int to)
+{
+	for (pdfium_page_handle *ph = h->pages; ph; ph = ph->next) {
+		if (ph->state != PDFIUM_PAGE_PLACED) {
+			continue;
+		}
+		int lo = 0, hi = count;
+
+		while (lo < hi) {
+			int mid = lo + (hi - lo) / 2;
+
+			if (sorted[mid].index < ph->index) {
+				lo = mid + 1;
+			} else {
+				hi = mid;
+			}
+		}
+		if (lo < count && sorted[lo].index == ph->index) {
+			ph->index = to + sorted[lo].order;
+		} else {
+			int r = ph->index - lo;
+
+			ph->index = r < to ? r : r + count;
+		}
+	}
+}
+
 void pdfium_pages_lost(pdfium_doc_handle *h)
 {
 	for (pdfium_page_handle *ph = h->pages; ph; ph = ph->next) {

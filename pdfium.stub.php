@@ -227,6 +227,23 @@ final class Document implements \Countable, \IteratorAggregate
     public function insertPages(Document $source, ?array $indexes = null, ?int $index = null, bool $removeSecurity = false): void {}
 
     /**
+     * Moves the pages at $indexes so that they sit at $to, $to+1, ... in the order listed. Pages held
+     * from before report their new index(). A page that takes its rotation, media box, crop box or
+     * resources from a node of the page tree takes the new node's once it lands under another node,
+     * so its size and rotation can change and it can draw differently. The change is written by
+     * save() and toString().
+     *
+     * @param int[] $indexes
+     * @throws \ValueError when $indexes is empty, holds an index twice or one outside
+     *         0..pageCount()-1, or $to is outside 0..pageCount()-count($indexes)
+     * @throws \TypeError when an element of $indexes is not an int
+     * @throws PdfiumException when PDFium fails part-way: the page order is then undefined, every
+     *         Page held from before throws, and the document should be loaded again
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function movePages(array $indexes, int $to): void {}
+
+    /**
      * Loads each page on demand and holds only the current one; rewind() restarts at 0.
      */
     public function pages(): PageIterator {}

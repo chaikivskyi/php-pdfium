@@ -47,6 +47,7 @@ typedef struct { pdfium_page_handle *ph; FPDF_TEXTPAGE tp; zend_object std; } pd
 typedef struct { pdfium_doc_handle *h; FPDF_ATTACHMENT att; int index; uint64_t changes; zend_object std; } pdfium_attachment;
 
 typedef struct { smart_str s; bool oom; } pdfium_buf;
+typedef struct { int index; int order; } pdfium_moved_page;
 
 enum { RECT_LEFT, RECT_BOTTOM, RECT_RIGHT, RECT_TOP, RECT_SLOTS };
 
@@ -146,6 +147,7 @@ zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_c
 bool pdfium_page_live(pdfium_page_handle *ph);
 void pdfium_pages_deleted(pdfium_doc_handle *h, int index);
 void pdfium_pages_inserted(pdfium_doc_handle *h, int index, int count);
+void pdfium_pages_moved(pdfium_doc_handle *h, const pdfium_moved_page *sorted, int count, int to);
 void pdfium_pages_lost(pdfium_doc_handle *h);
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h);
 void pdfium_page_free_obj(zend_object *obj);

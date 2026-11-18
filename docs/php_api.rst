@@ -310,6 +310,21 @@ Document
       :throws PdfiumException: PDFium cannot import the pages, or the page count did not rise by the number of pages asked for; if the page count changed even so, the message says the page order is now undefined and every :php:class:`Page` held from before throws.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: movePages(array $indexes, int $to) -> void
+
+      Moves the pages at ``$indexes`` so that they sit at ``$to``, ``$to + 1``, ... in the order
+      listed; :php:meth:`save` and :php:meth:`toString` write the change. A
+      :php:class:`Page` held from before keeps working and its :php:meth:`Page::index` reports the
+      new position.
+
+      :param array $indexes: Distinct int page indexes to move.
+      :param int $to: Where the first listed page goes, from 0 to ``pageCount() - count($indexes)``.
+      :throws \\ValueError: ``$indexes`` is empty, holds an index twice or one outside the pages, or
+         ``$to`` is out of range.
+      :throws \\TypeError: An element of ``$indexes`` is not an int.
+      :throws PdfiumException: PDFium fails part-way; the page order is then undefined, every :php:class:`Page` held from before throws, and the document should be loaded again.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. php:method:: pages() -> PageIterator
 
       An iterator over all pages. It loads one page at a time.
