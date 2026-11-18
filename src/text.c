@@ -130,6 +130,28 @@ bool pdfium_coords_construct(zval *self, zend_class_entry *ce, const char *const
 	return coords_finite(coords, count) && coords_write(self, ce, names, coords, count);
 }
 
+static const char *coords_read(const zval *zv, double *coords, int count, const char *unset, const char *infinite)
+{
+	bool finite = true;
+
+	for (int i = 0; i < count; i++) {
+		zval *coord = OBJ_PROP_NUM(Z_OBJ_P(zv), i);
+
+		ZVAL_DEREF(coord);
+		if (Z_TYPE_P(coord) != IS_DOUBLE) {
+			return unset;
+		}
+		coords[i] = Z_DVAL_P(coord);
+		finite &= zend_finite(coords[i]) != 0;
+	}
+	return finite ? NULL : infinite;
+}
+
+const char *pdfium_coords_fault(const zval *zv, double *coords, int count)
+{
+	return coords_read(zv, coords, count, "every coordinate set", "finite coordinates");
+}
+
 ZEND_METHOD(Pdfium_Rect, __construct)
 {
 	static const char *const names[] = {"left", "bottom", "right", "top"};
@@ -431,7 +453,7 @@ void pdfium_leave_or_throw(zval *return_value, const char *oom)
 	if (oom) {
 		zval_ptr_dtor(return_value);
 		ZVAL_NULL(return_value);
-		zend_throw_exception_ex(pdfium_ce_memory_exception, 0, "%s more memory than memory_limit leaves", oom);
+		pdfium_memory_throw(oom);
 	}
 }
 
@@ -1013,22 +1035,13 @@ ZEND_METHOD(Pdfium_TextPage, charIndexAt)
 
 const char *pdfium_rect_fault(const zval *zr, double *sides)
 {
-	bool finite = true;
+	static const char order[] = "finite sides, with left not greater than right and bottom not greater than top";
+	const char *fault = coords_read(zr, sides, RECT_SLOTS, "every side set", order);
 
-	for (int i = 0; i < RECT_SLOTS; i++) {
-		zval *side = OBJ_PROP_NUM(Z_OBJ_P(zr), i);
-
-		ZVAL_DEREF(side);
-		if (Z_TYPE_P(side) != IS_DOUBLE) {
-			return "every side set";
-		}
-		sides[i] = Z_DVAL_P(side);
-		finite &= zend_finite(sides[i]) != 0;
+	if (fault) {
+		return fault;
 	}
-	if (!finite || sides[RECT_LEFT] > sides[RECT_RIGHT] || sides[RECT_BOTTOM] > sides[RECT_TOP]) {
-		return "finite sides, with left not greater than right and bottom not greater than top";
-	}
-	return NULL;
+	return sides[RECT_LEFT] > sides[RECT_RIGHT] || sides[RECT_BOTTOM] > sides[RECT_TOP] ? order : NULL;
 }
 
 ZEND_METHOD(Pdfium_TextPage, textIn)
@@ -1066,8 +1079,8 @@ ZEND_METHOD(Pdfium_TextPage, textInEach)
 
 	uint32_t count = zend_hash_num_elements(rects);
 
-	if (!pdfium_memory_fits((size_t) count * (RECT_SLOTS * sizeof(double) + 2 * sizeof(zval) + SPAN_BYTES))) {
-		zend_throw_exception(pdfium_ce_memory_exception, "Text in the rectangle needs more memory than memory_limit leaves", 0);
+	if (!pdfium_fits_or_throw((size_t) count * (RECT_SLOTS * sizeof(double) + 2 * sizeof(zval) + SPAN_BYTES),
+			"Text in the rectangle needs")) {
 		RETURN_THROWS();
 	}
 	double *sides = safe_emalloc(count, RECT_SLOTS * sizeof(*sides), 0);
@@ -1131,17 +1144,12 @@ ZEND_METHOD(Pdfium_TextPage, search)
 		RETURN_THROWS();
 	}
 	size_t count;
-	const char *bad = pdfium_utf8_to_utf16le(needle, NULL, &count);
 
-	if (bad) {
-		zend_argument_value_error(1, "%s", bad);
+	if (!pdfium_utf16_arg_units(needle, 1, &count)
+		|| !pdfium_fits_or_throw(count * (sizeof(unsigned short) + sizeof(size_t)), "The needle needs")) {
 		RETURN_THROWS();
 	}
-	if (!pdfium_memory_fits(count * (sizeof(unsigned short) + sizeof(size_t)))) {
-		zend_throw_exception(pdfium_ce_memory_exception, "The needle needs more memory than memory_limit leaves", 0);
-		RETURN_THROWS();
-	}
-	unsigned short *units = pdfium_utf8_to_utf16le_alloc(needle);
+	unsigned short *units = pdfium_utf8_to_utf16le_sized(needle, count);
 
 	if (pdfium_enter()) {
 		pdfium_leave_or_throw(return_value, search_of(this_text_page(ZEND_THIS), units, count, match_case, whole_word, overlapping,

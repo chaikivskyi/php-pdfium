@@ -17,6 +17,12 @@ Features:
 - ``Page::addAnnotation()``: add an annotation of one of the 13 types PDFium creates.
   ``Page::removeAnnotation()`` and ``Annotation::remove()``: take one off its page, after which
   every ``Annotation`` for it throws.
+- ``Annotation::setRect()``, ``setFlags()``, ``setColor()``, ``setInteriorColor()``,
+  ``setBorder()``, ``addQuadPoints()``, ``setQuadPoints()``, ``addInkStroke()``,
+  ``removeInkStrokes()`` and ``setStringValue()``: change an annotation in place.
+  ``setAppearance()`` and ``clearAppearance()``: write and remove its appearance stream.
+  ``setColor()`` and ``setInteriorColor()`` throw while a normal appearance stream exists instead
+  of dropping it.
 
 v0.3.0 (2026-11-21)
 -------------------

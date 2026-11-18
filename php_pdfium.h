@@ -158,6 +158,7 @@ double pdfium_points(float value);
 float pdfium_float_side(double value);
 const char *pdfium_rect_fault(const zval *zr, double *sides);
 bool pdfium_coords_construct(zval *self, zend_class_entry *ce, const char *const *names, const double *coords, uint32_t count);
+const char *pdfium_coords_fault(const zval *zv, double *coords, int count);
 zval *pdfium_slot(zend_object *obj, int index);
 void pdfium_rect_init(zval *zv, double x1, double y1, double x2, double y2);
 void pdfium_color_init(zval *zv, const zend_long *rgba);
@@ -178,6 +179,8 @@ void pdfium_annotation_free_obj(zend_object *obj);
 bool pdfium_annotation_slots_match(void);
 
 bool pdfium_memory_fits(size_t bytes);
+void pdfium_memory_throw(const char *what);
+bool pdfium_fits_or_throw(size_t bytes, const char *what);
 bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);
 bool pdfium_path_given(size_t len);
 zend_string *pdfium_read_file(const char *path);
@@ -204,7 +207,10 @@ zend_string *pdfium_utf16le_fetch(pdfium_utf16le_getter get, void *source, unsig
 zend_string *pdfium_utf16le_fetch_under_limit(pdfium_utf16le_getter get, void *source, size_t *used, bool *oom);
 size_t pdfium_utf8_encode(uint32_t cp, char *out);
 const char *pdfium_utf8_to_utf16le(const zend_string *s, unsigned short *units, size_t *count);
+unsigned short *pdfium_utf8_to_utf16le_sized(const zend_string *s, size_t count);
 unsigned short *pdfium_utf8_to_utf16le_alloc(const zend_string *s);
 const char *pdfium_pdf_text_fault(const zend_string *s, size_t *units);
+bool pdfium_utf16_arg_units(const zend_string *s, uint32_t arg, size_t *units);
+unsigned short *pdfium_utf16_arg(const zend_string *s, uint32_t arg, const char *what);
 
 #endif

@@ -25,6 +25,26 @@ foreach (['hasKey', 'valueType', 'stringValue', 'numberValue'] as $m) {
         try { $h->$m('Contents'); } catch (Pdfium\PdfiumException $e) { echo $m, ': ', $e->getMessage(), "\n"; }
     }
 }
+$setters = [
+    'setRect' => [new Pdfium\Rect(0, 0, 5, 5)],
+    'setFlags' => [4],
+    'setColor' => [1, 2, 3],
+    'setInteriorColor' => [1, 2, 3],
+    'setBorder' => [0, 0, 1],
+    'addQuadPoints' => [new Pdfium\Quad(1, 2, 3, 4, 5, 6, 7, 8)],
+    'setQuadPoints' => [0, new Pdfium\Quad(1, 2, 3, 4, 5, 6, 7, 8)],
+    'addInkStroke' => [[new Pdfium\Point(1, 2)]],
+    'removeInkStrokes' => [],
+    'setStringValue' => ['Contents', 'Z'],
+    'setAppearance' => ['0 g'],
+    'clearAppearance' => [],
+];
+foreach ($setters as $m => $args) {
+    foreach ([$b, $b2] as $h) {
+        try { $h->$m(...$args); } catch (Pdfium\PdfiumException $e) { echo $m, ': ', $e->getMessage(), "\n"; }
+    }
+}
+var_dump($c->stringValue('Contents'), $page->annotationCount());
 var_dump($page->removeAnnotation(0));
 try { $a->type(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
 var_dump($c->index());
@@ -91,6 +111,32 @@ stringValue: The annotation was removed from its page
 stringValue: The annotation was removed from its page
 numberValue: The annotation was removed from its page
 numberValue: The annotation was removed from its page
+setRect: The annotation was removed from its page
+setRect: The annotation was removed from its page
+setFlags: The annotation was removed from its page
+setFlags: The annotation was removed from its page
+setColor: The annotation was removed from its page
+setColor: The annotation was removed from its page
+setInteriorColor: The annotation was removed from its page
+setInteriorColor: The annotation was removed from its page
+setBorder: The annotation was removed from its page
+setBorder: The annotation was removed from its page
+addQuadPoints: The annotation was removed from its page
+addQuadPoints: The annotation was removed from its page
+setQuadPoints: The annotation was removed from its page
+setQuadPoints: The annotation was removed from its page
+addInkStroke: The annotation was removed from its page
+addInkStroke: The annotation was removed from its page
+removeInkStrokes: The annotation was removed from its page
+removeInkStrokes: The annotation was removed from its page
+setStringValue: The annotation was removed from its page
+setStringValue: The annotation was removed from its page
+setAppearance: The annotation was removed from its page
+setAppearance: The annotation was removed from its page
+clearAppearance: The annotation was removed from its page
+clearAppearance: The annotation was removed from its page
+string(1) "C"
+int(2)
 NULL
 The annotation was removed from its page
 int(0)

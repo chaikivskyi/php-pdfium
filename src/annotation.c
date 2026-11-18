@@ -84,6 +84,34 @@ static void points_init(zval *zv, const FS_POINTF *points, unsigned long count)
 	}
 }
 
+static const char *point_read(const zval *zp, FS_POINTF *out)
+{
+	double coords[2];
+	const char *fault = pdfium_coords_fault(zp, coords, 2);
+
+	if (fault) {
+		return fault;
+	}
+	out->x = pdfium_float_side(coords[POINT_X]);
+	out->y = pdfium_float_side(coords[POINT_Y]);
+	return NULL;
+}
+
+static const char *quad_read(const zval *zq, FS_QUADPOINTSF *out)
+{
+	float *corners[] = {&out->x1, &out->y1, &out->x2, &out->y2, &out->x3, &out->y3, &out->x4, &out->y4};
+	double coords[8];
+	const char *fault = pdfium_coords_fault(zq, coords, 8);
+
+	if (fault) {
+		return fault;
+	}
+	for (int c = 0; c < 8; c++) {
+		*corners[c] = pdfium_float_side(coords[c]);
+	}
+	return NULL;
+}
+
 static zend_object *annotation_new(pdfium_page_handle *ph, FPDF_ANNOTATION annot)
 {
 	zval zv;
@@ -695,6 +723,345 @@ ZEND_METHOD(Pdfium_Annotation, appearance)
 	appearance_source ap = {a->annot, (FPDF_ANNOT_APPEARANCEMODE) mode};
 
 	utf16_return(return_value, appearance_get, &ap, "The appearance needs");
+}
+
+static pdfium_annotation *edit_enter(zval *self, FPDF_ANNOTATION_SUBTYPE *before)
+{
+	pdfium_annotation *a = annotation_enter(Z_OBJ_P(self));
+
+	*before = a ? FPDFAnnot_GetSubtype(a->annot) : FPDF_ANNOT_UNKNOWN;
+	return a;
+}
+
+static bool edit_done(pdfium_annotation *a, FPDF_ANNOTATION_SUBTYPE before, bool done, const char *refusal)
+{
+	if (done && before == FPDF_ANNOT_WIDGET) {
+		a->ph->h->form_changes++;
+	}
+	pdfium_leave();
+	if (!done) {
+		zend_throw_exception_ex(pdfium_ce_exception, 0, refusal, type_name(before));
+	}
+	return done;
+}
+
+ZEND_METHOD(Pdfium_Annotation, setRect)
+{
+	zval *zr;
+	FS_RECTF r;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_OBJECT_OF_CLASS(zr, pdfium_ce_rect)
+	ZEND_PARSE_PARAMETERS_END();
+
+	const char *fault = rect_read(zr, &r);
+
+	if (fault) {
+		zend_argument_value_error(1, "must have %s", fault);
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+
+	if (!a || !edit_done(a, before, FPDFAnnot_SetRect(a->annot, &r), "Cannot set the rectangle of a %s annotation")) {
+		RETURN_THROWS();
+	}
+}
+
+ZEND_METHOD(Pdfium_Annotation, setFlags)
+{
+	zend_long flags;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_LONG(flags)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (flags < 0 || (uint64_t) flags > UINT32_MAX) {
+		zend_argument_value_error(1, "must be between 0 and 4294967295");
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+
+	if (!a || !edit_done(a, before, FPDFAnnot_SetFlags(a->annot, (int) (uint32_t) flags), "Cannot set the flags of a %s annotation")) {
+		RETURN_THROWS();
+	}
+}
+
+static void annotation_set_color(INTERNAL_FUNCTION_PARAMETERS, FPDFANNOT_COLORTYPE type)
+{
+	zend_long rgba[COLOR_SLOTS] = {0, 0, 0, 255};
+
+	ZEND_PARSE_PARAMETERS_START(3, 4)
+		Z_PARAM_LONG(rgba[0])
+		Z_PARAM_LONG(rgba[1])
+		Z_PARAM_LONG(rgba[2])
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG(rgba[3])
+	ZEND_PARSE_PARAMETERS_END();
+
+	for (uint32_t i = 0; i < COLOR_SLOTS; i++) {
+		if (rgba[i] < 0 || rgba[i] > 255) {
+			zend_argument_value_error(i + 1, "must be between 0 and 255");
+			RETURN_THROWS();
+		}
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+
+	if (!a) {
+		RETURN_THROWS();
+	}
+	bool done = FPDFAnnot_SetColor(a->annot, type, (unsigned int) rgba[0], (unsigned int) rgba[1], (unsigned int) rgba[2],
+		(unsigned int) rgba[3]);
+	const char *refusal = !done && FPDFAnnot_HasKey(a->annot, "AP")
+		? "Cannot set the colour: the annotation has an appearance stream; call clearAppearance() first"
+		: "Cannot set the colour of a %s annotation";
+
+	if (!edit_done(a, before, done, refusal)) {
+		RETURN_THROWS();
+	}
+}
+
+ZEND_METHOD(Pdfium_Annotation, setColor)
+{
+	annotation_set_color(INTERNAL_FUNCTION_PARAM_PASSTHRU, FPDFANNOT_COLORTYPE_Color);
+}
+
+ZEND_METHOD(Pdfium_Annotation, setInteriorColor)
+{
+	annotation_set_color(INTERNAL_FUNCTION_PARAM_PASSTHRU, FPDFANNOT_COLORTYPE_InteriorColor);
+}
+
+ZEND_METHOD(Pdfium_Annotation, setBorder)
+{
+	double values[3];
+
+	ZEND_PARSE_PARAMETERS_START(3, 3)
+		Z_PARAM_DOUBLE(values[BORDER_HORIZONTAL_RADIUS])
+		Z_PARAM_DOUBLE(values[BORDER_VERTICAL_RADIUS])
+		Z_PARAM_DOUBLE(values[BORDER_WIDTH])
+	ZEND_PARSE_PARAMETERS_END();
+
+	for (uint32_t i = 0; i < 3; i++) {
+		if (!zend_finite(values[i]) || values[i] < 0) {
+			zend_argument_value_error(i + 1, "must be finite and not negative");
+			RETURN_THROWS();
+		}
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+
+	if (!a || !edit_done(a, before, FPDFAnnot_SetBorder(a->annot, pdfium_float_side(values[BORDER_HORIZONTAL_RADIUS]),
+			pdfium_float_side(values[BORDER_VERTICAL_RADIUS]), pdfium_float_side(values[BORDER_WIDTH])),
+			"Cannot set the border of a %s annotation")) {
+		RETURN_THROWS();
+	}
+}
+
+ZEND_METHOD(Pdfium_Annotation, addQuadPoints)
+{
+	zval *zq;
+	FS_QUADPOINTSF q;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_OBJECT_OF_CLASS(zq, pdfium_ce_quad)
+	ZEND_PARSE_PARAMETERS_END();
+
+	const char *fault = quad_read(zq, &q);
+
+	if (fault) {
+		zend_argument_value_error(1, "must have %s", fault);
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+
+	if (!a || !edit_done(a, before, FPDFAnnot_AppendAttachmentPoints(a->annot, &q), "Cannot add quad points to a %s annotation")) {
+		RETURN_THROWS();
+	}
+}
+
+ZEND_METHOD(Pdfium_Annotation, setQuadPoints)
+{
+	zend_long index;
+	zval *zq;
+	FS_QUADPOINTSF q;
+
+	ZEND_PARSE_PARAMETERS_START(2, 2)
+		Z_PARAM_LONG(index)
+		Z_PARAM_OBJECT_OF_CLASS(zq, pdfium_ce_quad)
+	ZEND_PARSE_PARAMETERS_END();
+
+	const char *fault = quad_read(zq, &q);
+
+	if (fault) {
+		zend_argument_value_error(2, "must have %s", fault);
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+
+	if (!a) {
+		RETURN_THROWS();
+	}
+	bool has = FPDFAnnot_HasAttachmentPoints(a->annot);
+	size_t count = has ? FPDFAnnot_CountAttachmentPoints(a->annot) : 0;
+
+	if (has && (index < 0 || (size_t) index >= count)) {
+		pdfium_leave();
+		pdfium_index_error(1, (int) MIN(count, INT_MAX), "an index of the quad points", "the annotation has none");
+		RETURN_THROWS();
+	}
+	bool done = has && FPDFAnnot_SetAttachmentPoints(a->annot, (size_t) index, &q);
+
+	if (!edit_done(a, before, done, "Cannot set the quad points of a %s annotation")) {
+		RETURN_THROWS();
+	}
+}
+
+ZEND_METHOD(Pdfium_Annotation, addInkStroke)
+{
+	HashTable *ht;
+	zval *zp;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_ARRAY_HT(ht)
+	ZEND_PARSE_PARAMETERS_END();
+
+	uint32_t count = zend_hash_num_elements(ht);
+
+	if (!count) {
+		zend_argument_value_error(1, "must not be empty");
+		RETURN_THROWS();
+	}
+	ZEND_HASH_FOREACH_VAL(ht, zp) {
+		ZVAL_DEREF(zp);
+		if (Z_TYPE_P(zp) != IS_OBJECT || Z_OBJCE_P(zp) != pdfium_ce_point) {
+			zend_argument_type_error(1, "must be a list of Pdfium\\Point");
+			RETURN_THROWS();
+		}
+	} ZEND_HASH_FOREACH_END();
+	if (!pdfium_fits_or_throw((size_t) count * sizeof(FS_POINTF), "The ink strokes need")) {
+		RETURN_THROWS();
+	}
+	FS_POINTF *points = safe_emalloc(count, sizeof(FS_POINTF), 0);
+	size_t n = 0;
+
+	ZEND_HASH_FOREACH_VAL(ht, zp) {
+		ZVAL_DEREF(zp);
+		const char *fault = point_read(zp, &points[n++]);
+
+		if (fault) {
+			efree(points);
+			zend_argument_value_error(1, "must have %s", fault);
+			RETURN_THROWS();
+		}
+	} ZEND_HASH_FOREACH_END();
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+	int index = a ? FPDFAnnot_AddInkStroke(a->annot, points, n) : -1;
+	bool done = a && edit_done(a, before, index >= 0, "Cannot add an ink stroke to a %s annotation");
+
+	efree(points);
+	if (!done) {
+		RETURN_THROWS();
+	}
+	RETURN_LONG(index);
+}
+
+ZEND_METHOD(Pdfium_Annotation, removeInkStrokes)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+
+	if (!a || !edit_done(a, before, FPDFAnnot_RemoveInkList(a->annot), "Cannot remove the ink strokes of a %s annotation")) {
+		RETURN_THROWS();
+	}
+}
+
+ZEND_METHOD(Pdfium_Annotation, setStringValue)
+{
+	zend_string *key, *value;
+
+	ZEND_PARSE_PARAMETERS_START(2, 2)
+		Z_PARAM_STR(key)
+		Z_PARAM_STR(value)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!key_valid(key)) {
+		RETURN_THROWS();
+	}
+	unsigned short *wvalue = pdfium_utf16_arg(value, 2, "The annotation value needs");
+
+	if (!wvalue) {
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+	bool done = false;
+
+	if (a) {
+		bool set = FPDFAnnot_SetStringValue(a->annot, ZSTR_VAL(key), wvalue);
+
+		done = edit_done(a, before, set, "Cannot set the value of a %s annotation");
+	}
+	efree(wvalue);
+	if (!done) {
+		RETURN_THROWS();
+	}
+}
+
+ZEND_METHOD(Pdfium_Annotation, setAppearance)
+{
+	zend_string *stream;
+	zend_long mode = FPDF_ANNOT_APPEARANCEMODE_NORMAL;
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_STR(stream)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG(mode)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!appearance_mode_valid(mode, 2)) {
+		RETURN_THROWS();
+	}
+	unsigned short *wstream = pdfium_utf16_arg(stream, 1, "The appearance needs");
+
+	if (!wstream) {
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+	bool done = a && edit_done(a, before, FPDFAnnot_SetAP(a->annot, (FPDF_ANNOT_APPEARANCEMODE) mode, wstream),
+		"Cannot set the appearance of a %s annotation");
+
+	efree(wstream);
+	if (!done) {
+		RETURN_THROWS();
+	}
+}
+
+ZEND_METHOD(Pdfium_Annotation, clearAppearance)
+{
+	zend_long mode = FPDF_ANNOT_APPEARANCEMODE_NORMAL;
+
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG(mode)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!appearance_mode_valid(mode, 1)) {
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+
+	if (!a || !edit_done(a, before, FPDFAnnot_SetAP(a->annot, (FPDF_ANNOT_APPEARANCEMODE) mode, NULL),
+			"Cannot set the appearance of a %s annotation")) {
+		RETURN_THROWS();
+	}
 }
 
 ZEND_METHOD(Pdfium_Annotation, remove)

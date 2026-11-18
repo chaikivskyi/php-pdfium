@@ -365,6 +365,87 @@ threads get ``BusyException``.
 ``extractPages()`` and ``merge()`` copy pages only, so their results have no signatures.
 
 
+.. _annotations:
+
+Annotations
+-----------
+
+**Changes.**
+   ``addAnnotation()``, ``removeAnnotation()`` and the setters of
+   :php:class:`Annotation <Pdfium\\Annotation>` change the loaded document, never the file or string
+   it came from; ``save()`` or ``toString()`` writes the change out. Two ``Annotation`` objects for
+   the same annotation see each other's changes.
+
+**Types you can add.**
+   PDFium adds Text, Link, FreeText, Square, Circle, Highlight, Underline, Squiggly, StrikeOut,
+   Stamp, Ink, Popup and FileAttachment annotations. Other types, such as Line, Polygon or Widget,
+   can be read and changed but not added. A new annotation has only its type and rectangle: give it
+   what its type needs, such as quad points for a Highlight or strokes for an Ink annotation, and a
+   colour.
+
+**Appearance streams.**
+   What a viewer draws for an annotation is its appearance stream, or appearance: a small piece of
+   PDF content that ``appearance()`` reads. An annotation can have one for each mode: normal,
+   rollover (under the pointer) and down (pressed). A new annotation has none.
+
+   The next ``render()`` of a page with annotations, the default, generates a normal appearance
+   for each annotation of these types that has none: Text, FreeText, Square, Circle, Highlight,
+   Underline, Squiggly, StrikeOut and Ink. It skips one with ``FLAG_HIDDEN``. The appearance is
+   stored in the document, so a later ``save()`` includes it. Without such a render the saved PDF
+   has no appearance for them, and a viewer that relies on it shows nothing. Render the page once
+   before saving when other viewers must show the annotation.
+
+   Other types get none: Stamp, FileAttachment, Link and Popup annotations, and the types PDFium
+   cannot add, such as Line or Polygon. A Stamp draws nothing until ``setAppearance()`` gives it
+   one.
+
+   Once an annotation has a normal appearance stream, whether generated, set with
+   ``setAppearance()`` or written by another tool:
+
+   - ``render()`` draws it as it is and does not generate a new one.
+   - ``color()`` and ``interiorColor()`` return ``null``.
+   - ``setColor()`` and ``setInteriorColor()`` throw ``PdfiumException``, saying to call
+     ``clearAppearance()`` first. The extension never drops an appearance by itself.
+   - ``addInkStroke()`` and ``removeInkStrokes()`` change the strokes, but ``render()`` keeps
+     drawing the old ones.
+   - ``setRect()`` is accepted. ``render()`` draws the appearance in the new rectangle, except a
+     Highlight, Underline, Squiggly or StrikeOut whose appearance PDFium generated, which stays at
+     its quad points.
+   - ``addQuadPoints()`` and ``setQuadPoints()`` change the areas, but ``render()`` keeps drawing
+     the old appearance, also in a saved PDF, until ``clearAppearance()``. It stays in place,
+     except one PDFium generated for a Highlight, Underline, Squiggly or StrikeOut: when the box
+     around the new areas no longer holds it, it is moved and stretched to that box.
+   - ``setBorder()`` removes the appearance streams of every mode, including one another tool
+     wrote, with the same result as ``clearAppearance()`` below.
+
+   An empty normal stream counts too: ``appearance()`` then returns ``null``, but ``hasKey('AP')``
+   is ``true``. Rollover and down streams alone do not count.
+
+   ``clearAppearance()`` removes the appearance stream of one mode; for the normal mode, the
+   rollover and down ones too. The next render generates a new one only for the types listed
+   above. Any other type, such as a Stamp, or a Line or Polygon from another tool, is left without
+   one and draws nothing.
+
+   An appearance stream is read and written as a PDF text string. ``setAppearance()`` stores it one
+   byte per character, in PDFDocEncoding, when every character has a byte there. Otherwise it
+   stores all of it as UTF-16, which draws nothing. ``appearance()`` decodes a stream the same way.
+   Keep streams to ASCII: bytes above 0x7F that another tool wrote, such as UTF-8 text in a string,
+   do not read back as they are stored.
+
+**Removing.**
+   Removing an annotation moves the annotations after it down one index; ``index()`` always gives
+   the current one. Every ``Annotation`` object for the removed annotation throws
+   ``PdfiumException`` from then on, so none can change an annotation that is no longer on its
+   page. Objects for the other annotations stay usable. To remove several by index, remove from the
+   highest down.
+
+**Not covered.**
+   The extension does not reach the page objects inside an annotation, such as the text and images
+   of a Stamp, or the form-field calls for Widget annotations; a Widget is listed with its common
+   properties. PDFium has no calls to remove a key, to write a value other than a string, or to
+   remove one area of the quad points.
+
+
 .. _memory-limit:
 
 Memory limit

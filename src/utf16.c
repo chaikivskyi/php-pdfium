@@ -117,11 +117,8 @@ const char *pdfium_utf8_to_utf16le(const zend_string *s, unsigned short *units, 
 	return nul ? "must not contain any null bytes" : invalid ? "must be valid UTF-8" : NULL;
 }
 
-unsigned short *pdfium_utf8_to_utf16le_alloc(const zend_string *s)
+unsigned short *pdfium_utf8_to_utf16le_sized(const zend_string *s, size_t count)
 {
-	size_t count;
-
-	pdfium_utf8_to_utf16le(s, NULL, &count);
 	unsigned short *units = safe_emalloc(count + 1, sizeof(*units), 0);
 
 	pdfium_utf8_to_utf16le(s, units, &count);
@@ -181,4 +178,33 @@ const char *pdfium_pdf_text_fault(const zend_string *s, size_t *units)
 	}
 	return "must not start with U+00FE U+00FF, U+00FF U+00FE or U+00EF U+00BB U+00BF while all its characters are in"
 		" PDFDocEncoding, as a PDF reader would read that start as a byte order mark";
+}
+
+unsigned short *pdfium_utf8_to_utf16le_alloc(const zend_string *s)
+{
+	size_t count;
+
+	pdfium_utf8_to_utf16le(s, NULL, &count);
+	return pdfium_utf8_to_utf16le_sized(s, count);
+}
+
+bool pdfium_utf16_arg_units(const zend_string *s, uint32_t arg, size_t *units)
+{
+	const char *bad = pdfium_utf8_to_utf16le(s, NULL, units);
+
+	if (bad) {
+		zend_argument_value_error(arg, "%s", bad);
+		return false;
+	}
+	return true;
+}
+
+unsigned short *pdfium_utf16_arg(const zend_string *s, uint32_t arg, const char *what)
+{
+	size_t units;
+
+	if (!pdfium_utf16_arg_units(s, arg, &units) || !pdfium_fits_or_throw((units + 1) * sizeof(unsigned short), what)) {
+		return NULL;
+	}
+	return pdfium_utf8_to_utf16le_sized(s, units);
 }

@@ -8,8 +8,11 @@ All classes are in the ``Pdfium`` namespace. The exact signatures are in ``pdfiu
 Except for :php:class:`Rect`, :php:class:`Quad` and :php:class:`Point`, you cannot create these
 classes with ``new``. Get a :php:class:`Document` from :php:meth:`Document::fromFile` or
 :php:meth:`Document::fromString`, and everything else from the document. You create a
-:php:class:`Rect` to pass to :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach` or
-:php:meth:`Page::render`.
+:php:class:`Rect` to pass to :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach`,
+:php:meth:`Page::render`, :php:meth:`Page::addAnnotation` or :php:meth:`Annotation::setRect`. A
+:php:class:`Quad` goes to :php:meth:`Annotation::addQuadPoints` and
+:php:meth:`Annotation::setQuadPoints`, and a :php:class:`Point` to
+:php:meth:`Annotation::addInkStroke`.
 
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
 :php:class:`Bitmap`, :php:class:`Attachment` and :php:class:`Annotation` cannot be cloned or
@@ -800,6 +803,10 @@ Annotation
    :php:meth:`remove` or :php:meth:`Page::removeAnnotation`, every method throws
    :php:class:`PdfiumException`.
 
+   The setters change the loaded document, in place: :php:meth:`Document::save` or
+   :php:meth:`Document::toString` writes the change out. What :php:meth:`Page::render` draws for an
+   annotation is its appearance stream, which blocks some changes; see :ref:`annotations`.
+
    The bits of :php:meth:`flags`, as the PDF standard defines them:
 
    .. php:const:: FLAG_INVISIBLE
@@ -849,6 +856,20 @@ Annotation
       :throws PdfiumException: The annotation was removed from its page.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: setRect(Rect $rect) -> void
+
+      Moves or resizes the annotation, in place. An appearance stream stays, and
+      :php:meth:`Page::render` draws it in the new rectangle, except for a Highlight, Underline,
+      Squiggly or StrikeOut whose appearance PDFium generated: that one is drawn at its quad points,
+      so change those too, and call :php:meth:`clearAppearance` for the next render to draw them.
+
+      :param Rect $rect: The new rectangle, in points.
+      :throws \\ValueError: A side of ``$rect`` is unset or one its constructor refuses, as in one
+         made without its constructor.
+      :throws PdfiumException: The annotation was removed from its page, or PDFium refuses the
+         rectangle.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. php:method:: flags() -> int
 
       The annotation flags, a combination of the ``FLAG_*`` constants, from 0 to 4294967295.
@@ -857,12 +878,27 @@ Annotation
       :throws PdfiumException: The annotation was removed from its page.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: setFlags(int $flags) -> void
+
+      Replaces the annotation flags.
+
+      .. code-block:: php
+
+         $a->setFlags($a->flags() | Pdfium\Annotation::FLAG_HIDDEN);
+
+      :param int $flags: A combination of the ``FLAG_*`` constants; other bits are written as given.
+      :throws \\ValueError: ``$flags`` is outside 0 to 4294967295.
+      :throws PdfiumException: The annotation was removed from its page, or PDFium refuses the
+         flags.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. php:method:: color() -> ?Color
 
       The colour (``/C``), with the opacity ``/CA`` as alpha, rounded down: 0.5 is 127. A
       component below 0 in the file reads as 0, one above 1 as 255; one far above 1 may read as 0
       instead. Without ``/C``, PDFium gives yellow (255, 255, 0) for a Highlight and black for other
-      types. ``null`` while the annotation has a normal appearance stream, whatever ``/C`` holds.
+      types. ``null`` while the annotation has a normal appearance stream, whatever ``/C`` holds;
+      see :ref:`annotations`.
 
       :rtype: ?Color
       :throws PdfiumException: The annotation was removed from its page.
@@ -878,6 +914,38 @@ Annotation
       :throws PdfiumException: The annotation was removed from its page.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: setColor(int $red, int $green, int $blue, int $alpha = 255) -> void
+
+      Sets the colour (``/C``) and the opacity (``/CA``). PDFium refuses while the annotation has a
+      normal appearance stream, which most types get from a :php:meth:`Page::render` with
+      annotations. Call :php:meth:`clearAppearance` first; the extension never drops one for you.
+      The next render then draws the new colour for the types listed in :ref:`annotations`; any
+      other type is left with no appearance and draws nothing.
+
+      :param int $red: From 0 to 255.
+      :param int $green: From 0 to 255.
+      :param int $blue: From 0 to 255.
+      :param int $alpha: The opacity, from 0 (transparent) to 255 (opaque).
+      :throws \\ValueError: A component is outside 0 to 255.
+      :throws PdfiumException: The annotation was removed from its page, it has a normal
+         appearance stream (the message says to call :php:meth:`clearAppearance` first), or PDFium
+         refuses the colour.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setInteriorColor(int $red, int $green, int $blue, int $alpha = 255) -> void
+
+      Sets the interior colour (``/IC``) and the opacity (``/CA``), as :php:meth:`setColor` does,
+      with the same refusal while the annotation has a normal appearance stream.
+
+      :param int $red: From 0 to 255.
+      :param int $green: From 0 to 255.
+      :param int $blue: From 0 to 255.
+      :param int $alpha: The opacity, from 0 (transparent) to 255 (opaque).
+      :throws \\ValueError: A component is outside 0 to 255.
+      :throws PdfiumException: The annotation was removed from its page, it has a normal
+         appearance stream, or PDFium refuses the colour.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. php:method:: border() -> ?Border
 
       The border (``/Border``); ``null`` when the annotation has none, or one with fewer than three
@@ -885,6 +953,21 @@ Annotation
 
       :rtype: ?Border
       :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setBorder(float $horizontalRadius, float $verticalRadius, float $width) -> void
+
+      Sets the border (``/Border``), in points. This also removes the annotation's appearance
+      streams of every mode, including one another tool wrote. The next :php:meth:`Page::render`
+      generates a new one only for the types listed in :ref:`annotations`; an annotation of
+      another type, such as a Stamp, then draws nothing.
+
+      :param float $horizontalRadius: The horizontal radius of the rounded corners.
+      :param float $verticalRadius: The vertical radius of the rounded corners.
+      :param float $width: The line width.
+      :throws \\ValueError: A value is not finite or is negative.
+      :throws PdfiumException: The annotation was removed from its page, or PDFium refuses the
+         border.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: quadPoints() -> array
@@ -895,6 +978,41 @@ Annotation
       :rtype: Quad[]
       :throws PdfiumException: The annotation was removed from its page.
       :throws MemoryException: The list would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: addQuadPoints(Quad $quad) -> void
+
+      Adds an area to the quad points of a Highlight, Underline, Squiggly, StrikeOut or Link
+      annotation. A new highlight needs one before it shows:
+
+      .. code-block:: php
+
+         $h = $page->addAnnotation('Highlight', new Pdfium\Rect(72, 700, 300, 714));
+         $h->addQuadPoints(new Pdfium\Quad(72, 714, 300, 714, 72, 700, 300, 700));
+
+      While the annotation has an appearance stream, :php:meth:`Page::render` keeps drawing it;
+      the area shows after :php:meth:`clearAppearance`.
+
+      :param Quad $quad: The area, corners in the order upper left, upper right, lower left, lower
+         right.
+      :throws \\ValueError: A corner of ``$quad`` is unset or not finite, as in one made without its
+         constructor.
+      :throws PdfiumException: The annotation was removed from its page, or PDFium refuses: its type
+         has no quad points.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setQuadPoints(int $index, Quad $quad) -> void
+
+      Replaces one area of the quad points. PDFium has no call to remove one. While the annotation
+      has an appearance stream, :php:meth:`Page::render` keeps drawing it; the new area shows
+      after :php:meth:`clearAppearance`. See :ref:`annotations`.
+
+      :param int $index: The area's index in :php:meth:`quadPoints`.
+      :param Quad $quad: The new area.
+      :throws \\ValueError: ``$index`` is out of range, or a corner of ``$quad`` is unset or not
+         finite.
+      :throws PdfiumException: The annotation was removed from its page, or PDFium refuses: its type
+         has no quad points.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: vertices() -> array
@@ -923,6 +1041,37 @@ Annotation
       :rtype: Point[][]
       :throws PdfiumException: The annotation was removed from its page.
       :throws MemoryException: The strokes would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: addInkStroke(array $points) -> int
+
+      Adds a stroke to an Ink annotation and returns its index in :php:meth:`inkStrokes`. While the
+      annotation has an appearance stream, :php:meth:`Page::render` keeps drawing it; the stroke
+      shows after :php:meth:`clearAppearance`.
+
+      .. code-block:: php
+
+         $ink = $page->addAnnotation('Ink', new Pdfium\Rect(100, 650, 300, 700));
+         $ink->addInkStroke([
+             new Pdfium\Point(110, 690), new Pdfium\Point(200, 660), new Pdfium\Point(290, 690),
+         ]);
+
+      :param Point[] $points: The stroke's points, in order.
+      :rtype: int
+      :throws \\ValueError: ``$points`` is empty, or a point has a coordinate unset or not finite.
+      :throws \\TypeError: An element of ``$points`` is not a :php:class:`Point`.
+      :throws PdfiumException: The annotation was removed from its page, or PDFium refuses: it is not
+         an Ink annotation.
+      :throws MemoryException: The points would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: removeInkStrokes() -> void
+
+      Removes every stroke of an Ink annotation. An appearance stream stays, and
+      :php:meth:`Page::render` keeps drawing the old strokes until :php:meth:`clearAppearance`.
+
+      :throws PdfiumException: The annotation was removed from its page, or PDFium refuses: it is not
+         an Ink annotation.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: hasKey(string $key) -> bool
@@ -971,15 +1120,83 @@ Annotation
       :throws PdfiumException: The annotation was removed from its page.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: setStringValue(string $key, string $value) -> void
+
+      Sets the key to a string, replacing any value it had. PDFium has no call to remove a key or to
+      write another type. A key whose value must be a name, such as ``Subtype`` or ``AS``, then
+      holds a string that PDFium and other viewers ignore: ``setStringValue('Subtype', 'Square')``
+      makes :php:meth:`type` return ``"Unknown"``.
+
+      The value is stored as given, so text that a PDF reader decodes differently does not read
+      back as written. A value that starts with ``þÿ`` or ``ÿþ``, which a reader takes for a UTF-16
+      byte order mark, reads back as UTF-16: ``"þÿAB"`` gives ``"䅂"``. One that starts with ``ï»¿``,
+      a UTF-8 byte order mark, loses those three characters, and one with the escape character
+      U+001B is cut there: ``"a\x1bb"`` gives ``"a"``.
+
+      .. code-block:: php
+
+         $note->setStringValue('Contents', 'Check this figure');
+         $note->setStringValue('T', 'Reviewer');
+
+      :param string $key: A PDF key without the slash, as for :php:meth:`hasKey`.
+      :param string $value: The text, as UTF-8.
+      :throws \\ValueError: ``$key`` is empty or contains a null byte, or ``$value`` is not valid
+         UTF-8 or contains a null byte.
+      :throws PdfiumException: The annotation was removed from its page, or PDFium refuses the
+         value.
+      :throws MemoryException: The value would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. php:method:: appearance(int $mode = Annotation::APPEARANCE_NORMAL) -> ?string
 
-      The content of the annotation's appearance stream for one mode; ``null`` when there is none.
+      The annotation's appearance stream for one mode, as UTF-8 text; ``null`` when there is none
+      or it is empty. The stream is decoded as a PDF text string: as UTF-16 when it starts with a
+      UTF-16 byte order mark (FE FF or FF FE), as UTF-8 after a UTF-8 one (EF BB BF), otherwise one
+      character per byte in PDFDocEncoding. ASCII comes back unchanged, other bytes do not: 0xE9
+      reads as ``é``, and ``é`` stored as UTF-8 reads as ``Ã©``.
 
       :param int $mode: One of the ``APPEARANCE_*`` constants.
       :rtype: ?string
       :throws \\ValueError: ``$mode`` is not one of the ``APPEARANCE_*`` constants.
       :throws PdfiumException: The annotation was removed from its page.
       :throws MemoryException: The stream would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setAppearance(string $stream, int $mode = Annotation::APPEARANCE_NORMAL) -> void
+
+      Sets the appearance stream for one mode: PDF content operators that
+      :php:meth:`Page::render` draws instead of what PDFium would generate. This is how a Stamp
+      gets a picture. PDFium gives the stream the annotation's rectangle as its bounding box, so it
+      draws in page coordinates:
+
+      .. code-block:: php
+
+         $stamp = $page->addAnnotation('Stamp', new Pdfium\Rect(100, 650, 300, 700));
+         $stamp->setAppearance('1 0 0 rg 100 650 200 50 re f');   // fills the rectangle red
+
+      The stream is stored one byte per character, in PDFDocEncoding. If any character is not in
+      PDFDocEncoding, all of it is stored as UTF-16 and draws nothing. Keep it to ASCII, and write
+      other bytes in strings as octal escapes or hex strings.
+
+      :param string $stream: The content stream, as UTF-8.
+      :param int $mode: One of the ``APPEARANCE_*`` constants.
+      :throws \\ValueError: ``$stream`` is not valid UTF-8 or contains a null byte, or ``$mode`` is
+         not one of the ``APPEARANCE_*`` constants.
+      :throws PdfiumException: The annotation was removed from its page, or PDFium refuses the
+         appearance: the annotation's rectangle has no width or height.
+      :throws MemoryException: The stream would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: clearAppearance(int $mode = Annotation::APPEARANCE_NORMAL) -> void
+
+      Removes the appearance stream of one mode; for ``APPEARANCE_NORMAL``, of all three. The next
+      :php:meth:`Page::render` with annotations generates a new normal appearance only for the
+      types listed in :ref:`annotations`. An annotation of any other type, such as a Stamp, or a
+      Line or Polygon from another tool, is left with no appearance and draws nothing.
+
+      :param int $mode: One of the ``APPEARANCE_*`` constants.
+      :throws \\ValueError: ``$mode`` is not one of the ``APPEARANCE_*`` constants.
+      :throws PdfiumException: The annotation was removed from its page, or PDFium refuses.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: remove() -> void
@@ -1256,7 +1473,8 @@ Rect
    :ref:`text-positions`. :php:meth:`TextPage::chars`, :php:meth:`TextPage::search`,
    :php:meth:`TextPage::webLinks` and :php:meth:`Annotation::rect` return them, as does
    :php:attr:`Link::rect`, and you create one to pass to :php:meth:`TextPage::textIn`,
-   :php:meth:`TextPage::textInEach`, :php:meth:`Page::render` or :php:meth:`Page::addAnnotation`.
+   :php:meth:`TextPage::textInEach`, :php:meth:`Page::render`, :php:meth:`Page::addAnnotation` or
+   :php:meth:`Annotation::setRect`.
 
    .. php:method:: __construct(float $left, float $bottom, float $right, float $top)
 

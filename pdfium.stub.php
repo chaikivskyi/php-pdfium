@@ -969,12 +969,37 @@ final class Annotation
     public function rect(): ?Rect {}
 
     /**
+     * Moves or resizes the annotation, in place. An appearance stream stays, and render() draws it
+     * in the new rectangle, except for a Highlight, Underline, Squiggly or StrikeOut whose appearance
+     * PDFium generated: that one is drawn at its quad points, so change those too, and call
+     * clearAppearance() for the next render() to draw them.
+     *
+     * @throws \ValueError when a side of $rect is unset or one its constructor refuses, as in one made
+     *         without it
+     * @throws PdfiumException when the annotation was removed from its page, or PDFium refuses the
+     *         rectangle
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setRect(Rect $rect): void {}
+
+    /**
      * The annotation flags, a combination of the FLAG_* constants.
      *
      * @throws PdfiumException when the annotation was removed from its page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function flags(): int {}
+
+    /**
+     * Replaces the annotation flags with $flags, a combination of the FLAG_* constants; other bits
+     * are written as given.
+     *
+     * @throws \ValueError when $flags is outside 0..4294967295
+     * @throws PdfiumException when the annotation was removed from its page, or PDFium refuses the
+     *         flags
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setFlags(int $flags): void {}
 
     /**
      * The colour (/C), with /CA as alpha; without /C, yellow for a Highlight and black for other types.
@@ -995,12 +1020,45 @@ final class Annotation
     public function interiorColor(): ?Color {}
 
     /**
+     * Sets the colour (/C) and the opacity (/CA). Throws while the annotation has a normal appearance
+     * stream, which most types get from a render(). Call clearAppearance() first; render() then
+     * generates a new one for most types, and the rest, such as a Stamp, draw nothing.
+     *
+     * @throws \ValueError when a component is outside 0..255
+     * @throws PdfiumException when the annotation was removed from its page, the annotation has a
+     *         normal appearance stream, or PDFium refuses the colour
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setColor(int $red, int $green, int $blue, int $alpha = 255): void {}
+
+    /**
+     * Sets the interior colour (/IC) and the opacity (/CA), as setColor() does.
+     *
+     * @throws \ValueError when a component is outside 0..255
+     * @throws PdfiumException when the annotation was removed from its page, the annotation has a
+     *         normal appearance stream, or PDFium refuses the colour
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setInteriorColor(int $red, int $green, int $blue, int $alpha = 255): void {}
+
+    /**
      * The border (/Border); null when the annotation has none or it has fewer than three numbers.
      *
      * @throws PdfiumException when the annotation was removed from its page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function border(): ?Border {}
+
+    /**
+     * Sets the border (/Border), in points. Also removes the appearance streams of every mode; render()
+     * generates a new one for most types, and the rest, such as a Stamp, then draw nothing.
+     *
+     * @throws \ValueError when a value is not finite or is negative
+     * @throws PdfiumException when the annotation was removed from its page, or PDFium refuses the
+     *         border
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setBorder(float $horizontalRadius, float $verticalRadius, float $width): void {}
 
     /**
      * The quad points of a Highlight, Underline, Squiggly, StrikeOut or Link annotation: the areas it
@@ -1012,6 +1070,32 @@ final class Annotation
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function quadPoints(): array {}
+
+    /**
+     * Appends an area to the quad points of a Highlight, Underline, Squiggly, StrikeOut or Link
+     * annotation. While the annotation has an appearance stream, render() keeps drawing it; the
+     * area shows after clearAppearance().
+     *
+     * @throws \ValueError when a corner of $quad is unset or not finite, as in one made without its
+     *         constructor
+     * @throws PdfiumException when the annotation was removed from its page, or PDFium refuses: the
+     *         type has no quad points
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function addQuadPoints(Quad $quad): void {}
+
+    /**
+     * Replaces the area at $index in the quad points. PDFium has no call to remove one. While the
+     * annotation has an appearance stream, render() keeps drawing it; the new area shows after
+     * clearAppearance().
+     *
+     * @throws \ValueError when $index is outside 0..count(quadPoints())-1, or a corner of $quad is
+     *         unset or not finite
+     * @throws PdfiumException when the annotation was removed from its page, or PDFium refuses: the
+     *         type has no quad points
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setQuadPoints(int $index, Quad $quad): void {}
 
     /**
      * The vertices (/Vertices) of a Polygon or PolyLine annotation; empty for other types.
@@ -1043,6 +1127,31 @@ final class Annotation
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function inkStrokes(): array {}
+
+    /**
+     * Adds a stroke to an Ink annotation and returns its index in inkStrokes(). While the annotation
+     * has an appearance stream, render() keeps drawing it; the stroke shows after
+     * clearAppearance().
+     *
+     * @param Point[] $points
+     * @throws \ValueError when $points is empty, or a point has a coordinate unset or not finite
+     * @throws \TypeError when an element of $points is not a Point
+     * @throws PdfiumException when the annotation was removed from its page, or PDFium refuses: it is
+     *         not an Ink annotation
+     * @throws MemoryException when the points would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function addInkStroke(array $points): int {}
+
+    /**
+     * Removes every stroke of an Ink annotation. An appearance stream stays, and render() keeps
+     * drawing the old strokes until clearAppearance().
+     *
+     * @throws PdfiumException when the annotation was removed from its page, or PDFium refuses: it is
+     *         not an Ink annotation
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function removeInkStrokes(): void {}
 
     /**
      * Whether the annotation's dictionary has the key, such as "Contents".
@@ -1084,8 +1193,23 @@ final class Annotation
     public function numberValue(string $key): ?float {}
 
     /**
-     * The content of the appearance stream for one of the APPEARANCE_* modes; null when there is
-     * none.
+     * Sets the key, such as "Contents" or "T" (the author), to a string, replacing its value. PDFium
+     * cannot remove a key or write another type: a name key such as "Subtype" then holds a string
+     * PDFium ignores (type() gives "Unknown"). Text starting with þÿ, ÿþ or ï»¿ (read as a byte
+     * order mark) or holding U+001B is stored as given but does not read back as written.
+     *
+     * @throws \ValueError when $key is empty or contains a null byte, or $value is not valid UTF-8
+     *         or contains a null byte
+     * @throws PdfiumException when the annotation was removed from its page, or PDFium refuses the
+     *         value
+     * @throws MemoryException when the value would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setStringValue(string $key, string $value): void {}
+
+    /**
+     * The appearance stream for one of the APPEARANCE_* modes, decoded as a PDF text string to UTF-8;
+     * bytes above 0x7F do not come back as stored. Null when there is none or it is empty.
      *
      * @throws \ValueError when $mode is not one of the APPEARANCE_* constants
      * @throws PdfiumException when the annotation was removed from its page
@@ -1093,6 +1217,31 @@ final class Annotation
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function appearance(int $mode = Annotation::APPEARANCE_NORMAL): ?string {}
+
+    /**
+     * Sets the appearance stream, in page coordinates, for one of the APPEARANCE_* modes; render()
+     * draws it instead of generating one. Keep it to ASCII: one character outside PDFDocEncoding makes
+     * the whole stream stored as UTF-16, which draws nothing.
+     *
+     * @throws \ValueError when $stream is not valid UTF-8 or contains a null byte, or $mode is not
+     *         one of the APPEARANCE_* constants
+     * @throws PdfiumException when the annotation was removed from its page, or PDFium refuses the
+     *         appearance: the annotation's rectangle has no width or height
+     * @throws MemoryException when the stream would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setAppearance(string $stream, int $mode = Annotation::APPEARANCE_NORMAL): void {}
+
+    /**
+     * Removes the appearance stream of one of the APPEARANCE_* modes; for APPEARANCE_NORMAL, of all
+     * three. The next render() generates a new normal appearance for most types; the rest, such as a
+     * Stamp, are left with none and draw nothing.
+     *
+     * @throws \ValueError when $mode is not one of the APPEARANCE_* constants
+     * @throws PdfiumException when the annotation was removed from its page, or PDFium refuses
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function clearAppearance(int $mode = Annotation::APPEARANCE_NORMAL): void {}
 
     /**
      * Removes the annotation from its page, as Page::removeAnnotation() does with its index.

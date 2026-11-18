@@ -1,5 +1,5 @@
 --TEST--
-Page::annotations() and Annotation::quadPoints(), inkStrokes(), vertices() and appearance() throw MemoryException, not a fatal error, when the result would not fit under memory_limit
+Page::annotations() and Annotation::quadPoints(), inkStrokes(), vertices(), appearance(), addInkStroke(), setStringValue() and setAppearance() throw MemoryException, not a fatal error, when the result would not fit under memory_limit
 --EXTENSIONS--
 pdfium
 --INI--
@@ -25,12 +25,18 @@ $many = Pdfium\Document::fromString(nav_pdf(
     pageExtra: ['/Annots [' . str_repeat('6 0 R ', 200000) . ']', '', ''],
 ))->page(0);
 unset($points, $quads);
+$stroke = array_fill(0, 3 << 20, new Pdfium\Point(1, 2));
+$long = str_repeat('x', 12 << 20);
 ini_set('memory_limit', (string) (memory_get_usage(true) + (16 << 20)));
 try { $many->annotations(); } catch (Pdfium\MemoryException $e) { echo $e->getMessage(), "\n"; }
 try { $annots[4]->quadPoints(); } catch (Pdfium\MemoryException $e) { echo $e->getMessage(), "\n"; }
 try { $annots[0]->inkStrokes(); } catch (Pdfium\MemoryException $e) { echo $e->getMessage(), "\n"; }
 try { $annots[1]->vertices(); } catch (Pdfium\MemoryException $e) { echo $e->getMessage(), "\n"; }
 try { $annots[2]->appearance(); } catch (Pdfium\MemoryException $e) { echo $e->getMessage(), "\n"; }
+try { $annots[0]->addInkStroke($stroke); } catch (Pdfium\MemoryException $e) { echo $e->getMessage(), "\n"; }
+try { $annots[3]->setStringValue('Contents', $long); } catch (Pdfium\MemoryException $e) { echo $e->getMessage(), "\n"; }
+try { $annots[3]->setAppearance($long); } catch (Pdfium\MemoryException $e) { echo $e->getMessage(), "\n"; }
+var_dump($annots[3]->stringValue('Contents'), $annots[3]->appearance());
 echo $annots[3]->type(), ' ', $many->annotationCount(), "\n";
 ?>
 --EXPECT--
@@ -39,4 +45,9 @@ The quad points need more memory than memory_limit leaves
 The ink strokes need more memory than memory_limit leaves
 The vertices need more memory than memory_limit leaves
 The appearance needs more memory than memory_limit leaves
+The ink strokes need more memory than memory_limit leaves
+The annotation value needs more memory than memory_limit leaves
+The appearance needs more memory than memory_limit leaves
+NULL
+NULL
 Text 200000
