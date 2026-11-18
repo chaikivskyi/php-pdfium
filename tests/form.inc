@@ -73,3 +73,13 @@ function fields(Pdfium\Page|Pdfium\Document $in): array
     }
     return $out;
 }
+
+function outcome(callable $f, ?callable $show = null): string
+{
+    try {
+        $r = $f();
+        return $show ? $show($r) : 'ok';
+    } catch (Throwable $e) {
+        return get_class($e) . ': ' . $e->getMessage();
+    }
+}

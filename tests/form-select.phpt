@@ -19,12 +19,7 @@ function state(Pdfium\FormField $f): string
 function attempt(Pdfium\Document $doc, Pdfium\FormField $f, int $i, bool $to, string $label): void
 {
     $before = state($f);
-    try {
-        $f->select($i, $to);
-        echo "$label: no exception\n";
-    } catch (Throwable $e) {
-        echo "$label: ", get_class($e), ': ', $e->getMessage(), "\n";
-    }
+    echo "$label: ", outcome(fn() => $f->select($i, $to)), "\n";
     var_dump(state($f) === $before);
     var_dump(strlen($doc->toString()) > 0);
 }

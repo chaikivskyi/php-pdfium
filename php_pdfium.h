@@ -145,6 +145,8 @@ void pdfium_document_free_obj(zend_object *obj);
 void pdfium_page_handle_addref(pdfium_page_handle *ph);
 FPDF_FORMHANDLE pdfium_page_form(pdfium_page_handle *ph);
 void pdfium_page_handle_release(pdfium_page_handle *ph);
+void pdfium_page_swap_handle(pdfium_page *p, FPDF_PAGE fresh);
+bool pdfium_page_enter(zval *self);
 void pdfium_text_page_free_obj(zend_object *obj);
 bool pdfium_text_slots_match(void);
 zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count);

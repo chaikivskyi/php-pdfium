@@ -4,6 +4,7 @@
 
 #include "php_pdfium.h"
 #include <fpdf_annot.h>
+#include <fpdf_flatten.h>
 #include "zend_enum.h"
 #include "zend_exceptions.h"
 
@@ -210,7 +211,7 @@ ZEND_METHOD(Pdfium_Page, formFields)
 	const char *oom = NULL;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
@@ -273,7 +274,7 @@ ZEND_METHOD(Pdfium_Page, formFieldAt)
 		zend_argument_value_error(zend_finite(x) ? 2 : 1, "must be finite");
 		RETURN_THROWS();
 	}
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
@@ -297,9 +298,49 @@ ZEND_METHOD(Pdfium_Page, formFieldAt)
 	RETURN_NULL();
 }
 
-static int field_flags(FPDF_FORMHANDLE form, FPDF_ANNOTATION a)
+ZEND_METHOD(Pdfium_Page, flatten)
 {
-	return FPDFAnnot_GetFormFieldFlags(form, a);
+	bool for_print = false;
+	pdfium_page *p = pdfium_page_from_obj(Z_OBJ_P(ZEND_THIS));
+	FPDF_PAGE fresh = NULL;
+
+	ZEND_PARSE_PARAMETERS_START(0, 1)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(for_print)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!pdfium_page_enter(ZEND_THIS)) {
+		RETURN_THROWS();
+	}
+	pdfium_page_handle *ph = p->ph;
+	FPDF_FORMHANDLE form = FPDF_GetFormType(ph->h->doc) != FORMTYPE_NONE ? pdfium_doc_handle_form(ph->h) : NULL;
+
+	if (form) {
+		page_form_load(ph, form);
+	}
+	if (ph->form_loaded) {
+		FORM_OnBeforeClosePage(ph->page, ph->h->form);
+		ph->form_loaded = false;
+	}
+	int result = FPDFPage_Flatten(ph->page, for_print ? FLAT_PRINT : FLAT_NORMALDISPLAY);
+
+	if (result == FLATTEN_SUCCESS) {
+		fresh = FPDF_LoadPage(ph->h->doc, p->index);
+	}
+	pdfium_leave();
+	if (result == FLATTEN_NOTHINGTODO) {
+		RETURN_FALSE;
+	}
+	if (result != FLATTEN_SUCCESS) {
+		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot flatten page %d", p->index);
+		RETURN_THROWS();
+	}
+	pdfium_page_swap_handle(p, fresh);
+	if (!fresh) {
+		zend_throw_exception_ex(pdfium_ce_format_exception, 0, "Cannot load page %d", p->index);
+		RETURN_THROWS();
+	}
+	RETURN_TRUE;
 }
 
 ZEND_METHOD(Pdfium_FormField, flags)
@@ -314,7 +355,7 @@ ZEND_METHOD(Pdfium_FormField, flags)
 		RETURN_THROWS();
 	}
 	int type = FPDFAnnot_GetFormFieldType(form, a);
-	int bits = field_flags(form, a);
+	int bits = FPDFAnnot_GetFormFieldFlags(form, a);
 
 	field_leave(a);
 	bool values[] = {
@@ -513,7 +554,7 @@ ZEND_METHOD(Pdfium_FormField, setValue)
 	}
 	int type = FPDFAnnot_GetFormFieldType(form, a);
 	bool combo = type == FPDF_FORMFIELD_COMBOBOX;
-	bool takes_text = type == FPDF_FORMFIELD_TEXTFIELD || (combo && (field_flags(form, a) & FPDF_FORMFLAG_CHOICE_EDIT));
+	bool takes_text = type == FPDF_FORMFIELD_TEXTFIELD || (combo && (FPDFAnnot_GetFormFieldFlags(form, a) & FPDF_FORMFLAG_CHOICE_EDIT));
 	bool refused = false;
 
 	if (takes_text) {
@@ -562,7 +603,7 @@ ZEND_METHOD(Pdfium_FormField, setChecked)
 		refused = !fill_begin(f, form, a) || !FORM_OnChar(form, f->ph->page, ' ', 0);
 		fill_end(f, form);
 		unchanged = (bool) FPDFAnnot_IsChecked(form, a) != checked;
-		read_only = field_flags(form, a) & FPDF_FORMFLAG_READONLY;
+		read_only = FPDFAnnot_GetFormFieldFlags(form, a) & FPDF_FORMFLAG_READONLY;
 	}
 	field_leave(a);
 	if (!button) {

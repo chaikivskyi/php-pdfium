@@ -18,12 +18,7 @@ function widgets(Pdfium\Document $doc): array
 function attempt(Pdfium\Document $doc, Pdfium\FormField $f, bool $to, string $label): void
 {
     $before = $f->isChecked();
-    try {
-        $f->setChecked($to);
-        echo "$label: no exception\n";
-    } catch (Throwable $e) {
-        echo "$label: ", get_class($e), ': ', $e->getMessage(), "\n";
-    }
+    echo "$label: ", outcome(fn() => $f->setChecked($to)), "\n";
     var_dump($f->isChecked() === $before);
     $doc->toString();
 }
@@ -75,24 +70,18 @@ foreach (['checkbox' => '', 'radio-unison' => '/Ff 33587200', 'radio' => '/Ff 32
     $d = shared($ff);
     [$a, $b] = widgets($d)['g'];
     echo $label, ":\n";
-    try {
-        $a->setChecked();
-        echo "first ok\n";
-    } catch (Throwable $e) {
-        echo get_class($e), ': ', $e->getMessage(), "\n";
-    }
+    echo 'first ', outcome(fn() => $a->setChecked()), "\n";
     var_dump($a->isChecked(), $b->isChecked(), $a->value());
-    try {
-        $b->setChecked();
-        echo "second ok\n";
-    } catch (Throwable $e) {
-        echo get_class($e), ': ', $e->getMessage(), "\n";
-    }
+    echo 'second ', outcome(fn() => $b->setChecked()), "\n";
     var_dump($a->isChecked(), $b->isChecked(), $a->value());
     $r = Pdfium\Document::fromString($d->toString());
     [$ra, $rb] = widgets($r)['g'];
     var_dump($ra->isChecked(), $rb->isChecked());
 }
+
+[, $b] = widgets($d)['g'];
+echo 'radio uncheck: ', outcome(fn() => $b->setChecked(false)), "\n";
+var_dump($b->isChecked());
 ?>
 --EXPECT--
 bool(true)
@@ -161,4 +150,6 @@ bool(false)
 bool(true)
 string(3) "Yes"
 bool(false)
+bool(true)
+radio uncheck: Pdfium\PdfiumException: PDFium did not change the field
 bool(true)
