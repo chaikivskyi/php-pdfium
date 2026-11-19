@@ -36,10 +36,16 @@ echo chosen($r), ' ', $r->value(), "\n";
 $langs = $f['langs'];
 $langs->select(0);
 $langs->select(2);
-echo chosen($langs), "\n";
+echo chosen($langs), ' ', $langs->value(), "\n";
 $langs->select(0, false);
 echo chosen($langs), ' ', $langs->value(), "\n";
 echo chosen(fields(Pdfium\Document::fromString($doc->toString()))['langs']), "\n";
+$preset = fields(Pdfium\Document::fromString(form_pdf([
+    8 => '<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /FT /Ch /Ff 2097152 /T (multi) /Opt [(php) (c) (go)] /V [(c) (go)] /Rect [100 400 300 480] >>',
+])))['multi'];
+echo chosen($preset), ' ', $preset->value(), "\n";
+$preset->select(0);
+echo chosen($preset), ' ', $preset->value(), "\n";
 
 attempt($doc, $country, 0, false, 'country deselect');
 attempt($doc, $country, 2, false, 'country deselect 2');
@@ -90,9 +96,11 @@ attempt($doc, $f['sig'], 0, true, 'sig');
 1,0,0
 0,0,1 de
 0,0,1 de
-1,0,1
+1,0,1 php
 0,0,1 go
 0,0,1
+0,1,1 c
+1,1,1 php
 country deselect: Pdfium\PdfiumException: PDFium did not change the selection
 bool(true)
 country deselect 2: Pdfium\PdfiumException: PDFium did not change the selection
