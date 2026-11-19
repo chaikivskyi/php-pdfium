@@ -49,15 +49,20 @@ echo "-- another Page for the same index\n";
 $doc = Pdfium\Document::fromString(standard_form());
 $a = $doc->page(0);
 $b = $doc->page(0);
+$c = $doc->page(0);
 $f = field($a, 'name');
 $f->setValue('Jane');
 $atp = $a->textPage();
-$a->render(dpi: 72);
+$aBefore = $a->render(dpi: 72)->toPng();
+$aBare = $a->render(dpi: 72, annotations: false)->toPng();
 var_dump($b->flatten());
 attempt('name', fn() => $f->name());
 attempt('setValue', fn() => $f->setValue('x'));
 var_dump($a->formFields(), $a->links());
-var_dump($a->render(dpi: 72) instanceof Pdfium\Bitmap, $a->render(dpi: 72, annotations: false) instanceof Pdfium\Bitmap);
+var_dump($a->render(dpi: 72)->toPng() === $aBefore, $a->render(dpi: 72, annotations: false)->toPng() === $aBare);
+var_dump($c->render(dpi: 72)->toPng() === $aBefore, $c->render(dpi: 72, annotations: false)->toPng() === $aBare, $c->render(dpi: 72)->toPng() === $aBare);
+$bBare = $b->render(dpi: 72, annotations: false)->toPng();
+var_dump($bBare !== $aBare, $bBare !== $a->render(dpi: 72, annotations: false)->toPng(), $bBare !== $c->render(dpi: 72, annotations: false)->toPng());
 var_dump(str_contains($a->text(), 'Jane'), str_contains($atp->text(), 'Jane'), $a->flatten());
 var_dump(str_contains($doc->page(0)->text(), 'Jane'), str_contains($b->text(), 'Jane'));
 
@@ -128,6 +133,12 @@ array(0) {
 }
 array(0) {
 }
+bool(true)
+bool(true)
+bool(false)
+bool(true)
+bool(true)
+bool(true)
 bool(true)
 bool(true)
 bool(false)

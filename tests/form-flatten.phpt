@@ -23,6 +23,7 @@ $doc = Pdfium\Document::fromString(standard_form());
 $page = $doc->page(0);
 $before = $page->render(dpi: 72, annotations: false)->toPng();
 field($page, 'name')->setValue('Jane');
+var_dump(count($page->links()) > 0);
 var_dump($page->flatten(), $page->flatten());
 var_dump(Pdfium\Document::fromFile(__DIR__ . '/fixtures/a4.pdf')->page(0)->flatten());
 var_dump($page->formFields(), $page->links(), $page->formFieldAt(150, 710), str_contains($page->text(), 'Jane'));
@@ -49,8 +50,14 @@ foreach ([[true, 4, 0, 0], [false, 4, 0, 0], [false, 4, 2, 2], [true, 4, 2, 2], 
     echo json_encode(['print' => $print, 'F' => [$name, $other, $agree], 'result' => $result,
         'old' => str_contains($text, 'old'), 'hid' => str_contains($text, 'hid'), 'mark' => $region(100) !== $region(400)]), "\n";
 }
+
+echo "-- a field left on another page\n";
+$w = '/Type /Annot /Subtype /Widget /F 4 /FT /Tx /Rect [100 700 300 720]';
+$doc = Pdfium\Document::fromString(form_pdf([8 => "<< $w /P 3 0 R /T (a) >>", 9 => "<< $w /P 6 0 R /T (b) >>"], [], [9]));
+var_dump($doc->page(0)->flatten(), $doc->formType(), count($doc->page(1)->formFields()));
 ?>
 --EXPECT--
+bool(true)
 bool(true)
 bool(false)
 bool(false)
@@ -76,3 +83,7 @@ bool(true)
 {"print":true,"F":[4,2,2],"result":true,"old":true,"hid":false,"mark":false}
 {"print":false,"F":[4,1,1],"result":true,"old":true,"hid":false,"mark":false}
 {"print":true,"F":[4,6,6],"result":true,"old":true,"hid":false,"mark":false}
+-- a field left on another page
+bool(true)
+enum(Pdfium\FormType::None)
+int(1)

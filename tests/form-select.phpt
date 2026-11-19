@@ -21,7 +21,7 @@ function attempt(Pdfium\Document $doc, Pdfium\FormField $f, int $i, bool $to, st
     $before = state($f);
     echo "$label: ", outcome(fn() => $f->select($i, $to)), "\n";
     var_dump(state($f) === $before);
-    var_dump(strlen($doc->toString()) > 0);
+    $doc->toString();
 }
 
 $doc = Pdfium\Document::fromString(standard_form());
@@ -59,6 +59,24 @@ $g['c']->select(1);
 echo chosen($g['c']), "\n";
 echo chosen(fields(Pdfium\Document::fromString($ro->toString()))['l']), "\n";
 
+echo "-- a single-selection list box and a repeated combo selection\n";
+$one = Pdfium\Document::fromString(form_pdf([
+    8 => '<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /FT /Ch /T (single) /Opt [(a) (b) (c)] /V (a) /Rect [100 400 300 480] >>',
+]));
+$s = fields($one)['single'];
+echo chosen($s), "\n";
+$s->select(1);
+echo chosen($s), ' ', $s->value(), "\n";
+$s->select(2);
+echo chosen($s), ' ', $s->value(), "\n";
+echo chosen(fields(Pdfium\Document::fromString($one->toString()))['single']), "\n";
+$country->select(2);
+echo chosen($country), ' ', $country->value(), "\n";
+$country->select(1);
+echo chosen($country), ' ', $country->value(), "\n";
+$country->select(1);
+echo chosen($country), ' ', $country->value(), "\n";
+
 foreach ([-1, 3] as $i) {
     attempt($doc, $country, $i, true, "country $i");
 }
@@ -77,33 +95,32 @@ attempt($doc, $f['sig'], 0, true, 'sig');
 0,0,1
 country deselect: Pdfium\PdfiumException: PDFium did not change the selection
 bool(true)
-bool(true)
 country deselect 2: Pdfium\PdfiumException: PDFium did not change the selection
 bool(true)
-bool(true)
 0,0,1 'de'
 0,0,1 'de'
 0,1
 0,1
 0,1
+-- a single-selection list box and a repeated combo selection
+1,0,0
+0,1,0 b
+0,0,1 c
+0,0,1
+0,0,1 de
+0,1,0 PL
+0,1,0 PL
 country -1: ValueError: Pdfium\FormField::select(): Argument #1 ($option) must be between 0 and 2
-bool(true)
 bool(true)
 country 3: ValueError: Pdfium\FormField::select(): Argument #1 ($option) must be between 0 and 2
 bool(true)
-bool(true)
 empty: ValueError: Pdfium\FormField::select(): Argument #1 ($option) must be an option index, but the field has no options
-bool(true)
 bool(true)
 name: Pdfium\PdfiumException: Cannot select an option of a Text field
 bool(true)
-bool(true)
 agree: Pdfium\PdfiumException: Cannot select an option of a Checkbox field
-bool(true)
 bool(true)
 go: Pdfium\PdfiumException: Cannot select an option of a PushButton field
 bool(true)
-bool(true)
 sig: Pdfium\PdfiumException: Cannot select an option of a Signature field
-bool(true)
 bool(true)
