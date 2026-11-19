@@ -34,8 +34,8 @@ it.
 PDFium defaults
 ---------------
 
-The extension follows PDFium and adds no rules of its own, except that ``setLanguage()`` refuses a
-few values PDFium would read back wrongly; see :ref:`accessibility`.
+The extension follows PDFium and adds no rules of its own, except that ``setLanguage()`` and
+``addAttachment()`` refuse a few values PDFium would read back wrongly; see :ref:`accessibility`.
 
 **Permissions are not enforced.**
    ``permissions()`` tells you what the document allows, but nothing stops you. For example, you can
@@ -242,10 +242,14 @@ decode to 20 MB or more.
 PDFium decodes a file in its own memory, which ``memory_limit`` does not count, before
 ``contents()`` can check the size. A small compressed file that expands to gigabytes can exhaust
 the process's memory before ``MemoryException`` is thrown. ``addAttachment()`` also gives PDFium a
-copy of ``$contents`` outside ``memory_limit``.
+copy of ``$contents``, and copies of the name and description several times their size, outside
+``memory_limit``; if PDFium cannot allocate them, it ends the process.
 
 A file added to an encrypted document is encrypted with it on save, unless you pass
 ``removeSecurity: true``.
+
+``addAttachment()`` refuses some names and descriptions with ``ValueError``, by the same rules as
+``setLanguage()``; see :ref:`accessibility`.
 
 A damaged list, one that loops or nests too deeply, is read as far as PDFium can follow it. Entries
 past that point are not counted, and ``addAttachment()`` throws ``PdfiumException`` on a list that
@@ -288,7 +292,8 @@ example). What PDFium reads can differ from what the file stores:
 encrypted, unless you pass ``removeSecurity: true``. An empty string marks the language as unknown,
 and ``language()`` then returns ``null``; the entry cannot be removed.
 
-``setLanguage()`` throws ``ValueError`` for a value PDFium would read back wrongly. Such a value:
+``setLanguage()`` throws ``ValueError`` for a value PDFium would read back wrongly, and
+``addAttachment()`` does the same for names and descriptions. Such a value:
 
 - contains the escape character (U+001B), or
 - starts with ``þÿ``, ``ÿþ`` or ``ï»¿`` (U+00FE U+00FF, U+00FF U+00FE, U+00EF U+00BB U+00BF) and

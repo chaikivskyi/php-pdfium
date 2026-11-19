@@ -169,8 +169,9 @@ final class Document implements \Countable, \IteratorAggregate
      * size, creation date and checksum; the MIME type, relationship and modification date stay empty.
      * The new file can take any index, and every Attachment fetched before is now stale.
      *
-     * @throws \ValueError when $name is empty, or $name or $description is not valid UTF-8 or contains a null
-     *         byte, or $contents is longer than 2147483646 bytes
+     * @throws \ValueError when $name is empty; $name or $description is not valid UTF-8, contains a
+     *         null byte or the escape character, or starts with what a PDF reader would take for a
+     *         byte order mark; or $contents is longer than 2147483646 bytes
      * @throws PdfiumException when PDFium refuses: the name may already be used, or the attachment list is damaged;
      *         or when PDFium cannot store the contents or description (the message says if the entry stays)
      * @throws MemoryException when the name or description would not fit under memory_limit
