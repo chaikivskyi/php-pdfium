@@ -49,6 +49,9 @@ $formOps = [
     'setChecked' => fn () => $fields['agree']->setChecked(),
     'select' => fn () => $fields['country']->select(1),
 ];
+foreach (['setValue', 'setChecked', 'select'] as $name) {
+    $formOps[$name]();
+}
 $formBusy = [];
 $known = $snapshot();
 $flattenBusy = false;
