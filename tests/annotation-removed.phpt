@@ -1,5 +1,5 @@
 --TEST--
-Annotation::remove() and Page::removeAnnotation() take an annotation off its page: every method of each handle for it throws, the annotations after it move down, other handles stay usable
+Annotation::remove() and Page::removeAnnotation() take an annotation off its page: every method of each handle for it throws, the annotations after it move down, other handles stay usable; a saved file keeps the removed annotation's objects only where something else still points to them
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -71,6 +71,26 @@ try { $c->stringValue('Contents'); } catch (Pdfium\PdfiumException $e) { echo $e
 $n->remove();
 try { $page->removeAnnotation(0); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 try { $n->remove(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
+$saved = Pdfium\Document::fromString(nav_pdf(
+    extra: [
+        '<< /Type /Annot /Subtype /FileAttachment /Rect [0 0 10 10] /Contents (REMOVED-CONTENTS) /FS 9 0 R >>',
+        '<< /Type /Annot /Subtype /Text /Rect [0 20 10 30] /Contents (REFERENCED-CONTENTS) >>',
+        '<< /Type /Annot /Subtype /Popup /Rect [20 20 60 60] /Parent 7 0 R >>',
+        file_spec('removed.txt', 10),
+        stream_obj('removed file', '/Mark /REMOVED-FILE '),
+    ],
+    pageExtra: ['/Annots [6 0 R 7 0 R 8 0 R]', '', ''],
+));
+$page = $saved->page(0);
+$page->removeAnnotation(1);
+$page->removeAnnotation(0);
+$new = $page->addAnnotation('Text', new Pdfium\Rect(0, 40, 10, 50));
+$new->setStringValue('Contents', 'NEW-CONTENTS');
+$new->remove();
+$bytes = $saved->toString();
+foreach (['REMOVED-CONTENTS', 'removed.txt', 'REMOVED-FILE', 'REFERENCED-CONTENTS', 'NEW-CONTENTS'] as $marker) {
+    echo $marker, ': ', str_contains($bytes, $marker) ? 'kept' : 'gone', "\n";
+}
 ?>
 --EXPECT--
 NULL
@@ -162,3 +182,8 @@ int(1)
 The annotation was removed from its page
 Pdfium\Page::removeAnnotation(): Argument #1 ($index) must be an annotation index, but the page has no annotations
 The annotation was removed from its page
+REMOVED-CONTENTS: gone
+removed.txt: gone
+REMOVED-FILE: gone
+REFERENCED-CONTENTS: kept
+NEW-CONTENTS: gone

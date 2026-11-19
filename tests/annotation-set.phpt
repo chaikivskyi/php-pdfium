@@ -33,6 +33,11 @@ show($h);
 $s = $page->addAnnotation('Square', new Pdfium\Rect(100, 400, 200, 500));
 $s->setInteriorColor(0, 0, 255);
 echo 'square ', color($s->color()), ' ', color($s->interiorColor()), "\n";
+$c = $page->addAnnotation('Circle', new Pdfium\Rect(300, 400, 400, 500));
+$c->setColor(255, 0, 0, 64);
+echo 'circle ', color($c->color()), ' ', color($c->interiorColor()), "\n";
+$c->setInteriorColor(0, 0, 255);
+echo 'circle ', color($c->color()), ' ', color($c->interiorColor()), "\n";
 $h->setFlags(4294967295);
 echo $h->flags(), "\n";
 $h->setFlags(Pdfium\Annotation::FLAG_PRINT | Pdfium\Annotation::FLAG_LOCKED);
@@ -89,6 +94,8 @@ quad 50 640 250 640 50 600 250 600
 quad 60 590 240 590 60 560 240 560
 Contents naïve — 日本語 (String) T Me
 square 0,0,0,255 0,0,255,255
+circle 255,0,0,64 0,0,0,64
+circle 255,0,0,255 0,0,255,255
 4294967295
 rect 50,600,250,640 flags 132 color 255,128,0,128
 border 1.5,2.5,3

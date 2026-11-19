@@ -37,6 +37,7 @@ var_dump($link->action->type, $link->action->uri, $link->destination);
 var_dump(array_slice($page->links(), -1)[0] == $link);
 $page->annotation(0)->setUri('https://example.com/dest');
 var_dump($page->annotation(0)->link()->action->uri, $page->annotation(0)->link()->destination);
+var_dump($page->annotation(0)->valueType('Dest'), $page->annotation(0)->valueType('A'));
 
 $saved = Pdfium\Document::fromString($doc->toString())->page(0);
 $reread = $saved->annotation($new->index())->link();
@@ -72,6 +73,8 @@ NULL
 bool(true)
 string(24) "https://example.com/dest"
 NULL
+string(5) "Array"
+string(10) "Dictionary"
 string(3) "URI"
 string(25) "https://example.com/a?b=c"
 bool(true)

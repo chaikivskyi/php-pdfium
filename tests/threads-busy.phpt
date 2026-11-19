@@ -8,9 +8,7 @@ pdfium
 <?php
 require __DIR__ . '/threads.inc';
 require __DIR__ . '/pdf.inc';
-$stop = sys_get_temp_dir() . '/pdfium-threads-busy-stop-' . getmypid();
 $target = sys_get_temp_dir() . '/pdfium-threads-busy-' . getmypid() . '.pdf';
-@unlink($stop);
 @unlink($target);
 
 $doc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf');
@@ -22,17 +20,7 @@ $held = $adoc->addAttachment('held', 'h');
 $sdoc = Pdfium\Document::fromString(sig_pdf(sig_field('<< /Contents <01> >>')));
 $adoc->setLanguage('held');
 
-$runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
-$future = $runtime->run(static function (string $fixture, string $stop): int {
-    $page = with_retry(fn () => Pdfium\Document::fromFile($fixture)->page(0));
-    $renders = 0;
-    $end = microtime(true) + 10;
-    while (!file_exists($stop) && microtime(true) < $end) {
-        with_retry(fn () => $page->render(200));
-        $renders++;
-    }
-    return $renders;
-}, [__DIR__ . '/fixtures/a4.pdf', $stop]);
+$renderer = renderer_start();
 
 $busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $sigBusy = $sigCountBusy = $langBusy = $langBusyChangedNothing = $tagBusy = $readBusy = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
@@ -125,9 +113,7 @@ while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy 
     }
 }
 
-touch($stop);
-$renders = $future->value();
-unlink($stop);
+$renders = renderer_stop($renderer);
 var_dump($renders > 0);
 echo 'busy: ', $busyMessage ? 'yes' : 'no', "\n";
 echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no', "\n";

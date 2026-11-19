@@ -96,6 +96,21 @@ $s = $none->attachment();
 $none->setStringValue('FS', 'string.txt');
 try { $s->name(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
 var_dump($none->attachment()->name(), $none->attachment()->contents());
+$x = $byRef->attachment();
+$byRef->setStringValue('Subtype', 'X');
+try { $x->name(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
+var_dump($byRef->type(), $byRef->valueType('Subtype'), $byRef->attachment());
+$replaced = Pdfium\Document::fromString(nav_pdf(
+    extra: ['<< /Type /Annot /Subtype /FileAttachment /Rect [0 0 10 10] /FS 7 0 R >>', file_spec('old.txt', 8), stream_obj('old file', '/Mark /OLD-FILE-BYTES ')],
+    pageExtra: ['/Annots [6 0 R]', '', ''],
+));
+$annotation = $replaced->page(0)->annotation(0);
+$annotation->setAttachment('first.txt', '1');
+$annotation->setAttachment('second.txt', '2');
+$bytes = $replaced->toString();
+foreach (['old.txt', 'OLD-FILE-BYTES', 'first.txt', 'second.txt'] as $marker) {
+    echo $marker, ': ', str_contains($bytes, $marker) ? 'kept' : 'gone', "\n";
+}
 $shared = Pdfium\Document::fromString(nav_pdf(
     '/Names << /EmbeddedFiles << /Names [(shared.txt) 6 0 R] >> >>',
     [file_spec('shared.txt', 7), stream_obj('shared'), '<< /Type /Annot /Subtype /FileAttachment /Rect [0 0 10 10] /FS 6 0 R >>'],
@@ -182,6 +197,14 @@ NULL
 An annotation's file in this document changed since this Attachment was fetched; fetch it again
 string(10) "string.txt"
 NULL
+Cannot read the annotation's file
+string(7) "Unknown"
+string(6) "String"
+NULL
+old.txt: gone
+OLD-FILE-BYTES: gone
+first.txt: kept
+second.txt: kept
 int(1)
 string(10) "shared.txt"
 string(10) "shared.txt"

@@ -77,7 +77,7 @@ $a->setColor(255, 0, 0);
 var_dump(Pdfium\Document::fromString($d->toString())->page(0)->annotation(0)->appearance());
 pixel($p);
 $saved = Pdfium\Document::fromString($d->toString())->page(0)->annotation(0);
-var_dump($saved->appearance() === $a->appearance(), $saved->color());
+var_dump($saved->appearance() !== null, $saved->appearance() === $a->appearance(), $saved->color());
 
 echo "-- modes\n";
 $sq = $p->addAnnotation('Square', $lower);
@@ -237,6 +237,7 @@ drawn
 -- saving
 NULL
 255,0,0
+bool(true)
 bool(true)
 NULL
 -- modes
