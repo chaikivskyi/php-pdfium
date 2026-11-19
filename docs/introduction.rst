@@ -13,6 +13,7 @@ What it does
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
   transparent.
 - List, extract, add and delete embedded files (attachments).
+- List digital signatures and read their details.
 - Split, merge and save documents.
 
 It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
@@ -208,6 +209,19 @@ Embedded files
    $doc->save('/tmp/with-data.pdf');
 
 Adding a file can move the others, so fetch attachments again after it; see :ref:`attachments`.
+
+Signatures
+~~~~~~~~~~
+
+.. code-block:: php
+
+   foreach ($doc->signatures() as $s) {
+       if ($s->contents !== null) {
+           echo $s->subFilter, ' ', $s->time, ' ', $s->reason, "\n";
+       }
+   }
+
+See :ref:`signatures` for which fields are listed.
 
 Free a document
 ~~~~~~~~~~~~~~~

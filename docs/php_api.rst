@@ -233,6 +233,7 @@ Document
 
       Every signature field at the top of the form's field list as a :php:class:`Signature`,
       signed or not, in order and with repeats; empty when there are none.
+      See :ref:`signatures`.
 
       .. code-block:: php
 

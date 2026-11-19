@@ -1,5 +1,5 @@
 --TEST--
-While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
+While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), signatures() and signatureCount() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -7,6 +7,7 @@ pdfium
 --FILE--
 <?php
 require __DIR__ . '/threads.inc';
+require __DIR__ . '/pdf.inc';
 $stop = sys_get_temp_dir() . '/pdfium-threads-busy-stop-' . getmypid();
 $target = sys_get_temp_dir() . '/pdfium-threads-busy-' . getmypid() . '.pdf';
 @unlink($stop);
@@ -18,6 +19,7 @@ $it = $doc->pages();
 $page = $it->current();
 $adoc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $held = $adoc->addAttachment('held', 'h');
+$sdoc = Pdfium\Document::fromString(sig_pdf(sig_field('<< /Contents <01> >>')));
 
 $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
 $future = $runtime->run(static function (string $fixture, string $stop): int {
@@ -31,10 +33,10 @@ $future = $runtime->run(static function (string $fixture, string $stop): int {
     return $renders;
 }, [__DIR__ . '/fixtures/a4.pdf', $stop]);
 
-$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = false;
+$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $sigBusy = $sigCountBusy = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
-while ((!$busyMessage || !$saveBusy || !$addBusy) && microtime(true) < $end) {
+while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy) && microtime(true) < $end) {
     try {
         $it->next();
         unset($page);
@@ -79,6 +81,16 @@ while ((!$busyMessage || !$saveBusy || !$addBusy) && microtime(true) < $end) {
         }
     }
     try {
+        $sdoc->signatures();
+    } catch (Pdfium\BusyException $e) {
+        $sigBusy = true;
+    }
+    try {
+        $sdoc->signatureCount();
+    } catch (Pdfium\BusyException $e) {
+        $sigCountBusy = true;
+    }
+    try {
         $doc->save($target);
         unlink($target);
     } catch (Pdfium\BusyException $e) {
@@ -94,6 +106,8 @@ var_dump($renders > 0);
 echo 'busy: ', $busyMessage ? 'yes' : 'no', "\n";
 echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no', "\n";
 echo 'busy add changed nothing: ', $addBusy && $addBusyChangedNothing ? 'yes' : 'no', "\n";
+echo 'signatures busy, then listed: ', $sigBusy && with_retry(fn () => $sdoc->signatures())[0]->contents === "\x01" ? 'yes' : 'no', "\n";
+echo 'signature count busy, then counted: ', $sigCountBusy && with_retry(fn () => $sdoc->signatureCount()) === 1 ? 'yes' : 'no', "\n";
 echo 'bitmap never busy: ', $bitmapNeverBusy ? 'yes' : 'no', "\n";
 echo 'release never busy: ', $releaseNeverBusy ? 'yes' : 'no', "\n";
 echo 'loaded current never busy: ', $currentNeverBusy ? 'yes' : 'no', "\n";
@@ -104,6 +118,8 @@ bool(true)
 busy: yes
 save busy left no file: yes
 busy add changed nothing: yes
+signatures busy, then listed: yes
+signature count busy, then counted: yes
 bitmap never busy: yes
 release never busy: yes
 loaded current never busy: yes
