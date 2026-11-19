@@ -1,8 +1,9 @@
 # php-pdfium
 
 A native PHP extension for fast PDF work, built on Google's [PDFium](https://pdfium.googlesource.com/pdfium/).
-Open, read, search, render, split and merge PDFs, with text positions; pages load on demand, so long
-documents stay cheap.
+Open, read, search and render PDFs, with text positions; edit their pages; split, merge,
+put several pages on one sheet or start a new document. Pages load on demand, so long documents
+stay cheap.
 
 PHP 8.2 to 8.5, NTS and ZTS, on Linux x86_64 and arm64 and macOS arm64.
 
@@ -67,6 +68,15 @@ Split and merge:
 ```php
 $doc->extractPages([0, 1, 4])->save('/tmp/subset.pdf');
 Document::merge([$docA, $docB])->save('/tmp/all.pdf');
+```
+
+Edit pages, then save; the file you opened is not changed:
+
+```php
+$doc->deletePage(0);
+$doc->movePages([2], 0);
+$doc->page(0)->setRotation(90);
+$doc->save('/tmp/edited.pdf');
 ```
 
 ## Licence

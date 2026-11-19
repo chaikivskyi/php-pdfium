@@ -13,7 +13,8 @@ What it does
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
   transparent.
 - List, extract, add and delete embedded files (attachments).
-- Split, merge and save documents.
+- Edit pages: delete, add, copy in from another document, move, rotate and set their boxes.
+- Split and merge documents, put several pages on one sheet, start an empty document, and save.
 
 It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
 See :doc:`platforms` for the supported systems.
@@ -170,8 +171,8 @@ Render pages
 
 See :ref:`rendering` for the options, sizes and limits.
 
-Split, merge and save
-~~~~~~~~~~~~~~~~~~~~~
+Create, split, merge, put pages on a sheet and save
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: php
 
@@ -180,6 +181,13 @@ Split, merge and save
 
    // All pages of A, then all pages of B:
    Document::merge([$docA, $docB])->save('/tmp/all.pdf');
+
+   // Two pages side by side on each landscape A4 sheet:
+   $doc->nUp(842, 595, 2, 1)->save('/tmp/2-up.pdf');
+
+   // A new document with one blank A4 page:
+   $blank = Document::create();
+   $blank->addPage(595, 842);
 
    // An encrypted source must opt in, because the result cannot be encrypted:
    $doc->extractPages([0], removeSecurity: true);
@@ -190,8 +198,25 @@ Split, merge and save
    // Save an encrypted document without its password:
    $doc->save('/tmp/open.pdf', removeSecurity: true);
 
-The new documents keep only the pages: no encryption, bookmarks, viewer preferences or metadata
-beyond what PDFium writes, and form fields can no longer be filled in. See :ref:`pdfium-defaults`.
+The new documents keep little but the pages; see :ref:`pdfium-defaults`.
+
+Edit pages
+~~~~~~~~~~
+
+.. code-block:: php
+
+   $doc = Document::fromFile('/path/report.pdf');
+   $cover = $doc->page(1);
+
+   $doc->deletePage(0);                     // $cover->index() is now 0
+   $cover->setRotation(90);
+   $appendix = Document::fromFile('/path/appendix.pdf');
+   $doc->insertPages($appendix);            // its pages, after the last page
+
+   $doc->save('/tmp/edited.pdf');           // written out only here; report.pdf is not changed
+
+A ``Page`` you hold follows its page through the edits and throws once its page is deleted; see
+:ref:`page-editing`.
 
 Embedded files
 ~~~~~~~~~~~~~~
