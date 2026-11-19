@@ -31,6 +31,9 @@ Features:
 - ``Document::signatureCount()`` and ``signatures()`` list the document's signature fields as
   ``Signature`` values with the contents, byte range, sub-filter, reason, time and certification
   level.
+- ``Document::isTagged()``: whether the document says it is a tagged PDF.
+- ``Document::language()`` and ``Document::setLanguage()``: read and set the document's language,
+  written out by ``save()`` and ``toString()``.
 
 v0.2.0 (2026-11-15)
 -------------------
