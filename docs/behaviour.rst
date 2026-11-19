@@ -259,6 +259,71 @@ stored as a tree of nested parts of 50 entries each. A flat list stays fast.
 ``extractPages()`` and ``merge()`` copy pages only, so their results have no attachments.
 
 
+.. _signatures:
+
+Signatures
+----------
+
+Nothing is verified. ``signatures()`` returns what the file says about each signature: a listed
+signature can be invalid, forged or made by anyone, and the document may have changed since.
+
+The list holds every signature field at the top of the form's field list, in order:
+
+- Unsigned fields are listed too, with ``null`` properties and an empty ``byteRange``. So
+  ``signatureCount() > 0`` does not mean the document is signed; look for a ``contents`` that is
+  not ``null``.
+- Fields nested under another field are not listed, so a signature stored on one is missed and the
+  document can look unsigned. If the parent is a signature field itself, it is listed as unsigned.
+- A field the form lists twice is returned twice.
+
+To verify a signature yourself:
+
+1. Check what ``byteRange`` covers; a signature says nothing about bytes outside it. A signature
+   over the whole file has exactly two pairs: the first starts at 0, the second ends at the end of
+   the file, and the gap between them holds only the ``/Contents`` string. If the second pair ends
+   earlier, everything after it was added after signing.
+2. Read those bytes from the file or string the document was opened from and join them.
+   ``save()`` and ``toString()`` write a different file, which the offsets do not fit.
+3. Check ``contents`` against them. For the usual sub-filters (``adbe.pkcs7.detached``,
+   ``ETSI.CAdES.detached``) it is a detached CMS signature:
+   ``openssl cms -verify -binary -inform DER -in sig.der -content signed.bin``. OpenSSL also
+   checks the signer's certificate for e-mail use, which most PDF signing certificates fail, so
+   pass the chain you trust with ``-CAfile`` and usually ``-purpose any``. ``-noverify`` skips the
+   certificate and checks only that the bytes match. A document timestamp (sub-filter
+   ``ETSI.RFC3161``) is listed too; its ``contents`` is a timestamp token, not a detached
+   signature.
+
+Treat every value as untrusted input:
+
+- ``byteRange`` numbers are not checked against the file: they can be negative, point past its
+  end or come in any number of pairs. A number that does not fit in 32 bits comes back wrong, a
+  fraction is cut, an entry that is not a number comes back as 0, and an odd last number is
+  dropped.
+- An empty value, or one of the wrong type, reads as missing, including a ``subFilter`` stored as
+  a string instead of a name. The exception is ``contents``: a number or name there comes back as
+  its text, so ``/Contents 5`` gives ``"5"``.
+- ``contents`` keeps the zero bytes signers pad it with.
+- ``subFilter`` and ``time`` are the file's bytes and can hold null bytes or invalid UTF-8, which
+  ``json_encode()`` and databases refuse.
+- ``time`` is the file's claim and is not parsed; a signed time, if any, is inside ``contents``.
+- ``reason`` is converted to UTF-8 and ends at its first null character.
+- ``docMdpPermission`` is 2 when the file names a certification without a level. A fraction is
+  cut to a whole number; a level outside 1 to 3, or one that is not a number, gives ``null``.
+
+In an encrypted document the PDF standard leaves ``/Contents`` unencrypted. PDFium reads it as
+stored only when the signature dictionary has ``/Type /Sig``, or no ``/Type`` and ``/FT /Sig``. In
+any other dictionary, document timestamps (``/Type /DocTimeStamp``) included, it decrypts
+``contents`` like every other string, which garbles a correctly written one.
+
+``signatures()`` gets slower with the square of the number of fields: about 3 seconds for 5,000
+and a minute for 20,000, which a small crafted file can hold by listing one field many times.
+``signatureCount()`` stays fast, so check it first on PDFs you do not trust.
+``max_execution_time`` stops ``signatures()`` between two fields; until then, on ZTS PHP, other
+threads get ``BusyException``.
+
+``extractPages()`` and ``merge()`` copy pages only, so their results have no signatures.
+
+
 .. _memory-limit:
 
 Memory limit
@@ -288,6 +353,8 @@ Rough memory needed:
 - ``Attachment::name()`` and ``metadata()``: about 5 bytes per character.
 - ``Attachment::contents()``: the size of the file. See :ref:`attachments` for PDFium's own copy.
 - ``addAttachment()``: 2 bytes per character of the name and description.
+- ``signatures()``: about 250 bytes per signature field and per byte-range pair, plus the size of
+  each contents, time and sub-filter, and about 5 bytes per character of each reason.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 
 With ``memory_limit = -1`` there are no checks.

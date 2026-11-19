@@ -28,6 +28,9 @@ Features:
   MIME type, relationship, dates and checksum.
 - ``Document::addAttachment()`` and ``deleteAttachment()``: embed a file in the document or remove
   one, written out by ``save()`` and ``toString()``.
+- ``Document::signatureCount()`` and ``signatures()`` list the document's signature fields as
+  ``Signature`` values with the contents, byte range, sub-filter, reason, time and certification
+  level. Nothing is verified.
 
 v0.2.0 (2026-11-15)
 -------------------

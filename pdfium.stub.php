@@ -159,6 +159,23 @@ final class Document implements \Countable, \IteratorAggregate
     public function deleteAttachment(int $index): void {}
 
     /**
+     * How many signature fields are at the top of the form's field list, signed or not.
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function signatureCount(): int {}
+
+    /**
+     * Every signature field at the top of the form's field list, signed or not, in order and with
+     * repeats; empty when there are none. Nothing is verified.
+     *
+     * @return Signature[]
+     * @throws MemoryException when the list would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function signatures(): array {}
+
+    /**
      * @throws \ValueError when $index is outside 0..pageCount()-1
      * @throws FormatException when PDFium cannot load the page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -276,6 +293,50 @@ final readonly class AttachmentMetadata
      * as a hex string. It is not checked against contents().
      */
     public ?string $checksum;
+
+    private function __construct() {}
+}
+
+/**
+ * What a signature field says about its signature. Nothing is verified: a Signature does not
+ * mean the signature is valid or the document unchanged. A value that is missing or empty comes
+ * back as null (byteRange as an empty array), so an unsigned field is all nulls. The signer's
+ * name, location and contact details and the signature handler (/Filter) are not available.
+ */
+final readonly class Signature
+{
+    /**
+     * The signature's bytes as stored, usually a DER-encoded PKCS#7 or PKCS#1 object, with any
+     * padding the signer left; null when missing or empty.
+     */
+    public ?string $contents;
+    /**
+     * The signed parts of the file as [offset, length] pairs, counted in the file as it was
+     * opened, not in save() or toString() output. Unchecked; a number that does not fit in 32 bits
+     * comes back wrong.
+     *
+     * @var list<array{int, int}>
+     */
+    public array $byteRange;
+    /**
+     * The signature's format, such as "adbe.pkcs7.detached" or "ETSI.CAdES.detached"; raw bytes,
+     * not necessarily valid UTF-8.
+     */
+    public ?string $subFilter;
+    /**
+     * The signer's stated reason, as UTF-8.
+     */
+    public ?string $reason;
+    /**
+     * The signing time the file claims, such as "D:20261118120000+02'00'"; raw bytes, not
+     * necessarily valid UTF-8.
+     */
+    public ?string $time;
+    /**
+     * The certification level the signature claims: 1 no changes, 2 form filling and signing,
+     * 3 also annotations; null for an ordinary signature.
+     */
+    public ?int $docMdpPermission;
 
     private function __construct() {}
 }

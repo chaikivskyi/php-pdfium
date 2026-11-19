@@ -15,8 +15,8 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 (:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`,
 :php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`,
 :php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`, :php:class:`Destination`,
-:php:class:`Action` and :php:class:`AttachmentMetadata`) are read-only and can be cloned and
-serialized.
+:php:class:`Action`, :php:class:`AttachmentMetadata` and :php:class:`Signature`) are read-only and
+can be cloned and serialized.
 
 
 Document
@@ -220,6 +220,33 @@ Document
       :throws PdfiumException: PDFium cannot delete the entry.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. rubric:: Signatures
+
+   .. php:method:: signatureCount() -> int
+
+      How many signature fields are at the top of the form's field list, signed or not.
+
+      :rtype: int
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: signatures() -> array
+
+      Every signature field at the top of the form's field list as a :php:class:`Signature`,
+      signed or not, in order and with repeats; empty when there are none. Nothing is verified.
+      See :ref:`signatures`.
+
+      .. code-block:: php
+
+         foreach ($doc->signatures() as $s) {
+             if ($s->contents !== null) {
+                 echo $s->subFilter, ' ', $s->time, ' ', $s->reason, "\n";
+             }
+         }
+
+      :rtype: Signature[]
+      :throws MemoryException: The list would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. rubric:: Pages
 
    .. php:method:: page(int $index) -> Page
@@ -388,6 +415,48 @@ AttachmentMetadata
       ``?string``: the MD5 the PDF stores for the file, as 32 lowercase hex digits. It is not checked
       against :php:meth:`Attachment::contents`. ``null`` when missing or not stored as a hex
       string.
+
+
+Signature
+---------
+
+.. php:class:: Signature
+
+   What a signature field says about its signature, returned by :php:meth:`Document::signatures`:
+   a final, read-only value. Nothing is verified: a ``Signature`` does not mean the signature is
+   valid or the document unchanged. A value that is missing or empty comes back as ``null``
+   (``byteRange`` as an empty array), so an unsigned field is all nulls. The signer's name,
+   location and contact details and the signature handler (``/Filter``) are not available.
+
+   .. php:attr:: contents
+
+      ``?string``: the signature's bytes as stored, usually a DER-encoded PKCS#7 or PKCS#1 object,
+      with any padding the signer left. ``null`` when missing or empty.
+
+   .. php:attr:: byteRange
+
+      ``array``: the signed parts of the file as ``[offset, length]`` pairs, counted in the file as
+      it was opened, not in :php:meth:`Document::save` or :php:meth:`Document::toString` output.
+      Unchecked; a number that does not fit in 32 bits comes back wrong.
+
+   .. php:attr:: subFilter
+
+      ``?string``: the signature's format, such as ``adbe.pkcs7.detached`` or
+      ``ETSI.CAdES.detached``; raw bytes, not necessarily valid UTF-8.
+
+   .. php:attr:: reason
+
+      ``?string``: the signer's stated reason, as UTF-8.
+
+   .. php:attr:: time
+
+      ``?string``: the signing time the file claims, such as ``D:20261118120000+02'00'``; raw
+      bytes, not necessarily valid UTF-8.
+
+   .. php:attr:: docMdpPermission
+
+      ``?int``: the certification level the signature claims: 1 no changes, 2 form filling and
+      signing, 3 also annotations. ``null`` for an ordinary signature.
 
 
 Permissions
