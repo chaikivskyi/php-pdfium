@@ -873,11 +873,11 @@ final class Page
 
     /**
      * Turns every annotation of the page, form fields and links included, into page content, in
-     * place; this cannot be undone. $forPrint keeps the annotations marked for printing; otherwise
-     * those hidden on screen are dropped. Returns false when there was nothing to flatten.
-     * Afterwards this Page shows the flattened page; a TextPage made earlier keeps the text from
-     * before, a FormField made earlier throws, and another Page object for the same page must be
-     * fetched again.
+     * place; this cannot be undone. $forPrint keeps only the annotations marked for printing and
+     * not hidden; otherwise those hidden on screen are dropped. Returns false when there was nothing
+     * to flatten. Afterwards this Page shows the flattened page; a TextPage made earlier keeps the
+     * text from before, a FormField made earlier throws, and another Page object for the same page
+     * must be fetched again.
      *
      * @throws PdfiumException when PDFium cannot flatten the page
      * @throws FormatException when PDFium cannot load the flattened page again

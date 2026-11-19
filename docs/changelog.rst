@@ -6,19 +6,15 @@ Unreleased
 
 Features:
 
-- ``Page::formFields()`` lists a page's form fields as ``FormField`` objects, which read the name,
-  tooltip, type, value, export value, checked state, rectangle and place in a group;
-  ``Document::formType()`` tells AcroForm, XFA and no form apart. The enums ``FormType`` and
-  ``FormFieldType`` are the extension's first.
-- ``FormField::options()`` and ``flags()`` give a combo or list box's options and a field's flags
-  as ``FormFieldOption`` and ``FormFieldFlags``; ``Page::formFieldAt()`` finds the field under a
-  point.
-- ``FormField::setValue()`` fills in a text field or an editable combo box, in place, and redraws
-  the field's widgets on every page.
-- ``FormField::setChecked()`` checks or unchecks a checkbox or radio button, and
-  ``FormField::select()`` selects or deselects an option of a combo box or list box, in place.
-- ``Page::flatten()`` turns a page's annotations and form fields into page content, for the screen
+- ``Document::formType()``: whether the document has an AcroForm, an XFA form or none.
+- ``Page::formFields()`` and ``Page::formFieldAt()``: the page's form fields as ``FormField``
+  objects, with their name, tooltip, type, value, checked state, rectangle, options and flags.
+- ``FormField::setValue()``, ``setChecked()`` and ``select()``: fill in text fields, checkboxes,
+  radio buttons, combo boxes and list boxes, in place, also in encrypted documents.
+- ``Page::flatten()``: turn a page's annotations and form fields into page content, for the screen
   or for printing, in place.
+- Value classes ``FormFieldOption`` and ``FormFieldFlags``, and the enums ``FormType`` and
+  ``FormFieldType``.
 
 v0.3.0 (2026-11-21)
 -------------------
