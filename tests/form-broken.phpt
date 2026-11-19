@@ -4,7 +4,7 @@ Broken forms (loops and 60 levels in the /Parent chain, no /FT, no /AcroForm or 
 pdfium
 --FILE--
 <?php
-require __DIR__ . '/pdf.inc';
+require __DIR__ . '/form.inc';
 
 function show(mixed $v): string
 {
@@ -17,36 +17,30 @@ function show(mixed $v): string
     };
 }
 
-function try_call(callable $f): string
-{
-    try {
-        return show($f());
-    } catch (Throwable $e) {
-        return get_class($e) . ': ' . $e->getMessage();
-    }
-}
-
-function exercise(string $name, string $pdf): void
+function exercise(string $name, string $pdf, ?string $fill = null): void
 {
     echo "$name\n";
     $doc = Pdfium\Document::fromString($pdf);
-    echo '  formType: ', try_call(fn() => $doc->formType()), "\n";
+    echo '  formType: ', outcome(fn() => $doc->formType(), 'show'), "\n";
     $page = $doc->page(0);
     $fields = $page->formFields();
     echo '  fields: ', count($fields), "\n";
-    echo '  formFieldAt: ', try_call(fn() => $page->formFieldAt(200, 710)?->name()), "\n";
+    echo '  formFieldAt: ', outcome(fn() => $page->formFieldAt(200, 710)?->name(), 'show'), "\n";
     foreach ($fields as $i => $f) {
         echo "  [$i]\n";
         foreach (['name', 'alternateName', 'type', 'value', 'exportValue', 'isChecked', 'options', 'flags', 'rect', 'controlIndex', 'controlCount'] as $m) {
-            echo "    $m: ", try_call(fn() => $f->$m()), "\n";
+            echo "    $m: ", outcome(fn() => $f->$m(), 'show'), "\n";
         }
-        echo '    setValue: ', try_call(fn() => $f->setValue('x') ?? 'ok'), "\n";
-        echo '    setChecked: ', try_call(fn() => $f->setChecked() ?? 'ok'), "\n";
-        echo '    select: ', try_call(fn() => $f->select(0) ?? 'ok'), "\n";
+        echo '    setValue: ', outcome(fn() => $f->setValue($fill ?? 'x') ?? 'ok', 'show'), "\n";
+        if ($fill !== null) {
+            echo '    value after: ', outcome(fn() => $f->value(), 'show'), "\n";
+        }
+        echo '    setChecked: ', outcome(fn() => $f->setChecked() ?? 'ok', 'show'), "\n";
+        echo '    select: ', outcome(fn() => $f->select(0) ?? 'ok', 'show'), "\n";
     }
-    echo '  flatten: ', try_call(fn() => $page->flatten()), "\n";
-    echo '  after: ', try_call(fn() => count($page->formFields())), "\n";
-    echo '  saved: ', try_call(fn() => count(Pdfium\Document::fromString($doc->toString())->page(0)->formFields())), "\n";
+    echo '  flatten: ', outcome(fn() => $page->flatten(), 'show'), "\n";
+    echo '  after: ', outcome(fn() => count($page->formFields()), 'show'), "\n";
+    echo '  saved: ', outcome(fn() => count(Pdfium\Document::fromString($doc->toString())->page(0)->formFields()), 'show'), "\n";
 }
 
 $w = '/Type /Annot /Subtype /Widget /P 3 0 R /F 4';
@@ -80,11 +74,11 @@ $choice = fn(string $ff, string $opt) => "<< $w /FT /Ch /Ff $ff /T (c) /Opt $opt
 exercise('/Opt with a number', form_pdf([8 => $choice('131072', '[5 (ok) 7]')]));
 exercise('/Opt nested wrongly', form_pdf([8 => $choice('2097152', '[[(a)] [(a) (b) (c)] [] (ok)]')]));
 exercise('/Opt not an array', form_pdf([8 => $choice('131072', '(x)')]));
-exercise('/MaxLen 0', form_pdf([8 => $text('/MaxLen 0 /V (abc)')]));
-exercise('/MaxLen -1', form_pdf([8 => $text('/MaxLen -1 /V (abc)')]));
+exercise('/MaxLen 0', form_pdf([8 => $text('/MaxLen 0 /V (abc)')]), 'abcdefgh');
+exercise('/MaxLen -1', form_pdf([8 => $text('/MaxLen -1 /V (abc)')]), 'abcdefgh');
 exercise('/Rect of three numbers', form_pdf([8 => "<< $w /FT /Tx /T (a) /Rect [100 700 300] >>"]));
-exercise('comb', form_pdf([8 => $text('/Ff 16777216 /MaxLen 4 /V (ab)')]));
-exercise('password', form_pdf([8 => $text('/Ff 8192 /V (secret)')]));
+exercise('comb', form_pdf([8 => $text('/Ff 16777216 /MaxLen 4 /V (ab)')]), 'abcdefgh');
+exercise('password', form_pdf([8 => $text('/Ff 8192 /V (secret)')]), 'abcdefgh');
 exercise('rich text', form_pdf([8 => $text('/Ff 33554432 /V (plain) /RV (<body><p>rich</p></body>)')]));
 ?>
 --EXPECT--
@@ -340,6 +334,7 @@ odd /Annots
     controlIndex: 0
     controlCount: 1
     setValue: "ok"
+    value after: "abcdefgh"
     setChecked: Pdfium\PdfiumException: Cannot check or uncheck a Text field
     select: Pdfium\PdfiumException: Cannot select an option of a Text field
   flatten: true
@@ -362,6 +357,7 @@ odd /Annots
     controlIndex: 0
     controlCount: 1
     setValue: "ok"
+    value after: "abcdefgh"
     setChecked: Pdfium\PdfiumException: Cannot check or uncheck a Text field
     select: Pdfium\PdfiumException: Cannot select an option of a Text field
   flatten: true
@@ -406,6 +402,7 @@ comb
     controlIndex: 0
     controlCount: 1
     setValue: "ok"
+    value after: "abcd"
     setChecked: Pdfium\PdfiumException: Cannot check or uncheck a Text field
     select: Pdfium\PdfiumException: Cannot select an option of a Text field
   flatten: true
@@ -428,6 +425,7 @@ password
     controlIndex: 0
     controlCount: 1
     setValue: "ok"
+    value after: "abcdefgh"
     setChecked: Pdfium\PdfiumException: Cannot check or uncheck a Text field
     select: Pdfium\PdfiumException: Cannot select an option of a Text field
   flatten: true
