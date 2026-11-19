@@ -27,7 +27,7 @@ $formPage = $formDoc->page(0);
 $fields = fields($formPage);
 $fieldCount = count($formPage->formFields());
 $pool = [];
-for ($i = 0; $i < 1000; $i++) {
+for ($i = 0; $i < 60; $i++) {
     $pool[] = Pdfium\Document::fromString(standard_form())->page(0);
 }
 $snapshot = fn () => with_retry(fn () => [
@@ -52,6 +52,7 @@ $formOps = [
 $formBusy = [];
 $known = $snapshot();
 $flattenBusy = false;
+$used = [];
 $formUnchanged = $flattenUnchanged = true;
 
 $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
@@ -162,8 +163,8 @@ while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy 
             $formUnchanged = $formUnchanged && $snapshot() === $known;
         }
     }
-    for ($k = 0; $k < 5 && !$flattenBusy; $k++) {
-        $flat = array_pop($pool) ?? with_retry(fn () => Pdfium\Document::fromString(standard_form())->page(0));
+    if (!$flattenBusy && $pool) {
+        $flat = $used[] = array_pop($pool);
         try {
             $flat->flatten();
         } catch (Pdfium\BusyException $e) {
