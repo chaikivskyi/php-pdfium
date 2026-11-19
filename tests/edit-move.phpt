@@ -1,5 +1,5 @@
 --TEST--
-Document::movePages() reorders pages; held pages follow; bad arguments are refused with the order unchanged
+Document::movePages() reorders pages; held pages follow; bad arguments are refused with the order unchanged; its memory check counts the index buffer once
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -37,6 +37,12 @@ $many = array_fill(0, 600000, 0);
 ini_set('memory_limit', (string) (memory_get_usage(true) + (4 << 20)));
 try { $doc->movePages($many, 0); } catch (Pdfium\MemoryException $e) { echo $e->getMessage(), "\n"; }
 echo order($doc), "\n";
+unset($many);
+ini_set('memory_limit', '512M');
+$liar = Pdfium\Document::fromString(liar_pdf(1048574));
+$many = range(0, 999999);
+ini_set('memory_limit', (string) (memory_get_usage(true) + 12000000 + (8 << 20)));
+try { $liar->movePages($many, 48575); } catch (Throwable $e) { echo get_class($e), ': ', $e->getMessage(), "\n"; }
 ?>
 --EXPECT--
 ADCB 0321
@@ -66,3 +72,4 @@ DAC 120
 The page was deleted from its document
 The page indexes need more memory than memory_limit leaves
 ABCD
+ValueError: Pdfium\Document::movePages(): Argument #2 ($to) must be between 0 and 48574

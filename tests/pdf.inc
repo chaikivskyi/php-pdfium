@@ -169,6 +169,21 @@ function order(Pdfium\Document $doc): string
     return $s;
 }
 
+function twice_pdf(): string
+{
+    return tree_pdf(3, '4 0 R 6 0 R 4 0 R', 3);
+}
+
+function loop_pdf(): string
+{
+    return tree_pdf(3, '4 0 R 10 0 R', 5, ['<< /Type /Pages /Parent 2 0 R /Kids [6 0 R 2 0 R 8 0 R] /Count 3 >>']);
+}
+
+function liar_pdf(int $count): string
+{
+    return tree_pdf(3, '4 0 R 6 0 R 8 0 R', $count);
+}
+
 function boxes_pdf(): string
 {
     return build_pdf([

@@ -1,5 +1,5 @@
 --TEST--
-Document::addPage() inserts a blank page; held pages follow and the sizes and index are validated
+Document::addPage() inserts a blank page; held pages follow and the sizes and index are validated; on a page tree whose /Count is larger than its pages, the new page loads at the index it reports
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -19,6 +19,14 @@ foreach ([[0, 10, null], [10, -1, null], [INF, 10, null], [10, NAN, null], [1e-5
 var_dump($doc->pageCount());
 $big = $doc->addPage(1e300, 1e300);
 var_dump($big->width(), $big->height(), $big->width() === $doc->addPage(PHP_FLOAT_MAX, 1)->width());
+foreach ([[50, null], [2, null], [50, 10], [50, 1]] as [$count, $at]) {
+    $liar = Pdfium\Document::fromString(liar_pdf($count));
+    $b = $liar->page(1);
+    $new = $liar->addPage(10, 20, $at);
+    echo "liar $count at ", $at ?? 'end', ': ', $liar->pageCount(), ' pages, index ', $new->index(), ', loads ',
+        $liar->page($new->index())->width(), 'x', $liar->page($new->index())->height(), ', B at ', $b->index(), ' ',
+        trim($liar->page($b->index())->text()), "\n";
+}
 ?>
 --EXPECT--
 int(1)
@@ -45,3 +53,7 @@ int(6)
 float(3.4028235E+38)
 float(3.4028235E+38)
 bool(true)
+liar 50 at end: 51 pages, index 50, loads 10x20, B at 1 B
+liar 2 at end: 3 pages, index 2, loads 10x20, B at 1 B
+liar 50 at 10: 51 pages, index 10, loads 10x20, B at 1 B
+liar 50 at 1: 51 pages, index 1, loads 10x20, B at 2 B

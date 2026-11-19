@@ -1,5 +1,5 @@
 --TEST--
-While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
+While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment() and the page edits included; Bitmap methods, an iterator's already loaded page and releasing objects never do
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -18,6 +18,16 @@ $it = $doc->pages();
 $page = $it->current();
 $adoc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $held = $adoc->addAttachment('held', 'h');
+$efixture = __DIR__ . '/fixtures/text-3pages.pdf';
+$edoc = Pdfium\Document::fromFile($efixture);
+$epage = $edoc->page(2);
+$eorder = static fn (Pdfium\Document $doc): string => with_retry(fn () => implode('|', array_map(
+    fn (int $i) => trim($doc->page($i)->text()), range(0, $doc->pageCount() - 1))));
+$order = $eorder($edoc);
+$ecrop = $epage->cropBox();
+$editBusy = ['deletePage' => false, 'movePages' => false, 'addPage' => false, 'insertPages' => false, 'nUp' => false,
+    'create' => false, 'setRotation' => false, 'setCropBox' => false, 'cropBox' => false];
+$editBusyChangedNothing = true;
 
 $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
 $future = $runtime->run(static function (string $fixture, string $stop): int {
@@ -34,7 +44,7 @@ $future = $runtime->run(static function (string $fixture, string $stop): int {
 $busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
-while ((!$busyMessage || !$saveBusy || !$addBusy) && microtime(true) < $end) {
+while ((!$busyMessage || !$saveBusy || !$addBusy || in_array(false, $editBusy, true)) && microtime(true) < $end) {
     try {
         $it->next();
         unset($page);
@@ -78,6 +88,31 @@ while ((!$busyMessage || !$saveBusy || !$addBusy) && microtime(true) < $end) {
                 && with_retry(fn () => $held->name()) === 'held';
         }
     }
+    foreach ($editBusy as $edit => $seen) {
+        if ($seen) {
+            continue;
+        }
+        try {
+            match ($edit) {
+                'deletePage' => $edoc->deletePage(0),
+                'movePages' => $edoc->movePages([0], 1),
+                'addPage' => $edoc->addPage(1, 1),
+                'insertPages' => $edoc->insertPages($edoc, [0]),
+                'nUp' => $edoc->nUp(100, 100, 1, 1),
+                'create' => Pdfium\Document::create(),
+                'setRotation' => $epage->setRotation(90),
+                'setCropBox' => $epage->setCropBox(new Pdfium\Rect(0, 0, 10, 10)),
+                'cropBox' => $epage->cropBox(),
+            };
+            $edoc = with_retry(fn () => Pdfium\Document::fromFile($efixture));
+            $epage = with_retry(fn () => $edoc->page(2));
+        } catch (Pdfium\BusyException $e) {
+            $editBusy[$edit] = true;
+            $editBusyChangedNothing = $editBusyChangedNothing && with_retry(fn () => $edoc->pageCount()) === 3
+                && $eorder($edoc) === $order && $epage->index() === 2 && with_retry(fn () => $epage->rotation()) === 0
+                && with_retry(fn () => $epage->cropBox()) == $ecrop;
+        }
+    }
     try {
         $doc->save($target);
         unlink($target);
@@ -94,6 +129,7 @@ var_dump($renders > 0);
 echo 'busy: ', $busyMessage ? 'yes' : 'no', "\n";
 echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no', "\n";
 echo 'busy add changed nothing: ', $addBusy && $addBusyChangedNothing ? 'yes' : 'no', "\n";
+echo 'busy edits changed nothing: ', !in_array(false, $editBusy, true) && $editBusyChangedNothing ? 'yes' : 'no', "\n";
 echo 'bitmap never busy: ', $bitmapNeverBusy ? 'yes' : 'no', "\n";
 echo 'release never busy: ', $releaseNeverBusy ? 'yes' : 'no', "\n";
 echo 'loaded current never busy: ', $currentNeverBusy ? 'yes' : 'no', "\n";
@@ -104,6 +140,7 @@ bool(true)
 busy: yes
 save busy left no file: yes
 busy add changed nothing: yes
+busy edits changed nothing: yes
 bitmap never busy: yes
 release never busy: yes
 loaded current never busy: yes
