@@ -8,7 +8,12 @@
 #include "zend_enum.h"
 #include "zend_exceptions.h"
 
-typedef struct { FPDF_FORMHANDLE form; FPDF_ANNOTATION annot; } field_source;
+typedef struct {
+	pdfium_page_handle *ph;
+	FPDF_FORMHANDLE form;
+	FPDF_ANNOTATION annot;
+	int option;
+} field_span;
 
 static const char *const form_type_cases[] = {"None", "AcroForm", "XfaFull", "XfaForeground"};
 
@@ -18,30 +23,37 @@ static const char *const field_type_cases[] = {
 
 static unsigned long name_get(void *source, unsigned short *buf, unsigned long len)
 {
-	field_source *s = source;
+	field_span *s = source;
 
 	return FPDFAnnot_GetFormFieldName(s->form, s->annot, buf, len);
 }
 
 static unsigned long alternate_name_get(void *source, unsigned short *buf, unsigned long len)
 {
-	field_source *s = source;
+	field_span *s = source;
 
 	return FPDFAnnot_GetFormFieldAlternateName(s->form, s->annot, buf, len);
 }
 
 static unsigned long value_get(void *source, unsigned short *buf, unsigned long len)
 {
-	field_source *s = source;
+	field_span *s = source;
 
 	return FPDFAnnot_GetFormFieldValue(s->form, s->annot, buf, len);
 }
 
 static unsigned long export_value_get(void *source, unsigned short *buf, unsigned long len)
 {
-	field_source *s = source;
+	field_span *s = source;
 
 	return FPDFAnnot_GetFormFieldExportValue(s->form, s->annot, buf, len);
+}
+
+static unsigned long option_label_get(void *source, unsigned short *buf, unsigned long len)
+{
+	field_span *s = source;
+
+	return FPDFAnnot_GetOptionLabel(s->form, s->annot, s->option, buf, len);
 }
 
 ZEND_METHOD(Pdfium_FormField, __construct)
@@ -79,51 +91,83 @@ static zend_object *field_new(pdfium_page *p, int index)
 	return Z_OBJ(zv);
 }
 
-static void page_form_load(pdfium_page_handle *ph, FPDF_FORMHANDLE form)
+static FPDF_PAGE fill_get_page(FPDF_FORMFILLINFO *info, FPDF_DOCUMENT doc, int index)
 {
-	if (ph->page && !ph->form_loaded) {
-		FORM_OnAfterLoadPage(ph->page, form);
-		ph->form_loaded = true;
+	pdfium_doc_handle *h = (pdfium_doc_handle *) ((char *) info - XtOffsetOf(pdfium_doc_handle, form_info));
+	pdfium_fill *fill = &h->fill;
+
+	if (index == fill->page_index) {
+		return fill->page;
 	}
+	if (!fill->editing) {
+		return NULL;
+	}
+	if (!fill->pages) {
+		int count = FPDF_GetPageCount(h->doc);
+
+		if (count <= 0 || !pdfium_memory_fits((size_t) count * sizeof(FPDF_PAGE))) {
+			return NULL;
+		}
+		fill->pages = calloc((size_t) count, sizeof(FPDF_PAGE));
+		if (!fill->pages) {
+			return NULL;
+		}
+		fill->count = count;
+	}
+	if (index < 0 || index >= fill->count) {
+		return NULL;
+	}
+	if (!fill->pages[index]) {
+		FPDF_PAGE page = FPDF_LoadPage(h->doc, index);
+
+		if (!page) {
+			return NULL;
+		}
+		fill->pages[index] = page;
+		FORM_OnAfterLoadPage(page, h->form);
+	}
+	return fill->pages[index];
 }
 
-static FPDF_ANNOTATION field_enter(zval *self, pdfium_form_field **f, FPDF_FORMHANDLE *form)
+static bool field_enter(zval *self, field_span *s)
 {
-	pdfium_form_field *ff = pdfium_form_field_from_obj(Z_OBJ_P(self));
+	pdfium_form_field *f = pdfium_form_field_from_obj(Z_OBJ_P(self));
 
-	*f = ff;
+	s->ph = f->ph;
 	if (!pdfium_enter()) {
-		return NULL;
+		return false;
 	}
-	FPDF_FORMHANDLE fh = pdfium_doc_handle_form(ff->ph->h);
-
-	if (!fh) {
-		pdfium_leave();
-		zend_throw_exception(pdfium_ce_exception, "PDFium cannot set up form support for this document", 0);
-		return NULL;
+	s->form = pdfium_page_form(f->ph);
+	s->annot = FPDFPage_GetAnnot(f->ph->page, f->index);
+	if (s->annot && FPDFAnnot_GetSubtype(s->annot) != FPDF_ANNOT_WIDGET) {
+		FPDFPage_CloseAnnot(s->annot);
+		s->annot = NULL;
 	}
-	page_form_load(ff->ph, fh);
-
-	FPDF_ANNOTATION a = ff->ph->page ? FPDFPage_GetAnnot(ff->ph->page, ff->index) : NULL;
-
-	if (a && FPDFAnnot_GetSubtype(a) != FPDF_ANNOT_WIDGET) {
-		FPDFPage_CloseAnnot(a);
-		a = NULL;
-	}
-	if (!a) {
+	if (!s->annot) {
 		pdfium_leave();
 		zend_throw_exception(pdfium_ce_exception, "The form field is gone; its page may have been flattened", 0);
-		return NULL;
+		return false;
 	}
-	if (form) {
-		*form = fh;
-	}
-	return a;
+	f->ph->h->fill = (pdfium_fill) {f->ph->page, f->page_index, NULL, 0, false};
+	f->ph->h->form_info.FFI_GetPage = fill_get_page;
+	return true;
 }
 
-static void field_leave(FPDF_ANNOTATION a)
+static void field_leave(field_span *s)
 {
-	FPDFPage_CloseAnnot(a);
+	pdfium_doc_handle *h = s->ph->h;
+	pdfium_fill fill = h->fill;
+
+	h->form_info.FFI_GetPage = NULL;
+	h->fill = (pdfium_fill) {0};
+	for (int i = 0; i < fill.count; i++) {
+		if (fill.pages[i]) {
+			FORM_OnBeforeClosePage(fill.pages[i], h->form);
+			FPDF_ClosePage(fill.pages[i]);
+		}
+	}
+	free(fill.pages);
+	FPDFPage_CloseAnnot(s->annot);
 	pdfium_leave();
 }
 
@@ -132,10 +176,7 @@ static const char *case_name(const char *const *names, size_t count, int value)
 	return value >= 0 && (size_t) value < count ? names[value] : names[0];
 }
 
-static void enum_case(zval *return_value, zend_class_entry *ce, const char *const *names, size_t count, int value)
-{
-	RETURN_OBJ_COPY(zend_enum_get_case_cstr(ce, case_name(names, count, value)));
-}
+#define CASE_NAME(cases, value) case_name(cases, sizeof(cases) / sizeof(cases[0]), value)
 
 static unsigned short *units_take(pdfium_utf16le_getter get, void *source, size_t *count, size_t *used, bool *oom)
 {
@@ -155,36 +196,36 @@ static unsigned short *units_take(pdfium_utf16le_getter get, void *source, size_
 	return units;
 }
 
-static void string_method(INTERNAL_FUNCTION_PARAMETERS, pdfium_utf16le_getter get, bool nullable, bool buttons_only)
+static zend_string *units_finish(unsigned short *units, size_t count)
 {
-	pdfium_form_field *f;
-	FPDF_FORMHANDLE form;
-	unsigned short *units = NULL;
-	size_t count = 0;
+	zend_string *s = count ? pdfium_utf16le_to_utf8(units, count) : NULL;
+
+	free(units);
+	return s;
+}
+
+static void string_method(INTERNAL_FUNCTION_PARAMETERS, pdfium_utf16le_getter get, bool nullable)
+{
+	field_span s;
+	size_t count;
 	size_t used = 0;
 	bool oom = false;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
-
-	if (!a) {
+	if (!field_enter(ZEND_THIS, &s)) {
 		RETURN_THROWS();
 	}
-	field_source src = {form, a};
-	int type = buttons_only ? FPDFAnnot_GetFormFieldType(form, a) : FPDF_FORMFIELD_UNKNOWN;
+	unsigned short *units = units_take(get, &s, &count, &used, &oom);
 
-	if (!buttons_only || type == FPDF_FORMFIELD_CHECKBOX || type == FPDF_FORMFIELD_RADIOBUTTON) {
-		units = units_take(get, &src, &count, &used, &oom);
-	}
-	field_leave(a);
+	field_leave(&s);
 	if (oom) {
 		zend_throw_exception(pdfium_ce_memory_exception, "The form field needs more memory than memory_limit leaves", 0);
 		RETURN_THROWS();
 	}
-	zend_string *s = pdfium_utf16le_finish(units, count);
+	zend_string *str = units_finish(units, count);
 
-	if (s) {
-		RETURN_STR(s);
+	if (str) {
+		RETURN_STR(str);
 	}
 	if (nullable) {
 		RETURN_NULL();
@@ -201,7 +242,7 @@ ZEND_METHOD(Pdfium_Document, formType)
 	int type = FPDF_GetFormType(pdfium_this_document(ZEND_THIS)->doc);
 
 	pdfium_leave();
-	enum_case(return_value, pdfium_ce_form_type, form_type_cases, sizeof(form_type_cases) / sizeof(form_type_cases[0]), type);
+	RETURN_OBJ_COPY(zend_enum_get_case_cstr(pdfium_ce_form_type, CASE_NAME(form_type_cases, type)));
 }
 
 ZEND_METHOD(Pdfium_Page, formFields)
@@ -214,14 +255,10 @@ ZEND_METHOD(Pdfium_Page, formFields)
 	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
-	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
-
-	if (!form) {
+	if (!pdfium_page_form(ph)) {
 		pdfium_leave();
 		RETURN_EMPTY_ARRAY();
 	}
-	page_form_load(ph, form);
-
 	int count = FPDFPage_GetAnnotCount(ph->page);
 	int *widgets = NULL;
 	int n = 0;
@@ -276,12 +313,10 @@ ZEND_METHOD(Pdfium_Page, formFieldAt)
 	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
-	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
+	FPDF_FORMHANDLE form = pdfium_page_form(ph);
 	int index = -1;
 
-	if (form && ph->page) {
-		page_form_load(ph, form);
-
+	if (form) {
 		FS_POINTF point = {pdfium_float_side(x), pdfium_float_side(y)};
 		FPDF_ANNOTATION a = FPDFAnnot_GetFormFieldAtPoint(form, ph->page, &point);
 
@@ -312,10 +347,9 @@ ZEND_METHOD(Pdfium_Page, flatten)
 		RETURN_THROWS();
 	}
 	pdfium_page_handle *ph = p->ph;
-	FPDF_FORMHANDLE form = FPDF_GetFormType(ph->h->doc) != FORMTYPE_NONE ? pdfium_doc_handle_form(ph->h) : NULL;
 
-	if (form) {
-		page_form_load(ph, form);
+	if (FPDF_GetFormType(ph->h->doc) != FORMTYPE_NONE) {
+		pdfium_page_form(ph);
 	}
 	if (ph->form_loaded) {
 		FORM_OnBeforeClosePage(ph->page, ph->h->form);
@@ -344,19 +378,16 @@ ZEND_METHOD(Pdfium_Page, flatten)
 
 ZEND_METHOD(Pdfium_FormField, flags)
 {
-	pdfium_form_field *f;
-	FPDF_FORMHANDLE form;
+	field_span s;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
-
-	if (!a) {
+	if (!field_enter(ZEND_THIS, &s)) {
 		RETURN_THROWS();
 	}
-	int type = FPDFAnnot_GetFormFieldType(form, a);
-	int bits = FPDFAnnot_GetFormFieldFlags(form, a);
+	int type = FPDFAnnot_GetFormFieldType(s.form, s.annot);
+	int bits = FPDFAnnot_GetFormFieldFlags(s.form, s.annot);
 
-	field_leave(a);
+	field_leave(&s);
 	bool values[] = {
 		bits & FPDF_FORMFLAG_READONLY,
 		bits & FPDF_FORMFLAG_REQUIRED,
@@ -373,32 +404,20 @@ ZEND_METHOD(Pdfium_FormField, flags)
 	}
 }
 
-typedef struct { FPDF_FORMHANDLE form; FPDF_ANNOTATION annot; int index; } option_source;
-
 typedef struct { unsigned short *units; size_t count; bool selected; } option_label;
-
-static unsigned long option_label_get(void *source, unsigned short *buf, unsigned long len)
-{
-	option_source *s = source;
-
-	return FPDFAnnot_GetOptionLabel(s->form, s->annot, s->index, buf, len);
-}
 
 ZEND_METHOD(Pdfium_FormField, options)
 {
-	pdfium_form_field *f;
-	FPDF_FORMHANDLE form;
+	field_span s;
 	option_label *labels = NULL;
 	bool oom = false;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
-
-	if (!a) {
+	if (!field_enter(ZEND_THIS, &s)) {
 		RETURN_THROWS();
 	}
-	int type = FPDFAnnot_GetFormFieldType(form, a);
-	int count = type == FPDF_FORMFIELD_COMBOBOX || type == FPDF_FORMFIELD_LISTBOX ? FPDFAnnot_GetOptionCount(form, a) : 0;
+	int type = FPDFAnnot_GetFormFieldType(s.form, s.annot);
+	int count = type == FPDF_FORMFIELD_COMBOBOX || type == FPDF_FORMFIELD_LISTBOX ? FPDFAnnot_GetOptionCount(s.form, s.annot) : 0;
 
 	if (count < 0) {
 		count = 0;
@@ -408,15 +427,14 @@ ZEND_METHOD(Pdfium_FormField, options)
 	if (!pdfium_memory_fits(used) || (count && !(labels = calloc((size_t) count, sizeof(option_label))))) {
 		oom = true;
 	} else {
-		option_source src = {form, a, 0};
+		for (s.option = 0; s.option < count && !oom; s.option++) {
+			option_label *l = &labels[s.option];
 
-		for (int i = 0; i < count && !oom; i++) {
-			src.index = i;
-			labels[i].units = units_take(option_label_get, &src, &labels[i].count, &used, &oom);
-			labels[i].selected = FPDFAnnot_IsOptionSelected(form, a, i);
+			l->units = units_take(option_label_get, &s, &l->count, &used, &oom);
+			l->selected = FPDFAnnot_IsOptionSelected(s.form, s.annot, s.option);
 		}
 	}
-	field_leave(a);
+	field_leave(&s);
 	if (oom) {
 		for (int i = 0; labels && i < count; i++) {
 			free(labels[i].units);
@@ -427,7 +445,7 @@ ZEND_METHOD(Pdfium_FormField, options)
 	}
 	array_init_size(return_value, (uint32_t) count);
 	for (int i = 0; i < count; i++) {
-		zend_string *label = pdfium_utf16le_finish(labels[i].units, labels[i].count);
+		zend_string *label = units_finish(labels[i].units, labels[i].count);
 		zval zv;
 
 		object_init_ex(&zv, pdfium_ce_form_field_option);
@@ -438,97 +456,18 @@ ZEND_METHOD(Pdfium_FormField, options)
 	free(labels);
 }
 
-struct pdfium_fill {
-	pdfium_form_field *f;
-	FPDF_PAGE *pages;
-	int count;
-};
-
-static struct pdfium_fill fill_state;
-
-static FPDF_PAGE fill_get_page(FPDF_FORMFILLINFO *info, FPDF_DOCUMENT doc, int index)
+static void wrong_type(const char *action, int type, const char *tail)
 {
-	pdfium_doc_handle *h = (pdfium_doc_handle *) ((char *) info - XtOffsetOf(pdfium_doc_handle, form_info));
-	struct pdfium_fill *fill = h->fill;
+	const char *name = CASE_NAME(field_type_cases, type);
 
-	if (!fill || doc != h->doc) {
-		return NULL;
-	}
-	if (index == fill->f->page_index) {
-		return fill->f->ph->page;
-	}
-	if (!fill->pages) {
-		int count = FPDF_GetPageCount(h->doc);
-
-		if (count <= 0 || !pdfium_memory_fits((size_t) count * sizeof(FPDF_PAGE))) {
-			return NULL;
-		}
-		fill->pages = ecalloc((size_t) count, sizeof(FPDF_PAGE));
-		fill->count = count;
-	}
-	if (index < 0 || index >= fill->count) {
-		return NULL;
-	}
-	if (!fill->pages[index]) {
-		FPDF_PAGE page = FPDF_LoadPage(h->doc, index);
-
-		if (!page) {
-			return NULL;
-		}
-		fill->pages[index] = page;
-		FORM_OnAfterLoadPage(page, h->form);
-	}
-	return fill->pages[index];
-}
-
-static bool fill_begin(pdfium_form_field *f, FPDF_FORMHANDLE form, FPDF_ANNOTATION a)
-{
-	pdfium_doc_handle *h = f->ph->h;
-
-	page_form_load(f->ph, form);
-	fill_state = (struct pdfium_fill) {f, NULL, 0};
-	h->fill = &fill_state;
-	h->form_info.FFI_GetPage = fill_get_page;
-	return FORM_SetFocusedAnnot(form, a);
-}
-
-static void fill_end(pdfium_form_field *f, FPDF_FORMHANDLE form)
-{
-	pdfium_doc_handle *h = f->ph->h;
-	struct pdfium_fill *fill = h->fill;
-
-	FORM_ForceToKillFocus(form);
-	h->form_info.FFI_GetPage = NULL;
-	h->fill = NULL;
-	for (int i = 0; i < fill->count; i++) {
-		if (fill->pages[i]) {
-			FORM_OnBeforeClosePage(fill->pages[i], form);
-			FPDF_ClosePage(fill->pages[i]);
-		}
-	}
-	if (fill->pages) {
-		efree(fill->pages);
-	}
-	*fill = (struct pdfium_fill) {0};
-}
-
-static const char *field_type_name(int type)
-{
-	return case_name(field_type_cases, sizeof(field_type_cases) / sizeof(field_type_cases[0]), type);
-}
-
-static const char *field_type_article(int type)
-{
-	const char *name = field_type_name(type);
-
-	return name[0] && strchr("AEIOU", name[0]) ? "an" : "a";
+	zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot %s %s %s field%s", action, strchr("AEIOU", name[0]) ? "an" : "a",
+		name, tail);
 }
 
 ZEND_METHOD(Pdfium_FormField, setValue)
 {
 	zend_string *value;
-	pdfium_form_field *f;
-	FPDF_FORMHANDLE form;
+	field_span s;
 	size_t count;
 	const char *bad;
 
@@ -545,79 +484,73 @@ ZEND_METHOD(Pdfium_FormField, setValue)
 		RETURN_THROWS();
 	}
 	unsigned short *units = pdfium_utf8_to_utf16le_alloc(value);
-	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
 
-	if (!a) {
+	if (!field_enter(ZEND_THIS, &s)) {
 		efree(units);
 		RETURN_THROWS();
 	}
-	int type = FPDFAnnot_GetFormFieldType(form, a);
+	int type = FPDFAnnot_GetFormFieldType(s.form, s.annot);
 	bool combo = type == FPDF_FORMFIELD_COMBOBOX;
-	bool takes_text = type == FPDF_FORMFIELD_TEXTFIELD || (combo && (FPDFAnnot_GetFormFieldFlags(form, a) & FPDF_FORMFLAG_CHOICE_EDIT));
-	bool refused = false;
+	bool takes_text = type == FPDF_FORMFIELD_TEXTFIELD || (combo && (FPDFAnnot_GetFormFieldFlags(s.form, s.annot) & FPDF_FORMFLAG_CHOICE_EDIT));
+	const char *fail = NULL;
 
 	if (takes_text) {
-		refused = !fill_begin(f, form, a) || !FORM_SelectAllText(form, f->ph->page);
-		if (!refused) {
-			FORM_ReplaceSelection(form, f->ph->page, units);
+		s.ph->h->fill.editing = true;
+		if (FORM_SetFocusedAnnot(s.form, s.annot) && FORM_SelectAllText(s.form, s.ph->page)
+			&& FORM_OnChar(s.form, s.ph->page, '\b', 0)) {
+			FORM_ReplaceSelection(s.form, s.ph->page, units);
+		} else {
+			fail = "PDFium refused to edit the field";
 		}
-		fill_end(f, form);
+		FORM_ForceToKillFocus(s.form);
 	}
-	field_leave(a);
+	field_leave(&s);
 	efree(units);
 	if (!takes_text) {
-		zend_throw_exception_ex(pdfium_ce_exception, 0, combo ? "Cannot set the text of %s %s field that is not editable"
-			: "Cannot set the text of %s %s field", field_type_article(type), field_type_name(type));
+		wrong_type("set the text of", type, combo ? " that is not editable" : "");
 		RETURN_THROWS();
 	}
-	if (refused) {
-		zend_throw_exception(pdfium_ce_exception, "PDFium refused to edit the field", 0);
-		RETURN_THROWS();
+	if (fail) {
+		zend_throw_exception(pdfium_ce_exception, fail, 0);
 	}
 }
 
 ZEND_METHOD(Pdfium_FormField, setChecked)
 {
 	bool checked = true;
-	pdfium_form_field *f;
-	FPDF_FORMHANDLE form;
+	field_span s;
 
 	ZEND_PARSE_PARAMETERS_START(0, 1)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_BOOL(checked)
 	ZEND_PARSE_PARAMETERS_END();
 
-	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
-
-	if (!a) {
+	if (!field_enter(ZEND_THIS, &s)) {
 		RETURN_THROWS();
 	}
-	int type = FPDFAnnot_GetFormFieldType(form, a);
+	int type = FPDFAnnot_GetFormFieldType(s.form, s.annot);
 	bool button = type == FPDF_FORMFIELD_CHECKBOX || type == FPDF_FORMFIELD_RADIOBUTTON;
-	bool refused = false;
-	bool unchanged = false;
-	bool read_only = false;
+	const char *fail = NULL;
 
-	if (button && (bool) FPDFAnnot_IsChecked(form, a) != checked) {
-		refused = !fill_begin(f, form, a) || !FORM_OnChar(form, f->ph->page, ' ', 0);
-		fill_end(f, form);
-		unchanged = (bool) FPDFAnnot_IsChecked(form, a) != checked;
-		read_only = FPDFAnnot_GetFormFieldFlags(form, a) & FPDF_FORMFLAG_READONLY;
+	if (button && (bool) FPDFAnnot_IsChecked(s.form, s.annot) != checked) {
+		s.ph->h->fill.editing = true;
+		if (!FORM_SetFocusedAnnot(s.form, s.annot) || !FORM_OnChar(s.form, s.ph->page, ' ', 0)) {
+			fail = "PDFium refused to edit the field";
+		}
+		FORM_ForceToKillFocus(s.form);
+		s.ph->h->fill.editing = false;
+		if (!fail && (bool) FPDFAnnot_IsChecked(s.form, s.annot) != checked) {
+			fail = FPDFAnnot_GetFormFieldFlags(s.form, s.annot) & FPDF_FORMFLAG_READONLY
+				? "PDFium did not change the field; it is read-only" : "PDFium did not change the field";
+		}
 	}
-	field_leave(a);
+	field_leave(&s);
 	if (!button) {
-		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot check or uncheck %s %s field", field_type_article(type),
-			field_type_name(type));
+		wrong_type("check or uncheck", type, "");
 		RETURN_THROWS();
 	}
-	if (refused) {
-		zend_throw_exception(pdfium_ce_exception, "PDFium refused to edit the field", 0);
-		RETURN_THROWS();
-	}
-	if (unchanged) {
-		zend_throw_exception(pdfium_ce_exception, read_only ? "PDFium did not change the field; it is read-only"
-			: "PDFium did not change the field", 0);
-		RETURN_THROWS();
+	if (fail) {
+		zend_throw_exception(pdfium_ce_exception, fail, 0);
 	}
 }
 
@@ -625,8 +558,7 @@ ZEND_METHOD(Pdfium_FormField, select)
 {
 	zend_long option;
 	bool selected = true;
-	pdfium_form_field *f;
-	FPDF_FORMHANDLE form;
+	field_span s;
 
 	ZEND_PARSE_PARAMETERS_START(1, 2)
 		Z_PARAM_LONG(option)
@@ -634,29 +566,27 @@ ZEND_METHOD(Pdfium_FormField, select)
 		Z_PARAM_BOOL(selected)
 	ZEND_PARSE_PARAMETERS_END();
 
-	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
-
-	if (!a) {
+	if (!field_enter(ZEND_THIS, &s)) {
 		RETURN_THROWS();
 	}
-	int type = FPDFAnnot_GetFormFieldType(form, a);
+	int type = FPDFAnnot_GetFormFieldType(s.form, s.annot);
 	bool choice = type == FPDF_FORMFIELD_COMBOBOX || type == FPDF_FORMFIELD_LISTBOX;
-	int count = choice ? FPDFAnnot_GetOptionCount(form, a) : 0;
+	int count = choice ? FPDFAnnot_GetOptionCount(s.form, s.annot) : 0;
 	bool in_range = option >= 0 && option < count;
-	bool refused = false;
-	bool changed = true;
+	const char *fail = NULL;
 
 	if (in_range) {
-		refused = !fill_begin(f, form, a);
-		if (!refused) {
-			changed = FORM_SetIndexSelected(form, f->ph->page, (int) option, selected);
+		s.ph->h->fill.editing = true;
+		if (!FORM_SetFocusedAnnot(s.form, s.annot)) {
+			fail = "PDFium refused to edit the field";
+		} else if (!FORM_SetIndexSelected(s.form, s.ph->page, (int) option, selected)) {
+			fail = "PDFium did not change the selection";
 		}
-		fill_end(f, form);
+		FORM_ForceToKillFocus(s.form);
 	}
-	field_leave(a);
+	field_leave(&s);
 	if (!choice) {
-		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot select an option of %s %s field", field_type_article(type),
-			field_type_name(type));
+		wrong_type("select an option of", type, "");
 		RETURN_THROWS();
 	}
 	if (!in_range) {
@@ -667,101 +597,84 @@ ZEND_METHOD(Pdfium_FormField, select)
 		}
 		RETURN_THROWS();
 	}
-	if (refused) {
-		zend_throw_exception(pdfium_ce_exception, "PDFium refused to edit the field", 0);
-		RETURN_THROWS();
-	}
-	if (!changed) {
-		zend_throw_exception(pdfium_ce_exception, "PDFium did not change the selection", 0);
-		RETURN_THROWS();
+	if (fail) {
+		zend_throw_exception(pdfium_ce_exception, fail, 0);
 	}
 }
 
 ZEND_METHOD(Pdfium_FormField, name)
 {
-	string_method(INTERNAL_FUNCTION_PARAM_PASSTHRU, name_get, false, false);
+	string_method(INTERNAL_FUNCTION_PARAM_PASSTHRU, name_get, false);
 }
 
 ZEND_METHOD(Pdfium_FormField, alternateName)
 {
-	string_method(INTERNAL_FUNCTION_PARAM_PASSTHRU, alternate_name_get, true, false);
+	string_method(INTERNAL_FUNCTION_PARAM_PASSTHRU, alternate_name_get, true);
 }
 
 ZEND_METHOD(Pdfium_FormField, value)
 {
-	string_method(INTERNAL_FUNCTION_PARAM_PASSTHRU, value_get, false, false);
+	string_method(INTERNAL_FUNCTION_PARAM_PASSTHRU, value_get, false);
 }
 
 ZEND_METHOD(Pdfium_FormField, exportValue)
 {
-	string_method(INTERNAL_FUNCTION_PARAM_PASSTHRU, export_value_get, true, true);
+	string_method(INTERNAL_FUNCTION_PARAM_PASSTHRU, export_value_get, true);
 }
 
 ZEND_METHOD(Pdfium_FormField, type)
 {
-	pdfium_form_field *f;
-	FPDF_FORMHANDLE form;
+	field_span s;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
-
-	if (!a) {
+	if (!field_enter(ZEND_THIS, &s)) {
 		RETURN_THROWS();
 	}
-	int type = FPDFAnnot_GetFormFieldType(form, a);
+	int type = FPDFAnnot_GetFormFieldType(s.form, s.annot);
 
-	field_leave(a);
-	enum_case(return_value, pdfium_ce_form_field_type, field_type_cases, sizeof(field_type_cases) / sizeof(field_type_cases[0]), type);
+	field_leave(&s);
+	RETURN_OBJ_COPY(zend_enum_get_case_cstr(pdfium_ce_form_field_type, CASE_NAME(field_type_cases, type)));
 }
 
 ZEND_METHOD(Pdfium_FormField, isChecked)
 {
-	pdfium_form_field *f;
-	FPDF_FORMHANDLE form;
+	field_span s;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
-
-	if (!a) {
+	if (!field_enter(ZEND_THIS, &s)) {
 		RETURN_THROWS();
 	}
-	int type = FPDFAnnot_GetFormFieldType(form, a);
-	bool checked = (type == FPDF_FORMFIELD_CHECKBOX || type == FPDF_FORMFIELD_RADIOBUTTON) && FPDFAnnot_IsChecked(form, a);
+	bool checked = FPDFAnnot_IsChecked(s.form, s.annot);
 
-	field_leave(a);
+	field_leave(&s);
 	RETURN_BOOL(checked);
 }
 
 ZEND_METHOD(Pdfium_FormField, rect)
 {
-	pdfium_form_field *f;
+	field_span s;
 	FS_RECTF r = {0};
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, NULL);
-
-	if (!a) {
+	if (!field_enter(ZEND_THIS, &s)) {
 		RETURN_THROWS();
 	}
-	FPDFAnnot_GetRect(a, &r);
-	field_leave(a);
+	FPDFAnnot_GetRect(s.annot, &r);
+	field_leave(&s);
 	pdfium_rect_init(return_value, r.left, r.bottom, r.right, r.top);
 }
 
 static void control_method(INTERNAL_FUNCTION_PARAMETERS, bool count)
 {
-	pdfium_form_field *f;
-	FPDF_FORMHANDLE form;
+	field_span s;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	FPDF_ANNOTATION a = field_enter(ZEND_THIS, &f, &form);
-
-	if (!a) {
+	if (!field_enter(ZEND_THIS, &s)) {
 		RETURN_THROWS();
 	}
-	int n = count ? FPDFAnnot_GetFormControlCount(form, a) : FPDFAnnot_GetFormControlIndex(form, a);
+	int n = count ? FPDFAnnot_GetFormControlCount(s.form, s.annot) : FPDFAnnot_GetFormControlIndex(s.form, s.annot);
 
-	field_leave(a);
+	field_leave(&s);
 	if (n < 0) {
 		zend_throw_exception(pdfium_ce_exception, "Cannot read the field's place in its group", 0);
 		RETURN_THROWS();

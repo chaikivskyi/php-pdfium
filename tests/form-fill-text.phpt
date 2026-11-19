@@ -1,5 +1,5 @@
 --TEST--
-FormField::setValue() sets the text of text fields and editable combo boxes and refuses the other types
+FormField::setValue() sets the text of text fields and editable combo boxes, refuses the other types and runs no field scripts
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -68,6 +68,27 @@ attempt($doc, 'name', "a\0b");
 attempt($doc, 'name', "\xFF");
 $read = form_pdf([8 => '<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /FT /Tx /T (e) /V <FEFFD83DDE000078> /Rect [100 700 300 720] >>']);
 var_dump(bin2hex(Pdfium\Document::fromString($read)->page(0)->formFields()[0]->value()));
+
+$combo = form_pdf([8 => '<< /Type /Annot /Subtype /Widget /P 3 0 R /F 4 /FT /Ch /Ff 393216 /T (city) /Opt [(Kyiv) [(lv) (Lviv)]] /V (Kyiv) /Rect [100 500 300 520] >>']);
+$doc = Pdfium\Document::fromString($combo);
+$city = $doc->page(0)->formFields()[0];
+$state = fn(Pdfium\FormField $f) => [$f->value(), array_map(fn($o) => $o->selected, $f->options())];
+$city->setValue('Custom');
+echo json_encode([$state($city), $state(Pdfium\Document::fromString($doc->toString())->page(0)->formFields()[0])]), "\n";
+$city->select(1);
+foreach (['Typed', '', 'Kyiv', 'Kyi', 'Lviv', 'lv'] as $v) {
+    $city->setValue($v);
+    echo json_encode([$state($city), $state(Pdfium\Document::fromString($doc->toString())->page(0)->formFields()[0])]), "\n";
+}
+
+$js = fn(string $code) => "<< /S /JavaScript /JS ($code) >>";
+$w = '/Type /Annot /Subtype /Widget /P 3 0 R /F 4 /FT /Tx';
+$scripted = fields(Pdfium\Document::fromString(form_pdf([
+    8 => "<< $w /T (src) /Rect [100 700 300 720] /AA << /K {$js('event.rc = false;')} /F {$js('event.value = 1;')} /V {$js('event.rc = false;')} >> >>",
+    9 => "<< $w /T (sum) /V (0) /Rect [100 600 300 620] /AA << /C {$js('event.value = 2;')} >> >>",
+], [4 => '<< /Fields [8 0 R 9 0 R] /CO [9 0 R] /DA (/Helv 12 Tf 0 g) /DR << /Font << /Helv 5 0 R >> >> >>'])));
+$scripted['src']->setValue('abc');
+var_dump($scripted['src']->value(), $scripted['sum']->value());
 ?>
 --EXPECT--
 string(4) "Jane"
@@ -111,3 +132,12 @@ name: ValueError: Pdfium\FormField::setValue(): Argument #1 ($value) must be val
 bool(true)
 string(2) "ok"
 string(10) "f09f988078"
+[["Custom",[false,false]],["Custom",[false,false]]]
+[["Typed",[false,false]],["Typed",[false,false]]]
+[["",[false,false]],["",[false,false]]]
+[["Kyiv",[true,false]],["Kyiv",[true,false]]]
+[["Kyi",[false,false]],["Kyi",[false,false]]]
+[["Lviv",[false,false]],["Lviv",[false,false]]]
+[["lv",[false,true]],["lv",[false,true]]]
+string(3) "abc"
+string(1) "0"
