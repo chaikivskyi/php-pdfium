@@ -34,7 +34,8 @@ it.
 PDFium defaults
 ---------------
 
-The extension follows PDFium and adds no rules of its own.
+The extension follows PDFium and adds no rules of its own, except that ``setLanguage()`` refuses a
+few values PDFium would read back wrongly; see :ref:`accessibility`.
 
 **Permissions are not enforced.**
    ``permissions()`` tells you what the document allows, but nothing stops you. For example, you can
@@ -49,10 +50,11 @@ The extension follows PDFium and adds no rules of its own.
 
 **Split and merge output keeps the pages and the viewer preferences.**
    ``extractPages()`` keeps its document's viewer preferences and ``merge()`` the first document's,
-   so a right-to-left document still reads right to left. The result has no bookmarks and none of the
-   sources' metadata: ``metadata()`` reports only ``creator`` and ``producer`` "PDFium" and the
-   ``creationDate`` of the split or merge. Form fields still draw but can no longer be filled in.
-   PDFium has no API to set metadata, add encryption or create bookmarks.
+   so a right-to-left document still reads right to left. The result has no bookmarks, attachments
+   or language, is not tagged, and has none of the sources' metadata: ``metadata()`` reports only
+   ``creator`` and ``producer`` "PDFium" and the ``creationDate`` of the split or merge. Form fields
+   still draw but can no longer be filled in. PDFium has no API to set metadata, add encryption or
+   create bookmarks.
 
 **Reading and writing files work differently.**
    Both go through PHP streams, so stream wrappers and ``open_basedir`` work. ``fromFile()`` reads the
@@ -230,6 +232,9 @@ Strictly, the list is sorted and checked by a key PDFium does not show. PDFium s
 name, but other tools may not, so two entries can have the same ``name()``, and ``addAttachment()``
 can refuse a name that no ``name()`` shows.
 
+On macOS, ``name()`` shows each ``/`` in a file name as ``:``, and drops the first ``/`` of a name
+that starts with ``/Mac``, because PDFium converts file names to the platform's form.
+
 When PDFium cannot decode a file, ``contents()`` returns its bytes as stored, still compressed or
 encoded. This happens when the stream is damaged, or when it is ``/RunLengthDecode`` and would
 decode to 20 MB or more.
@@ -258,6 +263,52 @@ stored as a tree of nested parts of 50 entries each. A flat list stays fast.
 
 ``extractPages()`` and ``merge()`` copy pages only, so their results have no attachments.
 
+.. _accessibility:
+
+Accessibility
+-------------
+
+``isTagged()`` reports what the document says about itself (``/Marked`` in its ``/MarkInfo``). It
+does not check that the document has a usable structure tree.
+
+``language()`` returns the language as PDFium reads it. It is not checked to be a language tag, and
+it is ``null`` when the document has none, when it is empty, and when it is not text (a number, for
+example). What PDFium reads can differ from what the file stores:
+
+- It ends at the first NUL character. In a language stored as single bytes, bytes 0x7F, 0x9F and
+  0xAD also count as NUL.
+- In a language stored as UTF-16 or UTF-8, PDFium drops the escape character (U+001B) and anything
+  between a pair of them.
+- A language stored as a name is returned as text, and one stored as a stream as the stream's
+  decoded contents.
+
+``setLanguage()`` changes the loaded document, never the file or string it came from; ``save()`` or
+``toString()`` writes the change out. It works even when :php:class:`Permissions
+<Pdfium\\Permissions>` says ``modify`` is ``false``. In an encrypted document the language is saved
+encrypted, unless you pass ``removeSecurity: true``. An empty string marks the language as unknown,
+and ``language()`` then returns ``null``; the entry cannot be removed.
+
+``setLanguage()`` throws ``ValueError`` for a value PDFium would read back wrongly. Such a value:
+
+- contains the escape character (U+001B), or
+- starts with ``þÿ``, ``ÿþ`` or ``ï»¿`` (U+00FE U+00FF, U+00FF U+00FE, U+00EF U+00BB U+00BF) and
+  has only characters PDF can store as single bytes: most of ASCII and Latin-1, and a few symbols
+  such as ``€`` and ``•``. A reader takes that start as a byte order mark. One other character, such
+  as a Cyrillic letter, makes the value acceptable.
+
+``setLanguage()`` gives PDFium copies of the language, several times its size, that
+``memory_limit`` does not count; if PDFium cannot allocate them, it ends the process. PDFium
+decodes a language stored as a stream before ``language()`` can check its size, so a crafted PDF
+under a megabyte can exhaust the process's memory before ``MemoryException`` is thrown;
+``Document::metadata()`` has the same weakness. With PDFs you do not trust, limit the process's
+memory from outside.
+
+``extractPages()`` and ``merge()`` copy pages only, so their results have no language and are not
+tagged.
+
+The structure tree (headings, paragraphs, alternative text) is not offered: to read it, PDFium (as
+of ``chromium/8125``) follows the document's ``/ParentTree`` with no depth limit or loop check, so a
+crafted file can crash PHP. It will be offered once PDFium bounds that walk.
 
 .. _memory-limit:
 
@@ -288,6 +339,8 @@ Rough memory needed:
 - ``Attachment::name()`` and ``metadata()``: about 5 bytes per character.
 - ``Attachment::contents()``: the size of the file. See :ref:`attachments` for PDFium's own copy.
 - ``addAttachment()``: 2 bytes per character of the name and description.
+- ``language()``: about 5 bytes per character.
+- ``setLanguage()``: 2 bytes per character.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
 
 With ``memory_limit = -1`` there are no checks.

@@ -13,6 +13,7 @@ What it does
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
   transparent.
 - List, extract, add and delete embedded files (attachments).
+- Read whether a document is tagged, and read and set its language.
 - Split, merge and save documents.
 
 It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
@@ -208,6 +209,19 @@ Embedded files
    $doc->save('/tmp/with-data.pdf');
 
 Adding a file can move the others, so fetch attachments again after it; see :ref:`attachments`.
+
+Language and tagging
+~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: php
+
+   if ($doc->language() === null) {
+       $doc->setLanguage('en-US');
+       $doc->save('/tmp/with-language.pdf');
+   }
+   var_dump($doc->isTagged());
+
+``isTagged()`` is the document's own claim; see :ref:`accessibility`.
 
 Free a document
 ~~~~~~~~~~~~~~~
