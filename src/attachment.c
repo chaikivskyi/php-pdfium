@@ -201,7 +201,7 @@ ZEND_METHOD(Pdfium_Document, addAttachment)
 		zend_argument_value_error(1, "must not be empty");
 		RETURN_THROWS();
 	}
-	if ((bad = pdfium_utf8_to_utf16le(name, NULL, &name_units))) {
+	if ((bad = pdfium_pdf_text_fault(name, &name_units))) {
 		zend_argument_value_error(1, "%s", bad);
 		RETURN_THROWS();
 	}
@@ -209,7 +209,7 @@ ZEND_METHOD(Pdfium_Document, addAttachment)
 		zend_argument_value_error(2, "must be at most %d bytes", INT_MAX - 1);
 		RETURN_THROWS();
 	}
-	if (description && (bad = pdfium_utf8_to_utf16le(description, NULL, &desc_units))) {
+	if (description && (bad = pdfium_pdf_text_fault(description, &desc_units))) {
 		zend_argument_value_error(3, "%s", bad);
 		RETURN_THROWS();
 	}
