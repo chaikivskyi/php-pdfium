@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 4518ca248e5e57107aac34531e23328566ab4d68 */
+ * Stub hash: c4e87fd6e9fcd80ba7cd3741e41f9b4111ef123c */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -29,6 +29,10 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_isTagged, 
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_language, 0, 0, IS_STRING, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_setLanguage, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, language, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Document_permanentId arginfo_class_Pdfium_Document_language
@@ -249,6 +253,7 @@ ZEND_METHOD(Pdfium_Document, metadata);
 ZEND_METHOD(Pdfium_Document, permissions);
 ZEND_METHOD(Pdfium_Document, isTagged);
 ZEND_METHOD(Pdfium_Document, language);
+ZEND_METHOD(Pdfium_Document, setLanguage);
 ZEND_METHOD(Pdfium_Document, permanentId);
 ZEND_METHOD(Pdfium_Document, changingId);
 ZEND_METHOD(Pdfium_Document, bookmarks);
@@ -334,6 +339,7 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 	ZEND_ME(Pdfium_Document, permissions, arginfo_class_Pdfium_Document_permissions, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, isTagged, arginfo_class_Pdfium_Document_isTagged, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, language, arginfo_class_Pdfium_Document_language, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, setLanguage, arginfo_class_Pdfium_Document_setLanguage, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, permanentId, arginfo_class_Pdfium_Document_permanentId, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, changingId, arginfo_class_Pdfium_Document_changingId, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, bookmarks, arginfo_class_Pdfium_Document_bookmarks, ZEND_ACC_PUBLIC)
