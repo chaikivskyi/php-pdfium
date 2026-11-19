@@ -75,6 +75,24 @@ function form(bool $withValue): string
     ], '');
 }
 
+function encryptedFormSource(): string
+{
+    $on = stream('0 g 0 0 20 20 re f', '/Type /XObject /Subtype /Form /BBox [0 0 20 20] ');
+    return build([
+        1 => '<< /Type /Catalog /Pages 2 0 R /AcroForm 6 0 R >>',
+        2 => '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        3 => '<< /Type /Page /Parent 2 0 R /MediaBox ' . MEDIA . ' /Annots [4 0 R 5 0 R] >>',
+        4 => '<< /Type /Annot /Subtype /Widget /FT /Tx /T (field1) /V (before)'
+            . ' /Rect [100 600 400 650] /F 4 /DA (/Helv 24 Tf 0 g) /P 3 0 R >>',
+        5 => '<< /Type /Annot /Subtype /Widget /FT /Btn /T (agree) /V /Off /AS /Off /Rect [100 500 120 520] /F 4 /P 3 0 R'
+            . ' /AP << /N << /Yes 8 0 R /Off 9 0 R >> >> >>',
+        6 => '<< /Fields [4 0 R 5 0 R] /DA (/Helv 24 Tf 0 g) /DR << /Font << /Helv 7 0 R >> >> >>',
+        7 => HELV,
+        8 => $on,
+        9 => stream('', '/Type /XObject /Subtype /Form /BBox [0 0 20 20] '),
+    ], '');
+}
+
 function unicodeDoc(): string
 {
     $cmap = "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n"
@@ -180,6 +198,15 @@ if (!file_exists("$dir/signed-cms.pdf")) {
         OPENSSL_ENCODING_DER) or throw new RuntimeException(openssl_error_string());
     $signature = strtoupper(bin2hex(file_get_contents("$tmp/signature.der")));
     file_put_contents("$dir/signed-cms.pdf", substr_replace($pdf, '<' . str_pad($signature, 8192, '0') . '>', $start, strlen($hole)));
+}
+
+if (!file_exists("$dir/encrypted-form.pdf")) {
+    file_put_contents("$tmp/form-source.pdf", encryptedFormSource());
+    sh('qpdf --encrypt user owner 256 -- ' . escapeshellarg("$tmp/form-source.pdf") . ' ' . escapeshellarg("$dir/encrypted-form.pdf"));
+}
+if (!file_exists("$dir/encrypted-form-locked.pdf")) {
+    file_put_contents("$tmp/form-source.pdf", encryptedFormSource());
+    sh("qpdf --encrypt '' owner 256 --modify=none -- " . escapeshellarg("$tmp/form-source.pdf") . ' ' . escapeshellarg("$dir/encrypted-form-locked.pdf"));
 }
 
 // Written raw: qpdf refuses a security handler it does not know.

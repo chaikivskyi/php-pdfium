@@ -1,5 +1,5 @@
 --TEST--
-While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), signatures(), signatureCount(), isTagged(), language() and setLanguage() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
+While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), signatures(), signatureCount(), isTagged(), language(), setLanguage() and every form method included; Bitmap methods, an iterator's already loaded page and releasing objects never do
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -21,6 +21,38 @@ $adoc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $held = $adoc->addAttachment('held', 'h');
 $sdoc = Pdfium\Document::fromString(sig_pdf(sig_field('<< /Contents <01> >>')));
 $adoc->setLanguage('held');
+require __DIR__ . '/form.inc';
+$formDoc = Pdfium\Document::fromString(standard_form());
+$formPage = $formDoc->page(0);
+$fields = fields($formPage);
+$fieldCount = count($formPage->formFields());
+$pool = [];
+for ($i = 0; $i < 1000; $i++) {
+    $pool[] = Pdfium\Document::fromString(standard_form())->page(0);
+}
+$snapshot = fn () => with_retry(fn () => [
+    $fields['name']->value(),
+    $fields['agree']->isChecked(),
+    array_map(fn ($o) => $o->selected, $fields['country']->options()),
+]);
+$formOps = [
+    'formType' => fn () => $formDoc->formType(),
+    'formFields' => fn () => $formPage->formFields(),
+    'formFieldAt' => fn () => $formPage->formFieldAt(150, 710),
+    'name' => fn () => $fields['name']->name(),
+    'value' => fn () => $fields['name']->value(),
+    'isChecked' => fn () => $fields['agree']->isChecked(),
+    'options' => fn () => $fields['country']->options(),
+    'flags' => fn () => $fields['name']->flags(),
+    'rect' => fn () => $fields['name']->rect(),
+    'setValue' => fn () => $fields['name']->setValue('busy'),
+    'setChecked' => fn () => $fields['agree']->setChecked(),
+    'select' => fn () => $fields['country']->select(1),
+];
+$formBusy = [];
+$known = $snapshot();
+$flattenBusy = false;
+$formUnchanged = $flattenUnchanged = true;
 
 $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
 $future = $runtime->run(static function (string $fixture, string $stop): int {
@@ -37,7 +69,7 @@ $future = $runtime->run(static function (string $fixture, string $stop): int {
 $busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $sigBusy = $sigCountBusy = $langBusy = $langBusyChangedNothing = $tagBusy = $readBusy = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
-while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy || !$langBusy || !$tagBusy || !$readBusy) && microtime(true) < $end) {
+while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy || !$langBusy || !$tagBusy || !$readBusy || count($formBusy) < count($formOps) || !$flattenBusy) && microtime(true) < $end) {
     try {
         $it->next();
         unset($page);
@@ -116,6 +148,29 @@ while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy 
     } catch (Pdfium\BusyException $e) {
         $sigCountBusy = true;
     }
+    foreach ($formOps as $name => $op) {
+        if (isset($formBusy[$name])) {
+            continue;
+        }
+        try {
+            $op();
+            if (str_starts_with($name, 'set') || $name === 'select') {
+                $known = $snapshot();
+            }
+        } catch (Pdfium\BusyException $e) {
+            $formBusy[$name] = true;
+            $formUnchanged = $formUnchanged && $snapshot() === $known;
+        }
+    }
+    for ($k = 0; $k < 5 && !$flattenBusy; $k++) {
+        $flat = array_pop($pool) ?? with_retry(fn () => Pdfium\Document::fromString(standard_form())->page(0));
+        try {
+            $flat->flatten();
+        } catch (Pdfium\BusyException $e) {
+            $flattenBusy = true;
+            $flattenUnchanged = count(with_retry(fn () => $flat->formFields())) > 0;
+        }
+    }
     try {
         $doc->save($target);
         unlink($target);
@@ -136,6 +191,13 @@ echo 'signatures busy, then listed: ', $sigBusy && with_retry(fn () => $sdoc->si
 echo 'signature count busy, then counted: ', $sigCountBusy && with_retry(fn () => $sdoc->signatureCount()) === 1 ? 'yes' : 'no', "\n";
 echo 'busy setLanguage changed nothing: ', $langBusy && $langBusyChangedNothing ? 'yes' : 'no', "\n";
 echo 'isTagged and language busy: ', $tagBusy && $readBusy ? 'yes' : 'no', "\n";
+echo 'form methods busy: ', count($formBusy) === count($formOps) ? 'yes' : 'no', "\n";
+echo 'flatten busy: ', $flattenBusy ? 'yes' : 'no', "\n";
+echo 'busy form calls changed nothing: ', $formUnchanged && $flattenUnchanged ? 'yes' : 'no', "\n";
+$after = $snapshot();
+echo 'form handles work: ', $after[0] === 'busy' && $after[1] === true && array_sum($after[2]) >= 1
+    && with_retry(fn () => $formDoc->formType()) === Pdfium\FormType::AcroForm
+    && count(with_retry(fn () => $formPage->formFields())) === $fieldCount ? 'yes' : 'no', "\n";
 echo 'bitmap never busy: ', $bitmapNeverBusy ? 'yes' : 'no', "\n";
 echo 'release never busy: ', $releaseNeverBusy ? 'yes' : 'no', "\n";
 echo 'loaded current never busy: ', $currentNeverBusy ? 'yes' : 'no', "\n";
@@ -150,6 +212,10 @@ signatures busy, then listed: yes
 signature count busy, then counted: yes
 busy setLanguage changed nothing: yes
 isTagged and language busy: yes
+form methods busy: yes
+flatten busy: yes
+busy form calls changed nothing: yes
+form handles work: yes
 bitmap never busy: yes
 release never busy: yes
 loaded current never busy: yes
