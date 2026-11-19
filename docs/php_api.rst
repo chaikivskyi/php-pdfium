@@ -221,8 +221,10 @@ Document
       :param string $contents: The file's bytes.
       :param ?string $description: Shown by viewers next to the file, as UTF-8.
       :rtype: Attachment
-      :throws \\ValueError: ``$name`` is empty, ``$name`` or ``$description`` is not valid UTF-8
-         or contains a null byte, or ``$contents`` is longer than 2147483646 bytes.
+      :throws \\ValueError: ``$name`` is empty; ``$name`` or ``$description`` is not valid UTF-8,
+         contains a null byte or the escape character, or starts with what a PDF reader would take
+         for a byte order mark (see :ref:`accessibility`); or ``$contents`` is longer than
+         2147483646 bytes.
       :throws PdfiumException: PDFium refuses: the name may already be used, or the list of
          attachments is damaged. Also when PDFium cannot store the contents or description; the new
          entry is then removed if possible, and the message says when it stays.
