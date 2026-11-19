@@ -1,5 +1,5 @@
 --TEST--
-While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), signatures() and signatureCount() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
+While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), signatures(), signatureCount(), isTagged(), language() and setLanguage() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -20,6 +20,7 @@ $page = $it->current();
 $adoc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $held = $adoc->addAttachment('held', 'h');
 $sdoc = Pdfium\Document::fromString(sig_pdf(sig_field('<< /Contents <01> >>')));
+$adoc->setLanguage('held');
 
 $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
 $future = $runtime->run(static function (string $fixture, string $stop): int {
@@ -33,10 +34,10 @@ $future = $runtime->run(static function (string $fixture, string $stop): int {
     return $renders;
 }, [__DIR__ . '/fixtures/a4.pdf', $stop]);
 
-$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $sigBusy = $sigCountBusy = false;
+$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $sigBusy = $sigCountBusy = $langBusy = $langBusyChangedNothing = $tagBusy = $readBusy = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
-while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy) && microtime(true) < $end) {
+while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy || !$langBusy || !$tagBusy || !$readBusy) && microtime(true) < $end) {
     try {
         $it->next();
         unset($page);
@@ -80,6 +81,31 @@ while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy)
                 && with_retry(fn () => $held->name()) === 'held';
         }
     }
+    for ($try = 0; $try < 20 && !($tagBusy && $readBusy); $try++) {
+        try {
+            $adoc->isTagged();
+        } catch (Pdfium\BusyException $e) {
+            $tagBusy = true;
+        }
+        try {
+            $adoc->language();
+        } catch (Pdfium\BusyException $e) {
+            $readBusy = true;
+        }
+    }
+    for ($try = 0; $try < 20 && !$langBusy; $try++) {
+        $changed = false;
+        try {
+            $adoc->setLanguage('busy');
+            $changed = true;
+        } catch (Pdfium\BusyException $e) {
+            $langBusy = true;
+            $langBusyChangedNothing = with_retry(fn () => $adoc->language()) === 'held';
+        }
+        if ($changed) {
+            with_retry(fn () => $adoc->setLanguage('held'));
+        }
+    }
     try {
         $sdoc->signatures();
     } catch (Pdfium\BusyException $e) {
@@ -108,6 +134,8 @@ echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no
 echo 'busy add changed nothing: ', $addBusy && $addBusyChangedNothing ? 'yes' : 'no', "\n";
 echo 'signatures busy, then listed: ', $sigBusy && with_retry(fn () => $sdoc->signatures())[0]->contents === "\x01" ? 'yes' : 'no', "\n";
 echo 'signature count busy, then counted: ', $sigCountBusy && with_retry(fn () => $sdoc->signatureCount()) === 1 ? 'yes' : 'no', "\n";
+echo 'busy setLanguage changed nothing: ', $langBusy && $langBusyChangedNothing ? 'yes' : 'no', "\n";
+echo 'isTagged and language busy: ', $tagBusy && $readBusy ? 'yes' : 'no', "\n";
 echo 'bitmap never busy: ', $bitmapNeverBusy ? 'yes' : 'no', "\n";
 echo 'release never busy: ', $releaseNeverBusy ? 'yes' : 'no', "\n";
 echo 'loaded current never busy: ', $currentNeverBusy ? 'yes' : 'no', "\n";
@@ -120,6 +148,8 @@ save busy left no file: yes
 busy add changed nothing: yes
 signatures busy, then listed: yes
 signature count busy, then counted: yes
+busy setLanguage changed nothing: yes
+isTagged and language busy: yes
 bitmap never busy: yes
 release never busy: yes
 loaded current never busy: yes
