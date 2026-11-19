@@ -144,6 +144,19 @@ if (!file_exists("$dir/encrypted-r2.pdf")) {
     sh("qpdf --allow-weak-crypto --encrypt '' owner 40 --print=n --modify=n --extract=y --annotate=y -- $src "
         . escapeshellarg("$dir/encrypted-r2.pdf"));
 }
+if (!file_exists("$dir/encrypted-signed.pdf")) {
+    file_put_contents("$tmp/signed.pdf", build([
+        1 => '<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R 6 0 R] /SigFlags 3 >> >>',
+        2 => '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        3 => '<< /Type /Page /Parent 2 0 R /MediaBox ' . MEDIA . ' >>',
+        4 => '<< /FT /Sig /T (Sig) /V 5 0 R >>',
+        5 => '<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached /ByteRange [0 10 20 30] '
+            . "/Contents <3082AB000000> /Reason (I approve) /M (D:20261118120000+02'00') >>",
+        6 => '<< /FT /Sig /T (Untyped) /V 7 0 R >>',
+        7 => '<< /ByteRange [0 1 2 3] /Contents <CAFE00> /Reason (No type) >>',
+    ], ''));
+    sh('qpdf --encrypt user owner 256 -- ' . escapeshellarg("$tmp/signed.pdf") . ' ' . escapeshellarg("$dir/encrypted-signed.pdf"));
+}
 
 // Written raw: qpdf refuses a security handler it does not know.
 file_put_contents("$dir/unsupported-security.pdf", build([
