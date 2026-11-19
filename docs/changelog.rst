@@ -23,6 +23,9 @@ Features:
   ``setAppearance()`` and ``clearAppearance()``: write and remove its appearance stream.
   ``setColor()`` and ``setInteriorColor()`` throw while a normal appearance stream exists instead
   of dropping it.
+- ``Annotation::linkedAnnotation()``: the annotation of the same page that a key such as ``Popup``
+  or ``IRT`` points to. ``Annotation::link()``: a link annotation's ``Link``. ``setUri()``: make it
+  open a URI.
 
 v0.3.0 (2026-11-21)
 -------------------

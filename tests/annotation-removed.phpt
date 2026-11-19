@@ -15,12 +15,12 @@ $page = $doc->page(0);
 $b2 = $page->annotation(1);
 var_dump($b->remove());
 var_dump($page->annotationCount(), $a->index(), $c->index(), $c->stringValue('Contents'));
-foreach (['index', 'type', 'rect', 'flags', 'color', 'interiorColor', 'border', 'quadPoints', 'vertices', 'line', 'inkStrokes', 'appearance', 'remove'] as $m) {
+foreach (['index', 'type', 'rect', 'flags', 'color', 'interiorColor', 'border', 'quadPoints', 'vertices', 'line', 'inkStrokes', 'appearance', 'link', 'remove'] as $m) {
     foreach ([$b, $b2] as $h) {
         try { $h->$m(); } catch (Pdfium\PdfiumException $e) { echo $m, ': ', get_class($e), ': ', $e->getMessage(), "\n"; }
     }
 }
-foreach (['hasKey', 'valueType', 'stringValue', 'numberValue'] as $m) {
+foreach (['hasKey', 'valueType', 'stringValue', 'numberValue', 'linkedAnnotation'] as $m) {
     foreach ([$b, $b2] as $h) {
         try { $h->$m('Contents'); } catch (Pdfium\PdfiumException $e) { echo $m, ': ', $e->getMessage(), "\n"; }
     }
@@ -38,6 +38,7 @@ $setters = [
     'setStringValue' => ['Contents', 'Z'],
     'setAppearance' => ['0 g'],
     'clearAppearance' => [],
+    'setUri' => ['https://example.com/'],
 ];
 foreach ($setters as $m => $args) {
     foreach ([$b, $b2] as $h) {
@@ -101,6 +102,8 @@ inkStrokes: Pdfium\PdfiumException: The annotation was removed from its page
 inkStrokes: Pdfium\PdfiumException: The annotation was removed from its page
 appearance: Pdfium\PdfiumException: The annotation was removed from its page
 appearance: Pdfium\PdfiumException: The annotation was removed from its page
+link: Pdfium\PdfiumException: The annotation was removed from its page
+link: Pdfium\PdfiumException: The annotation was removed from its page
 remove: Pdfium\PdfiumException: The annotation was removed from its page
 remove: Pdfium\PdfiumException: The annotation was removed from its page
 hasKey: The annotation was removed from its page
@@ -111,6 +114,8 @@ stringValue: The annotation was removed from its page
 stringValue: The annotation was removed from its page
 numberValue: The annotation was removed from its page
 numberValue: The annotation was removed from its page
+linkedAnnotation: The annotation was removed from its page
+linkedAnnotation: The annotation was removed from its page
 setRect: The annotation was removed from its page
 setRect: The annotation was removed from its page
 setFlags: The annotation was removed from its page
@@ -135,6 +140,8 @@ setAppearance: The annotation was removed from its page
 setAppearance: The annotation was removed from its page
 clearAppearance: The annotation was removed from its page
 clearAppearance: The annotation was removed from its page
+setUri: The annotation was removed from its page
+setUri: The annotation was removed from its page
 string(1) "C"
 int(2)
 NULL

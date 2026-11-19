@@ -660,6 +660,12 @@ Page
 
       The topmost link annotation at a point, or ``null`` if there is none.
 
+      Once ``linkAt()`` has looked at a page of a document, it keeps finding that page's link
+      annotations as they were then: a link removed since with :php:meth:`removeAnnotation` or
+      :php:meth:`Annotation::remove` is still found, and one added with :php:meth:`addAnnotation` is
+      not. :php:meth:`links` and :php:meth:`Annotation::link` see the change; use them after adding
+      or removing annotations. See :ref:`annotations`.
+
       :param float $x: Horizontal position in points.
       :param float $y: Vertical position in points, from the bottom of the page.
       :rtype: ?Link
@@ -796,12 +802,12 @@ Annotation
 
 .. php:class:: Annotation
 
-   An annotation on a :php:class:`Page`, from :php:meth:`Page::annotations` or
-   :php:meth:`Page::annotation` or :php:meth:`Page::addAnnotation`. It keeps its page and document
-   alive. Two objects for the same annotation see each other's changes, but they are not ``==``;
-   compare :php:meth:`index` instead. Once the annotation is removed from its page, by
-   :php:meth:`remove` or :php:meth:`Page::removeAnnotation`, every method throws
-   :php:class:`PdfiumException`.
+   An annotation on a :php:class:`Page`, from :php:meth:`Page::annotations`,
+   :php:meth:`Page::annotation`, :php:meth:`Page::addAnnotation` or :php:meth:`linkedAnnotation`. It
+   keeps its page and document alive. Two objects for the same annotation see each other's
+   changes, but they are not ``==``; compare :php:meth:`index` instead. Once the annotation is
+   removed from its page, by :php:meth:`remove` or :php:meth:`Page::removeAnnotation`, every method
+   throws :php:class:`PdfiumException`.
 
    The setters change the loaded document, in place: :php:meth:`Document::save` or
    :php:meth:`Document::toString` writes the change out. What :php:meth:`Page::render` draws for an
@@ -1120,6 +1126,30 @@ Annotation
       :throws PdfiumException: The annotation was removed from its page.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: linkedAnnotation(string $key) -> ?Annotation
+
+      The annotation the key points to, as a new object: ``"Popup"`` gives a markup annotation's
+      pop-up, ``"IRT"`` the annotation a reply answers, ``"Parent"`` a pop-up's annotation. It
+      follows one step only. It returns ``null`` when the key is missing or not a dictionary, or
+      when the annotation it points to is not in this page's annotation list, such as one of
+      another page. It also returns ``null`` when that dictionary has no ``/Type /Annot``, which
+      PDF makes optional, so some files leave it out. See :ref:`annotations`.
+
+      .. code-block:: php
+
+         foreach ($page->annotations() as $a) {
+             $answers = $a->linkedAnnotation('IRT');
+             if ($answers !== null) {
+                 echo $a->stringValue('Contents'), ' answers ', $answers->index(), "\n";
+             }
+         }
+
+      :param string $key: A PDF key without the slash, as for :php:meth:`hasKey`.
+      :rtype: ?Annotation
+      :throws \\ValueError: ``$key`` is empty or contains a null byte.
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. php:method:: setStringValue(string $key, string $value) -> void
 
       Sets the key to a string, replacing any value it had. PDFium has no call to remove a key or to
@@ -1197,6 +1227,34 @@ Annotation
       :param int $mode: One of the ``APPEARANCE_*`` constants.
       :throws \\ValueError: ``$mode`` is not one of the ``APPEARANCE_*`` constants.
       :throws PdfiumException: The annotation was removed from its page, or PDFium refuses.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: link() -> ?Link
+
+      The link of a Link annotation: the same :php:class:`Link` that :php:meth:`Page::links` gives
+      for it. ``null`` for an annotation of any other type.
+
+      :rtype: ?Link
+      :throws PdfiumException: The annotation was removed from its page.
+      :throws MemoryException: The link would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setUri(string $uri) -> void
+
+      Makes a Link annotation open a URI, in place: its action becomes a URI action, replacing
+      any action it had. The URI is stored as its bytes, as PDF URIs are, so keep it to ASCII and
+      percent-encode other characters.
+
+      .. code-block:: php
+
+         $link = $page->addAnnotation('Link', new Pdfium\Rect(72, 700, 200, 720));
+         $link->setUri('https://example.com/');
+         echo $link->link()->action->uri;   // https://example.com/
+
+      :param string $uri: The URI.
+      :throws \\ValueError: ``$uri`` is empty or contains a null byte.
+      :throws PdfiumException: The annotation was removed from its page, or it is not a Link
+         annotation.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: remove() -> void
@@ -1746,8 +1804,8 @@ Link
 
 .. php:class:: Link
 
-   One link annotation from :php:meth:`Page::links` or :php:meth:`Page::linkAt`: a final,
-   read-only value.
+   One link annotation from :php:meth:`Page::links`, :php:meth:`Page::linkAt` or
+   :php:meth:`Annotation::link`: a final, read-only value.
 
    .. php:attr:: rect
 

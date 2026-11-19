@@ -584,13 +584,13 @@ ZEND_METHOD(Pdfium_Annotation, inkStrokes)
 	pdfium_leave_or_throw(return_value, oom);
 }
 
-static bool key_valid(const zend_string *key)
+static bool c_string_valid(const zend_string *s)
 {
-	if (!ZSTR_LEN(key)) {
+	if (!ZSTR_LEN(s)) {
 		zend_argument_value_error(1, "must not be empty");
 		return false;
 	}
-	if (memchr(ZSTR_VAL(key), '\0', ZSTR_LEN(key))) {
+	if (memchr(ZSTR_VAL(s), '\0', ZSTR_LEN(s))) {
 		zend_argument_value_error(1, "must not contain a null byte");
 		return false;
 	}
@@ -603,7 +603,7 @@ static pdfium_annotation *keyed_enter(INTERNAL_FUNCTION_PARAMETERS, zend_string 
 		Z_PARAM_STR(*key)
 	ZEND_PARSE_PARAMETERS_END_EX(return NULL);
 
-	if (!key_valid(*key)) {
+	if (!c_string_valid(*key)) {
 		return NULL;
 	}
 	return annotation_enter(Z_OBJ_P(ZEND_THIS));
@@ -685,6 +685,45 @@ ZEND_METHOD(Pdfium_Annotation, numberValue)
 		RETURN_NULL();
 	}
 	RETURN_DOUBLE(pdfium_points(value));
+}
+
+ZEND_METHOD(Pdfium_Annotation, linkedAnnotation)
+{
+	zend_string *key;
+	pdfium_annotation *a = keyed_enter(INTERNAL_FUNCTION_PARAM_PASSTHRU, &key);
+
+	if (!a) {
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION linked = FPDFAnnot_GetLinkedAnnot(a->annot, ZSTR_VAL(key));
+
+	if (linked && FPDFPage_GetAnnotIndex(a->ph->page, linked) < 0) {
+		FPDFPage_CloseAnnot(linked);
+		linked = NULL;
+	}
+	pdfium_leave();
+	if (!linked) {
+		RETURN_NULL();
+	}
+	RETURN_OBJ(annotation_new(a->ph, linked));
+}
+
+ZEND_METHOD(Pdfium_Annotation, link)
+{
+	const char *oom = NULL;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	pdfium_annotation *a = annotation_enter(Z_OBJ_P(ZEND_THIS));
+
+	if (!a) {
+		RETURN_THROWS();
+	}
+	FPDF_LINK link = FPDFAnnot_GetLink(a->annot);
+
+	if (link && !pdfium_link_build(return_value, a->ph->h->doc, link)) {
+		oom = "The link needs";
+	}
+	pdfium_leave_or_throw(return_value, oom);
 }
 
 static bool appearance_mode_valid(zend_long mode, uint32_t arg)
@@ -990,7 +1029,7 @@ ZEND_METHOD(Pdfium_Annotation, setStringValue)
 		Z_PARAM_STR(value)
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (!key_valid(key)) {
+	if (!c_string_valid(key)) {
 		RETURN_THROWS();
 	}
 	unsigned short *wvalue = pdfium_utf16_arg(value, 2, "The annotation value needs");
@@ -1060,6 +1099,25 @@ ZEND_METHOD(Pdfium_Annotation, clearAppearance)
 
 	if (!a || !edit_done(a, before, FPDFAnnot_SetAP(a->annot, (FPDF_ANNOT_APPEARANCEMODE) mode, NULL),
 			"Cannot set the appearance of a %s annotation")) {
+		RETURN_THROWS();
+	}
+}
+
+ZEND_METHOD(Pdfium_Annotation, setUri)
+{
+	zend_string *uri;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STR(uri)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!c_string_valid(uri)) {
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+
+	if (!a || !edit_done(a, before, FPDFAnnot_SetURI(a->annot, ZSTR_VAL(uri)), "Cannot set the URI of a %s annotation")) {
 		RETURN_THROWS();
 	}
 }

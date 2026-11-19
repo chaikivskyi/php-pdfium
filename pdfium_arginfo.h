@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 147247901ac8159c8ad65989642ae6d6bfe7e0db */
+ * Stub hash: 891ce7a6d6b6aefd84b105dc5cffc27c2916d11c */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -278,6 +278,10 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_numberVa
 	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_linkedAnnotation, 0, 1, Pdfium\\Annotation, 1)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setStringValue, 0, 2, IS_VOID, 0)
 	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
 	ZEND_ARG_TYPE_INFO(0, value, IS_STRING, 0)
@@ -294,6 +298,13 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_clearAppearance, 0, 0, IS_VOID, 0)
 	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, mode, IS_LONG, 0, "Pdfium\\Annotation::APPEARANCE_NORMAL")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_link, 0, 0, Pdfium\\Link, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setUri, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, uri, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Annotation_remove arginfo_class_Pdfium_Annotation_removeInkStrokes
@@ -462,10 +473,13 @@ ZEND_METHOD(Pdfium_Annotation, hasKey);
 ZEND_METHOD(Pdfium_Annotation, valueType);
 ZEND_METHOD(Pdfium_Annotation, stringValue);
 ZEND_METHOD(Pdfium_Annotation, numberValue);
+ZEND_METHOD(Pdfium_Annotation, linkedAnnotation);
 ZEND_METHOD(Pdfium_Annotation, setStringValue);
 ZEND_METHOD(Pdfium_Annotation, appearance);
 ZEND_METHOD(Pdfium_Annotation, setAppearance);
 ZEND_METHOD(Pdfium_Annotation, clearAppearance);
+ZEND_METHOD(Pdfium_Annotation, link);
+ZEND_METHOD(Pdfium_Annotation, setUri);
 ZEND_METHOD(Pdfium_Annotation, remove);
 ZEND_METHOD(Pdfium_Attachment, __construct);
 ZEND_METHOD(Pdfium_Attachment, index);
@@ -666,10 +680,13 @@ static const zend_function_entry class_Pdfium_Annotation_methods[] = {
 	ZEND_ME(Pdfium_Annotation, valueType, arginfo_class_Pdfium_Annotation_valueType, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, stringValue, arginfo_class_Pdfium_Annotation_stringValue, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, numberValue, arginfo_class_Pdfium_Annotation_numberValue, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, linkedAnnotation, arginfo_class_Pdfium_Annotation_linkedAnnotation, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, setStringValue, arginfo_class_Pdfium_Annotation_setStringValue, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, appearance, arginfo_class_Pdfium_Annotation_appearance, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, setAppearance, arginfo_class_Pdfium_Annotation_setAppearance, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, clearAppearance, arginfo_class_Pdfium_Annotation_clearAppearance, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, link, arginfo_class_Pdfium_Annotation_link, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setUri, arginfo_class_Pdfium_Annotation_setUri, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, remove, arginfo_class_Pdfium_Annotation_remove, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };

@@ -580,8 +580,8 @@ final readonly class Bookmark
 }
 
 /**
- * A link annotation on a page, as Page::links() and linkAt() return it. Coordinates are in points,
- * as TextPage gives them.
+ * A link annotation on a page, as Page::links(), linkAt() and Annotation::link() return it.
+ * Coordinates are in points, as TextPage gives them.
  */
 final readonly class Link
 {
@@ -825,6 +825,9 @@ final class Page
 
     /**
      * The topmost link annotation at this point, in points as TextPage gives them; null when there is none.
+     * Once linkAt() has looked at a page of a document, it keeps finding that page's link annotations
+     * as they were then: a link removed since is still found, and one added is not. links() and
+     * Annotation::link() see the change.
      *
      * @throws \ValueError when $x or $y is not finite
      * @throws MemoryException when the link would not fit under memory_limit
@@ -1193,6 +1196,18 @@ final class Annotation
     public function numberValue(string $key): ?float {}
 
     /**
+     * The annotation the key points to, such as "Popup" (a markup annotation's pop-up) or "IRT"
+     * (the annotation a reply answers), as a new Annotation; it follows one step only. Null when
+     * the key is missing or not a dictionary, when that annotation is not in this page's annotation
+     * list, or when the dictionary has no /Type /Annot (optional in PDF).
+     *
+     * @throws \ValueError when $key is empty or contains a null byte
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function linkedAnnotation(string $key): ?Annotation {}
+
+    /**
      * Sets the key, such as "Contents" or "T" (the author), to a string, replacing its value. PDFium
      * cannot remove a key or write another type: a name key such as "Subtype" then holds a string
      * PDFium ignores (type() gives "Unknown"). Text starting with þÿ, ÿþ or ï»¿ (read as a byte
@@ -1242,6 +1257,27 @@ final class Annotation
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function clearAppearance(int $mode = Annotation::APPEARANCE_NORMAL): void {}
+
+    /**
+     * The link of a Link annotation, the same Link that Page::links() gives for it; null for any
+     * other type.
+     *
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws MemoryException when the link would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function link(): ?Link {}
+
+    /**
+     * Makes a Link annotation open this URI, replacing its action with a URI action. The URI is
+     * stored as its bytes, as PDF URIs are: ASCII, with other characters percent-encoded.
+     *
+     * @throws \ValueError when $uri is empty or contains a null byte
+     * @throws PdfiumException when the annotation was removed from its page, or it is not a Link
+     *         annotation
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setUri(string $uri): void {}
 
     /**
      * Removes the annotation from its page, as Page::removeAnnotation() does with its index.

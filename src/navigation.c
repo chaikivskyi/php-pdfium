@@ -292,6 +292,17 @@ static void link_set(zval *zv, FPDF_DOCUMENT doc, int pages, FPDF_LINK link, con
 		li->action.action ? NULL : FPDFLink_GetDest(doc, link), &li->action);
 }
 
+bool pdfium_link_build(zval *zv, FPDF_DOCUMENT doc, FPDF_LINK link)
+{
+	link_info li = link_read(doc, link);
+
+	if (!link_fits(&li, 0)) {
+		return false;
+	}
+	link_set(zv, doc, FPDF_GetPageCount(doc), link, &li);
+	return true;
+}
+
 ZEND_METHOD(Pdfium_Page, links)
 {
 	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
@@ -340,14 +351,8 @@ ZEND_METHOD(Pdfium_Page, linkAt)
 	}
 	FPDF_LINK link = FPDFLink_GetLinkAtPoint(ph->page, pdfium_float_side(x), pdfium_float_side(y));
 
-	if (link) {
-		link_info li = link_read(ph->h->doc, link);
-
-		if (link_fits(&li, 0)) {
-			link_set(return_value, ph->h->doc, FPDF_GetPageCount(ph->h->doc), link, &li);
-		} else {
-			oom = "The link needs";
-		}
+	if (link && !pdfium_link_build(return_value, ph->h->doc, link)) {
+		oom = "The link needs";
 	}
 	pdfium_leave_or_throw(return_value, oom);
 }

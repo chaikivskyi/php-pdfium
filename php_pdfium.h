@@ -168,6 +168,7 @@ void pdfium_index_error(uint32_t arg, int count, const char *one, const char *no
 
 bool pdfium_navigation_slots_match(void);
 void pdfium_quad_init(zval *zv, const FS_QUADPOINTSF *q);
+bool pdfium_link_build(zval *zv, FPDF_DOCUMENT doc, FPDF_LINK link);
 
 void pdfium_bitmap_free_obj(zend_object *obj);
 

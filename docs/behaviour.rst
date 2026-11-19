@@ -439,6 +439,26 @@ Annotations
    page. Objects for the other annotations stay usable. To remove several by index, remove from the
    highest down.
 
+**Links.**
+   ``linkAt()`` remembers a page's links. The first time it is called for a page, through any
+   ``Page`` object, it reads the page's link annotations and keeps that list while the document is
+   loaded. After ``addAnnotation()``, ``removeAnnotation()`` or ``remove()`` on that page, it still
+   finds a removed link and does not find an added one. It does see a new URI or rectangle of a
+   link it already listed. A document loaded from the saved PDF starts with the current links.
+
+   ``links()`` and ``Annotation::link()`` always read the page as it is, so use them after adding
+   or removing annotations.
+
+**Linked annotations.**
+   ``linkedAnnotation()`` returns only annotations in this page's annotation list, so ``index()``
+   and ``remove()`` always work on what it returns. It returns ``null`` when the key points to an
+   annotation of another page, to a dictionary in no page's list, or to an annotation removed from
+   this page. Take an annotation of another page from that page's ``annotations()``.
+
+   It also returns ``null`` when the dictionary the key points to has no ``/Type /Annot``. PDF
+   makes that entry optional, so some files leave it out. A key that points back to the annotation
+   itself gives a second object for it.
+
 **Not covered.**
    The extension does not reach the page objects inside an annotation, such as the text and images
    of a Stamp, or the form-field calls for Widget annotations; a Widget is listed with its common
@@ -469,7 +489,7 @@ Rough memory needed:
 - ``bookmarks()``: about 2 KB per entry, 5 bytes per character of its title, and the length of
   its URI or file path.
 - ``openAction()`` and ``closeAction()``: about 1 KB, and the length of the URI or file path.
-- ``links()`` and ``linkAt()``: about 2 KB per link, 256 bytes per quad, and the length of its
+- ``links()``, ``linkAt()`` and ``Annotation::link()``: about 2 KB per link, 256 bytes per quad, and the length of its
   URI or file path.
 - ``attachments()``: about 100 bytes per attachment.
 - ``Attachment::name()`` and ``metadata()``: about 5 bytes per character.
