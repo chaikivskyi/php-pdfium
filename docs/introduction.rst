@@ -15,6 +15,8 @@ What it does
 - List, extract, add and delete embedded files (attachments).
 - List digital signatures and read their details.
 - Read whether a document is tagged, and read and set its language.
+- Read and fill in form fields (text fields, checkboxes, radio buttons, combo and list boxes), and
+  flatten a page's annotations and fields into page content.
 - Split, merge and save documents.
 
 It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
@@ -193,7 +195,8 @@ Split, merge and save
    $doc->save('/tmp/open.pdf', removeSecurity: true);
 
 The new documents keep only the pages: no encryption, bookmarks, viewer preferences or metadata
-beyond what PDFium writes, and form fields can no longer be filled in. See :ref:`pdfium-defaults`.
+beyond what PDFium writes, and no ``/AcroForm``, so ``formType()`` is ``None``. See
+:ref:`pdfium-defaults`.
 
 Embedded files
 ~~~~~~~~~~~~~~
@@ -236,6 +239,34 @@ Language and tagging
    var_dump($doc->isTagged());
 
 ``isTagged()`` is the document's own claim; see :ref:`accessibility`.
+
+Fill in a form
+~~~~~~~~~~~~~~
+
+.. code-block:: php
+
+   $doc = Document::fromFile('/path/form.pdf');
+   $page = $doc->page(0);
+
+   foreach ($page->formFields() as $field) {
+       echo $field->name(), ' (', $field->type()->name, '): ', $field->value(), "\n";
+   }
+
+   foreach ($page->formFields() as $field) {
+       match ($field->name()) {
+           'name' => $field->setValue('Jane Doe'),
+           'agree' => $field->setChecked(),
+           'country' => $field->select(2),
+           default => null,
+       };
+   }
+
+   // Turn the fields and every other annotation into page content, then write the document out:
+   $page->flatten();
+   $doc->save('/tmp/filled.pdf');
+
+Filling and flattening change the loaded document, never the file it came from. See :ref:`forms` for
+what PDFium does with read-only fields, scripts and long text.
 
 Free a document
 ~~~~~~~~~~~~~~~

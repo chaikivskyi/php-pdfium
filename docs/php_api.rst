@@ -12,12 +12,12 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
 :php:class:`Bitmap`, :php:class:`Attachment` and :php:class:`FormField` cannot be cloned or
-serialized. The value classes (:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`,
-:php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`,
-:php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`, :php:class:`Destination`,
-:php:class:`Action`, :php:class:`AttachmentMetadata`, :php:class:`Signature`,
-:php:class:`FormFieldOption` and :php:class:`FormFieldFlags`) are read-only and can be cloned and
-serialized.
+serialized. The value classes (:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`,
+:php:class:`Char`, :php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`,
+:php:class:`WebLink`, :php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`,
+:php:class:`Destination`, :php:class:`Action`, :php:class:`AttachmentMetadata`,
+:php:class:`Signature`, :php:class:`FormFieldOption` and :php:class:`FormFieldFlags`) are read-only
+and can be cloned and serialized.
 
 
 Document
@@ -696,8 +696,9 @@ Page
 
    .. php:method:: formFieldAt(float $x, float $y) -> ?FormField
 
-      The form field whose widget is at a point, or ``null`` if there is none. Like
-      :php:meth:`formFields`, this sets up the document's form support.
+      The form field whose widget is at a point, or ``null`` if there is none. A widget that PDFium
+      cannot tie to a field, which :php:meth:`formFields` lists with the type ``Unknown``, is not
+      found; see :ref:`forms`.
 
       :param float $x: Horizontal position in points.
       :param float $y: Vertical position in points, from the bottom of the page.
@@ -707,29 +708,9 @@ Page
 
    .. php:method:: flatten(bool $forPrint = false) -> bool
 
-      Turns every annotation of the page into page content, in place: form fields with their current
-      values, and links and other annotations too, so :php:meth:`formFields` and :php:meth:`links`
-      are empty afterwards. It cannot be undone; :php:meth:`Document::save` writes it out, and the
-      saved file has no form left on that page.
-
-      By default it flattens what a viewer shows on screen: annotations flagged hidden or invisible
-      are dropped. With ``$forPrint`` it flattens what a printer prints: only annotations flagged
-      for printing are kept.
-
-      Afterwards this ``Page`` shows the flattened page: its :php:meth:`render`, :php:meth:`text`,
-      :php:meth:`textPage` and the other methods read the new content. Objects made before keep the
-      old page:
-
-      * a :php:class:`TextPage` made earlier keeps the text from before the flatten;
-      * a :php:class:`FormField` made earlier throws :php:class:`PdfiumException` on every call,
-        because its field is gone;
-      * another ``Page`` object for the same page, fetched before the flatten, shows the page without
-        its annotations and without the flattened content; fetch it again with
-        :php:meth:`Document::page`.
-
-      A field with widgets on other pages keeps them: only this page is flattened. Its
-      :php:meth:`FormField::controlCount` and :php:meth:`FormField::controlIndex` still count the
-      flattened widgets until the saved document is opened again.
+      Turns every annotation of the page, form fields with their current values and links included,
+      into page content, in place and for good. This ``Page`` shows the new content, but objects made
+      before the flatten do not; see :ref:`forms`.
 
       .. code-block:: php
 
@@ -838,11 +819,8 @@ FormField
 
    .. php:method:: value() -> string
 
-      The field's value exactly as PDFium reports it, as UTF-8; empty when there is none. For a
-      combo box this is the selected option's export value, not its label. For a list box it is
-      only the first selected option, when several are selected. For a checkbox or a radio group it
-      is the export value of the checked button, or ``Off``; use :php:meth:`isChecked` for the state
-      of one button.
+      The field's value exactly as PDFium reports it, as UTF-8; empty when there is none. Combo
+      boxes, list boxes and buttons give export values; see :ref:`forms`.
 
       :rtype: string
       :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
@@ -915,21 +893,9 @@ FormField
    .. php:method:: setValue(string $value) -> void
 
       Sets the text of a text field or of a combo box with the ``editable`` flag, as if a user typed
-      it, in place: :php:meth:`Document::save` or :php:meth:`Document::toString` writes it out.
-      PDFium stores the value where the field keeps it and draws the new text into every widget of
-      the field, on this page and on the others. A page fetched afterwards always shows the new
-      value; a :php:class:`Page` object for another page that was fetched before the fill may keep
-      showing an earlier value in :php:meth:`Page::render`, so fetch that page again. An empty
-      string clears the field.
-
-      PDFium cuts text longer than the field's length limit without saying so; compare
-      :php:meth:`value` when it matters. A read-only field is changed all the same; check
-      ``flags()->readOnly`` to refuse it. No script runs, so fields calculated or formatted from
-      this one are not updated.
-
-      PDFium's form filler does not store characters outside the Basic Multilingual Plane (above
-      U+FFFF, such as most emoji) correctly: they come back from :php:meth:`value` as a different
-      character. Check :php:meth:`value` when the text may contain them.
+      it, in place; an empty string clears the field. PDFium cuts text to the field's length limit,
+      changes read-only fields and does not store characters above U+FFFF correctly; see
+      :ref:`forms`.
 
       :param string $value: The text, as UTF-8.
       :throws \\ValueError: ``$value`` is not valid UTF-8 or contains a null byte.
@@ -942,13 +908,8 @@ FormField
    .. php:method:: setChecked(bool $checked = true) -> void
 
       Checks or unchecks a checkbox or radio button, as if a user clicked it, in place. Nothing is
-      done when the button is already in the requested state. Checking a radio button unchecks the
-      others of its group; the widgets of one field that share an export value change together.
-      A radio group that forbids unchecking (``NoToggleToOff``) cannot have its checked button
-      unchecked: the call throws.
-
-      A read-only button is not changed and the call throws, because PDFium ignores the click; text
-      fields and lists are changed all the same, and only buttons throw.
+      done when the button is already in the requested state. PDFium does not change a read-only
+      button or uncheck a radio button, so those throw; see :ref:`forms`.
 
       :param bool $checked: The state to leave the button in.
       :throws PdfiumException: The field is gone, or PDFium cannot set up form support. Also when
@@ -960,7 +921,7 @@ FormField
 
       Selects or deselects one option of a combo box or list box, as if a user picked it, in place.
       In a list box that allows several selections the other options keep their state; selecting an
-      option of a combo box replaces its selection. PDFium does not deselect the chosen option of a
+      option of a combo box or of a list box that allows one replaces the selection. PDFium does not deselect the chosen option of a
       combo box: the call throws. A read-only field is changed all the same.
 
       :param int $option: The index into :php:meth:`options`.
@@ -1740,7 +1701,8 @@ these:
 
    Base class for all exceptions below. Extends ``\RuntimeException``.
 
-   Also thrown on its own when PDFium cannot copy pages, write a document or encode a bitmap.
+   Also thrown on its own when PDFium cannot copy pages, write a document, encode a bitmap or
+   flatten a page, and when a :php:class:`FormField` cannot be read or changed.
 
 .. php:exception:: FileException
 
@@ -1775,8 +1737,8 @@ these:
    ZTS PHP only. Another thread is using PDFium, and nothing was done. It is safe to retry, except
    that :php:meth:`Document::fromFile` has already read the file. See :ref:`threads`.
 
-   Every :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage` and
-   :php:class:`PageIterator` method can throw it, including ``current()`` and ``valid()`` in the
+   Every :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`
+   and :php:class:`FormField` method can throw it, including ``current()`` and ``valid()`` in the
    middle of a ``foreach``, except :php:meth:`Document::pages`, :php:meth:`Document::getIterator`,
    :php:meth:`Page::index`, :php:meth:`PageIterator::key`, :php:meth:`PageIterator::next` and
    :php:meth:`PageIterator::rewind`. :php:class:`Bitmap` and the value classes never throw it.
