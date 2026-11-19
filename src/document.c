@@ -3,6 +3,7 @@
 #endif
 
 #include "php_pdfium.h"
+#include <fpdf_catalog.h>
 #include <fpdf_doc.h>
 #include <fpdf_edit.h>
 #include <fpdf_ppo.h>
@@ -234,6 +235,44 @@ ZEND_METHOD(Pdfium_Document, metadata)
 		zend_update_property(pdfium_ce_metadata, Z_OBJ_P(return_value), entries[i].key, strlen(entries[i].key), &value);
 		zval_ptr_dtor(&value);
 	}
+}
+
+ZEND_METHOD(Pdfium_Document, isTagged)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	bool tagged = FPDFCatalog_IsTagged(pdfium_this_document(ZEND_THIS)->doc);
+	pdfium_leave();
+	RETURN_BOOL(tagged);
+}
+
+static unsigned long language_get(void *source, unsigned short *buf, unsigned long bytes)
+{
+	return FPDFCatalog_GetLanguage((FPDF_DOCUMENT) source, buf, bytes);
+}
+
+ZEND_METHOD(Pdfium_Document, language)
+{
+	size_t used = 0;
+	bool oom = false;
+
+	ZEND_PARSE_PARAMETERS_NONE();
+	if (!pdfium_enter()) {
+		RETURN_THROWS();
+	}
+	zend_string *language = pdfium_utf16le_fetch_under_limit(language_get, pdfium_this_document(ZEND_THIS)->doc, &used, &oom);
+	pdfium_leave();
+
+	if (oom) {
+		zend_throw_exception(pdfium_ce_memory_exception, "The document language needs more memory than memory_limit leaves", 0);
+		RETURN_THROWS();
+	}
+	if (!language) {
+		RETURN_NULL();
+	}
+	RETURN_STR(language);
 }
 
 ZEND_METHOD(Pdfium_Document, permissions)
