@@ -785,18 +785,18 @@ FormField
 
 .. php:class:: FormField
 
-   One widget of a form field, from :php:meth:`Page::formFields`. A field with several widgets,
-   such as a radio group, gives one ``FormField`` for each; :php:meth:`controlIndex` tells them
-   apart. It keeps its page and document alive and reads the field's current state on every call.
-   Every method throws :php:class:`PdfiumException` once its page is flattened, because the field is
-   gone.
+   One widget of a form field, from :php:meth:`Page::formFields` or :php:meth:`Page::formFieldAt`.
+   A field with several widgets, such as a radio group, gives one ``FormField`` for each;
+   :php:meth:`controlIndex` tells them apart. It keeps its page and document alive and reads the
+   field's current state on every call. Every method throws :php:class:`PdfiumException` once its
+   page is flattened, because the field is gone.
 
    .. php:method:: name() -> string
 
       The field's fully qualified name, as UTF-8, such as ``parent.notes``. Empty when it has none.
 
       :rtype: string
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws PdfiumException: The field is gone.
       :throws MemoryException: The name would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -805,7 +805,7 @@ FormField
       The field's tooltip, as UTF-8. ``null`` when it has none.
 
       :rtype: ?string
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws PdfiumException: The field is gone.
       :throws MemoryException: The text would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -814,7 +814,7 @@ FormField
       The field's type.
 
       :rtype: FormFieldType
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws PdfiumException: The field is gone.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: value() -> string
@@ -823,7 +823,7 @@ FormField
       boxes, list boxes and buttons give export values; see :ref:`forms`.
 
       :rtype: string
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws PdfiumException: The field is gone.
       :throws MemoryException: The value would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -833,7 +833,7 @@ FormField
       for any other type, and when the button gives none.
 
       :rtype: ?string
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws PdfiumException: The field is gone.
       :throws MemoryException: The value would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -842,7 +842,7 @@ FormField
       Whether this checkbox or radio button is checked. ``false`` for any other type.
 
       :rtype: bool
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws PdfiumException: The field is gone.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: rect() -> Rect
@@ -850,7 +850,7 @@ FormField
       The widget's rectangle on its page, in points.
 
       :rtype: Rect
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws PdfiumException: The field is gone.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: controlIndex() -> int
@@ -858,8 +858,7 @@ FormField
       This widget's place among the field's widgets, starting at 0.
 
       :rtype: int
-      :throws PdfiumException: The field is gone, PDFium cannot set up form support, or PDFium
-         cannot tell the widget's place.
+      :throws PdfiumException: The field is gone, or PDFium cannot read the field's group.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: controlCount() -> int
@@ -867,8 +866,7 @@ FormField
       The number of widgets the field has.
 
       :rtype: int
-      :throws PdfiumException: The field is gone, PDFium cannot set up form support, or PDFium
-         cannot tell the widget's place.
+      :throws PdfiumException: The field is gone, or PDFium cannot read the field's group.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: options() -> array
@@ -878,7 +876,7 @@ FormField
       label; :php:meth:`value` gives the export value of the selected option.
 
       :rtype: FormFieldOption[]
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws PdfiumException: The field is gone.
       :throws MemoryException: The options would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -887,7 +885,7 @@ FormField
       The field's flags. A flag that does not apply to the field's type is ``false``.
 
       :rtype: FormFieldFlags
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support.
+      :throws PdfiumException: The field is gone.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: setValue(string $value) -> void
@@ -899,9 +897,8 @@ FormField
 
       :param string $value: The text, as UTF-8.
       :throws \\ValueError: ``$value`` is not valid UTF-8 or contains a null byte.
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support. Also when
-         the field's type cannot take text (a combo box without the ``editable`` flag included), and
-         when PDFium refuses to edit the field.
+      :throws PdfiumException: The field is gone, it is not a text field or a combo box with the
+         ``editable`` flag, or PDFium refuses to edit it.
       :throws MemoryException: The text would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -912,23 +909,21 @@ FormField
       button or uncheck a radio button, so those throw; see :ref:`forms`.
 
       :param bool $checked: The state to leave the button in.
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support. Also when
-         the field is not a checkbox or radio button, and when PDFium did not leave the button in the
-         requested state.
+      :throws PdfiumException: The field is gone, the field is not a checkbox or radio button, or
+         PDFium did not leave the button in the requested state.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: select(int $option, bool $selected = true) -> void
 
       Selects or deselects one option of a combo box or list box, as if a user picked it, in place.
-      In a list box that allows several selections the other options keep their state; selecting an
-      option of a combo box or of a list box that allows one replaces the selection. PDFium does not deselect the chosen option of a
-      combo box: the call throws. A read-only field is changed all the same.
+      It replaces the selection, except in a list box with ``multiSelect``. PDFium changes read-only
+      fields too, but does not deselect a combo box's option, so that throws; see :ref:`forms`.
 
       :param int $option: The index into :php:meth:`options`.
       :param bool $selected: Whether the option ends up selected.
       :throws \\ValueError: ``$option`` is not an option index of the field.
-      :throws PdfiumException: The field is gone, or PDFium cannot set up form support. Also when
-         the field is not a combo box or list box, and when PDFium does not change the selection.
+      :throws PdfiumException: The field is gone, the field is not a combo box or list box, or
+         PDFium does not change the selection.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
 
