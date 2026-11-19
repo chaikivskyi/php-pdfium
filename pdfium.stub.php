@@ -102,6 +102,19 @@ final class Document implements \Countable, \IteratorAggregate
     public function language(): ?string {}
 
     /**
+     * Sets the document's language (its /Lang), for example "en-US"; it is not checked to be a
+     * language tag. An empty string means the language is unknown, and language() then returns
+     * null. Changes the loaded document; save() or toString() writes it out.
+     *
+     * @throws \ValueError when $language is not valid UTF-8, contains a null byte or the escape
+     *         character, or starts with what a PDF reader would take for a byte order mark
+     * @throws MemoryException when $language would not fit under memory_limit
+     * @throws PdfiumException when PDFium cannot set it
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setLanguage(string $language): void {}
+
+    /**
      * The first of the file's two identifiers (its /ID), set when the file was created, as raw
      * bytes; null when there is none or it is empty.
      *

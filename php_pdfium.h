@@ -181,5 +181,6 @@ zend_string *pdfium_utf16le_fetch_under_limit(pdfium_utf16le_getter get, void *s
 size_t pdfium_utf8_encode(uint32_t cp, char *out);
 const char *pdfium_utf8_to_utf16le(const zend_string *s, unsigned short *units, size_t *count);
 unsigned short *pdfium_utf8_to_utf16le_alloc(const zend_string *s);
+const char *pdfium_pdf_text_fault(const zend_string *s, size_t *units);
 
 #endif

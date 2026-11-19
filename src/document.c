@@ -275,6 +275,42 @@ ZEND_METHOD(Pdfium_Document, language)
 	RETURN_STR(language);
 }
 
+ZEND_METHOD(Pdfium_Document, setLanguage)
+{
+	FPDF_DOCUMENT doc = pdfium_this_document(ZEND_THIS)->doc;
+	zend_string *language;
+	size_t units = 0;
+	const char *bad;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STR(language)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if ((bad = pdfium_pdf_text_fault(language, &units))) {
+		zend_argument_value_error(1, "%s", bad);
+		RETURN_THROWS();
+	}
+	if (!pdfium_memory_fits((units + 1) * sizeof(unsigned short))) {
+		zend_throw_exception(pdfium_ce_memory_exception, "The language needs more memory than memory_limit leaves", 0);
+		RETURN_THROWS();
+	}
+	unsigned short *wide = pdfium_utf8_to_utf16le_alloc(language);
+	bool entered = pdfium_enter(), set = false;
+
+	if (entered) {
+		set = FPDFCatalog_SetLanguage(doc, wide);
+		pdfium_leave();
+	}
+	efree(wide);
+	if (!entered) {
+		RETURN_THROWS();
+	}
+	if (!set) {
+		zend_throw_exception(pdfium_ce_exception, "Cannot set the document language", 0);
+		RETURN_THROWS();
+	}
+}
+
 ZEND_METHOD(Pdfium_Document, permissions)
 {
 	static const struct { int bit, r2_bit; const char *key; } flags[] = {
