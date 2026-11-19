@@ -16,12 +16,20 @@ extern zend_module_entry pdfium_module_entry;
 ZEND_TSRMLS_CACHE_EXTERN()
 #endif
 
+typedef struct {
+	FPDF_PAGE page;
+	int page_index;
+	FPDF_PAGE *pages;
+	int count;
+	bool editing;
+} pdfium_fill;
+
 typedef struct pdfium_doc_handle {
 	FPDF_DOCUMENT doc;
 	FPDF_FORMHANDLE form;
 	bool form_tried;
 	FPDF_FORMFILLINFO form_info;
-	struct pdfium_fill *fill;
+	pdfium_fill fill;
 	zend_string *buffer;
 	uint32_t refs;
 	uint64_t attachment_changes;
@@ -198,7 +206,6 @@ static inline uint32_t pdfium_surrogate_pair(uint32_t high, uint32_t low)
 zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count);
 typedef unsigned long (*pdfium_utf16le_getter)(void *source, unsigned short *buf, unsigned long bytes);
 size_t pdfium_utf16le_read(pdfium_utf16le_getter get, void *source, unsigned short *units, unsigned long bytes);
-zend_string *pdfium_utf16le_finish(unsigned short *units, size_t count);
 zend_string *pdfium_utf16le_fetch(pdfium_utf16le_getter get, void *source, unsigned long bytes);
 zend_string *pdfium_utf16le_fetch_under_limit(pdfium_utf16le_getter get, void *source, size_t *used, bool *oom);
 size_t pdfium_utf8_encode(uint32_t cp, char *out);

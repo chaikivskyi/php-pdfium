@@ -41,14 +41,6 @@ size_t pdfium_utf16le_read(pdfium_utf16le_getter get, void *source, unsigned sho
 	return n;
 }
 
-zend_string *pdfium_utf16le_finish(unsigned short *units, size_t count)
-{
-	zend_string *s = count ? pdfium_utf16le_to_utf8(units, count) : NULL;
-
-	free(units);
-	return s;
-}
-
 zend_string *pdfium_utf16le_fetch(pdfium_utf16le_getter get, void *source, unsigned long bytes)
 {
 	if (bytes <= 2) {
