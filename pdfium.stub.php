@@ -85,6 +85,36 @@ final class Document implements \Countable, \IteratorAggregate
     public function permissions(): Permissions {}
 
     /**
+     * Whether the document says it is a tagged PDF (its /MarkInfo has /Marked set). It does not
+     * check that the document has a usable structure tree.
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function isTagged(): bool {}
+
+    /**
+     * The document's language (its /Lang, for example "en-US") as PDFium reads it, as UTF-8; null
+     * when there is none, it is empty, or PDFium cannot read it as text.
+     *
+     * @throws MemoryException when it would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function language(): ?string {}
+
+    /**
+     * Sets the document's language (its /Lang), for example "en-US"; it is not checked to be a
+     * language tag. An empty string means the language is unknown, and language() then returns
+     * null. Changes the loaded document; save() or toString() writes it out.
+     *
+     * @throws \ValueError when $language is not valid UTF-8, contains a null byte or the escape
+     *         character, or starts with what a PDF reader would take for a byte order mark
+     * @throws MemoryException when $language would not fit under memory_limit
+     * @throws PdfiumException when PDFium cannot set it
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setLanguage(string $language): void {}
+
+    /**
      * The first of the file's two identifiers (its /ID), set when the file was created, as raw
      * bytes; null when there is none or it is empty.
      *
@@ -139,8 +169,9 @@ final class Document implements \Countable, \IteratorAggregate
      * size, creation date and checksum; the MIME type, relationship and modification date stay empty.
      * The new file can take any index, and every Attachment fetched before is now stale.
      *
-     * @throws \ValueError when $name is empty, or $name or $description is not valid UTF-8 or contains a null
-     *         byte, or $contents is longer than 2147483646 bytes
+     * @throws \ValueError when $name is empty; $name or $description is not valid UTF-8, contains a
+     *         null byte or the escape character, or starts with what a PDF reader would take for a
+     *         byte order mark; or $contents is longer than 2147483646 bytes
      * @throws PdfiumException when PDFium refuses: the name may already be used, or the attachment list is damaged;
      *         or when PDFium cannot store the contents or description (the message says if the entry stays)
      * @throws MemoryException when the name or description would not fit under memory_limit

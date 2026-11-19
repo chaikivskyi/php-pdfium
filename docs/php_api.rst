@@ -92,6 +92,38 @@ Document
       :rtype: Permissions
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: isTagged() -> bool
+
+      Whether the document says it is a tagged PDF (its ``/MarkInfo`` has ``/Marked`` set). It does
+      not check that the document has a usable structure tree. See :ref:`accessibility`.
+
+      :rtype: bool
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: language() -> ?string
+
+      The document's language (its ``/Lang``) as PDFium reads it, for example ``"en-US"``, as UTF-8;
+      ``null`` when there is none, it is empty, or PDFium cannot read it as text. See
+      :ref:`accessibility`.
+
+      :rtype: ?string
+      :throws MemoryException: It would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setLanguage(string $language) -> void
+
+      Sets the document's language, for example ``"en-US"``. It is not checked to be a language
+      tag. An empty string means the language is unknown, and ``language()`` then returns ``null``.
+      Changes the loaded document; ``save()`` or ``toString()`` writes it out.
+
+      :param string $language: The language, as UTF-8.
+      :throws \\ValueError: ``$language`` is not valid UTF-8, contains a null byte or the escape
+         character, or starts with what a PDF reader would take for a byte order mark (see
+         :ref:`accessibility`).
+      :throws MemoryException: ``$language`` would not fit under ``memory_limit``.
+      :throws PdfiumException: PDFium cannot set it.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. php:method:: permanentId() -> ?string
 
       The first of the file's two identifiers (its ``/ID``): set when the file was created and
@@ -189,8 +221,10 @@ Document
       :param string $contents: The file's bytes.
       :param ?string $description: Shown by viewers next to the file, as UTF-8.
       :rtype: Attachment
-      :throws \\ValueError: ``$name`` is empty, ``$name`` or ``$description`` is not valid UTF-8
-         or contains a null byte, or ``$contents`` is longer than 2147483646 bytes.
+      :throws \\ValueError: ``$name`` is empty; ``$name`` or ``$description`` is not valid UTF-8,
+         contains a null byte or the escape character, or starts with what a PDF reader would take
+         for a byte order mark (see :ref:`accessibility`); or ``$contents`` is longer than
+         2147483646 bytes.
       :throws PdfiumException: PDFium refuses: the name may already be used, or the list of
          attachments is damaged. Also when PDFium cannot store the contents or description; the new
          entry is then removed if possible, and the message says when it stays.
@@ -585,7 +619,7 @@ Attachment
    .. php:method:: name() -> string
 
       The file name the entry gives, as UTF-8; empty when it gives none. It can differ from the key
-      the list is sorted by; see :ref:`attachments`.
+      the list is sorted by, and on macOS each ``/`` shows as ``:``; see :ref:`attachments`.
 
       :rtype: string
       :throws PdfiumException: The document's attachments changed since this one was fetched.

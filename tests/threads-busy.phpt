@@ -1,5 +1,5 @@
 --TEST--
-While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
+While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), isTagged(), language() and setLanguage() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -18,6 +18,7 @@ $it = $doc->pages();
 $page = $it->current();
 $adoc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $held = $adoc->addAttachment('held', 'h');
+$adoc->setLanguage('held');
 
 $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
 $future = $runtime->run(static function (string $fixture, string $stop): int {
@@ -31,10 +32,10 @@ $future = $runtime->run(static function (string $fixture, string $stop): int {
     return $renders;
 }, [__DIR__ . '/fixtures/a4.pdf', $stop]);
 
-$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = false;
+$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $langBusy = $langBusyChangedNothing = $tagBusy = $readBusy = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
-while ((!$busyMessage || !$saveBusy || !$addBusy) && microtime(true) < $end) {
+while ((!$busyMessage || !$saveBusy || !$addBusy || !$langBusy || !$tagBusy || !$readBusy) && microtime(true) < $end) {
     try {
         $it->next();
         unset($page);
@@ -78,6 +79,31 @@ while ((!$busyMessage || !$saveBusy || !$addBusy) && microtime(true) < $end) {
                 && with_retry(fn () => $held->name()) === 'held';
         }
     }
+    for ($try = 0; $try < 20 && !($tagBusy && $readBusy); $try++) {
+        try {
+            $adoc->isTagged();
+        } catch (Pdfium\BusyException $e) {
+            $tagBusy = true;
+        }
+        try {
+            $adoc->language();
+        } catch (Pdfium\BusyException $e) {
+            $readBusy = true;
+        }
+    }
+    for ($try = 0; $try < 20 && !$langBusy; $try++) {
+        $changed = false;
+        try {
+            $adoc->setLanguage('busy');
+            $changed = true;
+        } catch (Pdfium\BusyException $e) {
+            $langBusy = true;
+            $langBusyChangedNothing = with_retry(fn () => $adoc->language()) === 'held';
+        }
+        if ($changed) {
+            with_retry(fn () => $adoc->setLanguage('held'));
+        }
+    }
     try {
         $doc->save($target);
         unlink($target);
@@ -94,6 +120,8 @@ var_dump($renders > 0);
 echo 'busy: ', $busyMessage ? 'yes' : 'no', "\n";
 echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no', "\n";
 echo 'busy add changed nothing: ', $addBusy && $addBusyChangedNothing ? 'yes' : 'no', "\n";
+echo 'busy setLanguage changed nothing: ', $langBusy && $langBusyChangedNothing ? 'yes' : 'no', "\n";
+echo 'isTagged and language busy: ', $tagBusy && $readBusy ? 'yes' : 'no', "\n";
 echo 'bitmap never busy: ', $bitmapNeverBusy ? 'yes' : 'no', "\n";
 echo 'release never busy: ', $releaseNeverBusy ? 'yes' : 'no', "\n";
 echo 'loaded current never busy: ', $currentNeverBusy ? 'yes' : 'no', "\n";
@@ -104,6 +132,8 @@ bool(true)
 busy: yes
 save busy left no file: yes
 busy add changed nothing: yes
+busy setLanguage changed nothing: yes
+isTagged and language busy: yes
 bitmap never busy: yes
 release never busy: yes
 loaded current never busy: yes

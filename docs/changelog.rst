@@ -28,6 +28,9 @@ Features:
   MIME type, relationship, dates and checksum.
 - ``Document::addAttachment()`` and ``deleteAttachment()``: embed a file in the document or remove
   one, written out by ``save()`` and ``toString()``.
+- ``Document::isTagged()``: whether the document says it is a tagged PDF.
+- ``Document::language()`` and ``Document::setLanguage()``: read and set the document's language,
+  written out by ``save()`` and ``toString()``.
 
 v0.2.0 (2026-11-15)
 -------------------
