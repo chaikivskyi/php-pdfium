@@ -83,6 +83,18 @@ static int attachment_count(FPDF_DOCUMENT doc)
 	return count > 0 ? count : 0;
 }
 
+zend_object *pdfium_attachment_for_annotation(zend_object *annotation)
+{
+	zval zv;
+
+	object_init_ex(&zv, pdfium_ce_attachment);
+	pdfium_attachment *a = pdfium_attachment_from_obj(Z_OBJ(zv));
+	a->owner = annotation;
+	a->changes = pdfium_annotation_from_obj(annotation)->ph->h->annotation_file_changes;
+	GC_ADDREF(annotation);
+	return Z_OBJ(zv);
+}
+
 static pdfium_attachment *attachment_current(zval *self)
 {
 	pdfium_attachment *a = pdfium_attachment_from_obj(Z_OBJ_P(self));
@@ -97,8 +109,12 @@ static pdfium_attachment *attachment_current(zval *self)
 
 static FPDF_ATTACHMENT attachment_enter(zval *self)
 {
-	pdfium_attachment *a = attachment_current(self);
+	pdfium_attachment *a = pdfium_attachment_from_obj(Z_OBJ_P(self));
 
+	if (a->owner) {
+		return pdfium_annotation_file_enter(a->owner, a->changes);
+	}
+	a = attachment_current(self);
 	return a && pdfium_enter() ? a->att : NULL;
 }
 
@@ -183,12 +199,56 @@ static int attachment_index_of(FPDF_DOCUMENT doc, FPDF_ATTACHMENT att)
 	return -1;
 }
 
+bool pdfium_attachment_args(zend_string *name, zend_string *contents, zend_string *description, unsigned short **wname,
+	unsigned short **wdesc)
+{
+	size_t name_units, desc_units = 0;
+	const char *bad;
+
+	if (!ZSTR_LEN(name)) {
+		zend_argument_value_error(1, "must not be empty");
+		return false;
+	}
+	if ((bad = pdfium_pdf_text_fault(name, &name_units))) {
+		zend_argument_value_error(1, "%s", bad);
+		return false;
+	}
+	if (ZSTR_LEN(contents) > INT_MAX) {
+		zend_argument_value_error(2, "must be at most %d bytes", INT_MAX);
+		return false;
+	}
+	if (description && (bad = pdfium_pdf_text_fault(description, &desc_units))) {
+		zend_argument_value_error(3, "%s", bad);
+		return false;
+	}
+	if (!pdfium_fits_or_throw((name_units + 1 + (description ? desc_units + 1 : 0)) * sizeof(unsigned short),
+			description ? "The attachment name and description need" : "The attachment name needs")) {
+		return false;
+	}
+	*wname = pdfium_utf8_to_utf16le_sized(name, name_units);
+	*wdesc = description ? pdfium_utf8_to_utf16le_sized(description, desc_units) : NULL;
+	return true;
+}
+
+void pdfium_attachment_args_free(unsigned short *wname, unsigned short *wdesc)
+{
+	efree(wname);
+	if (wdesc) {
+		efree(wdesc);
+	}
+}
+
+bool pdfium_attachment_fill(FPDF_ATTACHMENT att, FPDF_DOCUMENT doc, zend_string *contents, const unsigned short *description)
+{
+	return FPDFAttachment_SetFile(att, doc, ZSTR_VAL(contents), (unsigned long) ZSTR_LEN(contents))
+		&& (!description || FPDFAttachment_SetDescription(att, description));
+}
+
 ZEND_METHOD(Pdfium_Document, addAttachment)
 {
 	pdfium_doc_handle *h = pdfium_this_document(ZEND_THIS);
 	zend_string *name, *contents, *description = NULL;
-	size_t name_units, desc_units = 0;
-	const char *bad;
+	unsigned short *wname, *wdesc;
 
 	ZEND_PARSE_PARAMETERS_START(2, 3)
 		Z_PARAM_STR(name)
@@ -197,29 +257,9 @@ ZEND_METHOD(Pdfium_Document, addAttachment)
 		Z_PARAM_STR_OR_NULL(description)
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (!ZSTR_LEN(name)) {
-		zend_argument_value_error(1, "must not be empty");
+	if (!pdfium_attachment_args(name, contents, description, &wname, &wdesc)) {
 		RETURN_THROWS();
 	}
-	if ((bad = pdfium_pdf_text_fault(name, &name_units))) {
-		zend_argument_value_error(1, "%s", bad);
-		RETURN_THROWS();
-	}
-	if (ZSTR_LEN(contents) > INT_MAX) {
-		zend_argument_value_error(2, "must be at most %d bytes", INT_MAX);
-		RETURN_THROWS();
-	}
-	if (description && (bad = pdfium_pdf_text_fault(description, &desc_units))) {
-		zend_argument_value_error(3, "%s", bad);
-		RETURN_THROWS();
-	}
-	if (!pdfium_memory_fits((name_units + 1 + (description ? desc_units + 1 : 0)) * sizeof(unsigned short))) {
-		zend_throw_exception_ex(pdfium_ce_memory_exception, 0, "The attachment %s more memory than memory_limit leaves",
-			description ? "name and description need" : "name needs");
-		RETURN_THROWS();
-	}
-	unsigned short *wname = pdfium_utf8_to_utf16le_alloc(name);
-	unsigned short *wdesc = description ? pdfium_utf8_to_utf16le_alloc(description) : NULL;
 	const char *fail = NULL;
 	FPDF_ATTACHMENT att = NULL;
 	bool entered = pdfium_enter();
@@ -230,8 +270,7 @@ ZEND_METHOD(Pdfium_Document, addAttachment)
 			fail = "Cannot add the attachment: the name may already be used, or the document's attachment list cannot take it";
 		} else {
 			h->attachment_changes++;
-			if (!FPDFAttachment_SetFile(att, h->doc, ZSTR_VAL(contents), (unsigned long) ZSTR_LEN(contents))
-				|| (wdesc && !FPDFAttachment_SetDescription(att, wdesc))) {
+			if (!pdfium_attachment_fill(att, h->doc, contents, wdesc)) {
 				int index = attachment_index_of(h->doc, att);
 
 				fail = index >= 0 && FPDFDoc_DeleteAttachment(h->doc, index) ? "Cannot store the attachment's contents or description"
@@ -240,10 +279,7 @@ ZEND_METHOD(Pdfium_Document, addAttachment)
 		}
 		pdfium_leave();
 	}
-	efree(wname);
-	if (wdesc) {
-		efree(wdesc);
-	}
+	pdfium_attachment_args_free(wname, wdesc);
 	if (!entered) {
 		RETURN_THROWS();
 	}
@@ -287,6 +323,10 @@ ZEND_METHOD(Pdfium_Document, deleteAttachment)
 ZEND_METHOD(Pdfium_Attachment, index)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
+	if (pdfium_attachment_from_obj(Z_OBJ_P(ZEND_THIS))->owner) {
+		zend_throw_exception(pdfium_ce_exception, "The file belongs to an annotation and has no index", 0);
+		RETURN_THROWS();
+	}
 	pdfium_attachment *a = attachment_current(ZEND_THIS);
 
 	if (!a) {
@@ -447,6 +487,9 @@ void pdfium_attachment_free_obj(zend_object *obj)
 
 	if (a->h) {
 		pdfium_doc_handle_release(a->h);
+	}
+	if (a->owner) {
+		OBJ_RELEASE(a->owner);
 	}
 	zend_object_std_dtor(obj);
 }

@@ -90,7 +90,7 @@ size_t pdfium_utf8_encode(uint32_t cp, char *out)
 	return 4;
 }
 
-const char *pdfium_utf8_to_utf16le(const zend_string *s, unsigned short *units, size_t *count)
+static const char *pdfium_utf8_to_utf16le(const zend_string *s, unsigned short *units, size_t *count)
 {
 	size_t pos = 0, n = 0;
 	bool nul = false, invalid = false;
@@ -178,14 +178,6 @@ const char *pdfium_pdf_text_fault(const zend_string *s, size_t *units)
 	}
 	return "must not start with U+00FE U+00FF, U+00FF U+00FE or U+00EF U+00BB U+00BF while all its characters are in"
 		" PDFDocEncoding, as a PDF reader would read that start as a byte order mark";
-}
-
-unsigned short *pdfium_utf8_to_utf16le_alloc(const zend_string *s)
-{
-	size_t count;
-
-	pdfium_utf8_to_utf16le(s, NULL, &count);
-	return pdfium_utf8_to_utf16le_sized(s, count);
 }
 
 bool pdfium_utf16_arg_units(const zend_string *s, uint32_t arg, size_t *units)

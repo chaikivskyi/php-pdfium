@@ -167,7 +167,8 @@ final class Document implements \Countable, \IteratorAggregate
     /**
      * Embeds a file in this document, in place: save() or toString() writes it out. PDFium sets the
      * size, creation date and checksum; the MIME type, relationship and modification date stay empty.
-     * The new file can take any index, and every Attachment fetched before is now stale.
+     * The new file can take any index, and every Attachment fetched from the document's list before
+     * this call is now stale; an annotation's file is not.
      *
      * @throws \ValueError when $name is empty; $name or $description is not valid UTF-8, contains a
      *         null byte or the escape character, or starts with what a PDF reader would take for a
@@ -181,7 +182,8 @@ final class Document implements \Countable, \IteratorAggregate
 
     /**
      * Removes an embedded file from this document, in place. Its bytes stay in the saved PDF, unused.
-     * Every Attachment fetched before is now stale; to delete several, delete from the highest index down.
+     * Every Attachment fetched from the document's list before this call is now stale (an
+     * annotation's file is not); to delete several, delete from the highest index down.
      *
      * @throws \ValueError when $index is outside 0..attachmentCount()-1
      * @throws PdfiumException when PDFium cannot delete the entry
@@ -1209,8 +1211,9 @@ final class Annotation
 
     /**
      * Sets the key, such as "Contents" or "T" (the author), to a string, replacing its value. PDFium
-     * cannot remove a key or write another type: a name key such as "Subtype" then holds a string
-     * PDFium ignores (type() gives "Unknown"). Text starting with þÿ, ÿþ or ï»¿ (read as a byte
+     * cannot remove a key or write another type, so a name key such as "Subtype" then holds a string
+     * PDFium ignores (type() gives "Unknown"). "FS" replaces a FileAttachment's file and makes
+     * Attachments stale, as setAttachment() does. Text starting with þÿ, ÿþ or ï»¿ (read as a byte
      * order mark) or holding U+001B is stored as given but does not read back as written.
      *
      * @throws \ValueError when $key is empty or contains a null byte, or $value is not valid UTF-8
@@ -1280,6 +1283,33 @@ final class Annotation
     public function setUri(string $uri): void {}
 
     /**
+     * The file of a FileAttachment annotation; null when it has none, and for any other type. The file
+     * need not be in the document's attachment list; this Attachment is the annotation's own and has
+     * no index.
+     *
+     * @throws PdfiumException when the annotation was removed from its page
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function attachment(): ?Attachment {}
+
+    /**
+     * Embeds a file in a FileAttachment annotation, in place, replacing its file; PDFium sets the
+     * size, creation date and checksum. Every Attachment fetched earlier from this document's
+     * annotations goes stale; a call refused because the annotation is not a FileAttachment changes
+     * nothing.
+     *
+     * @throws \ValueError when $name is empty; $name or $description is not valid UTF-8, contains a
+     *         null byte or the escape character, or starts with what a PDF reader would take for a
+     *         byte order mark; or $contents is longer than 2147483647 bytes, the most PDFium can store
+     * @throws PdfiumException when the annotation was removed from its page, or it is not a
+     *         FileAttachment annotation; or when PDFium cannot store the contents or description, in
+     *         which case the annotation's previous file is gone too
+     * @throws MemoryException when the name or description would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setAttachment(string $name, string $contents, ?string $description = null): Attachment {}
+
+    /**
      * Removes the annotation from its page, as Page::removeAnnotation() does with its index.
      *
      * @throws PdfiumException when the annotation was already removed from its page, or PDFium
@@ -1293,6 +1323,11 @@ final class Annotation
  * A file embedded in the document. It keeps the document alive. Once a file is added to or deleted
  * from the document, it is stale: every method throws; fetch it again.
  *
+ * One from Annotation::attachment() or setAttachment() is the file of that annotation instead: it
+ * keeps the annotation alive, and is separate from the document's list. Adding or deleting a
+ * document file does not make it stale; setAttachment() on any annotation of the document does.
+ * Every method throws once the annotation is removed from its page, and index() always throws.
+ *
  * @strict-properties
  * @not-serializable
  */
@@ -1305,7 +1340,7 @@ final class Attachment
      * each call searches the list, so keep the result.
      *
      * @throws PdfiumException when the document's attachments changed since it was fetched, or PDFium
-     *         cannot find it in a damaged list
+     *         cannot find it in a damaged list, or the file belongs to an annotation
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function index(): int {}
@@ -1314,7 +1349,9 @@ final class Attachment
      * The file name the entry gives, as UTF-8; empty when it gives none. It can differ from the key
      * the list is sorted by, which PDFium does not show.
      *
-     * @throws PdfiumException when the document's attachments changed since it was fetched
+     * @throws PdfiumException when the document's attachments changed since it was fetched; for an
+     *         annotation's file, when setAttachment() replaced it, the annotation was removed, or PDFium
+     *         cannot find the file
      * @throws MemoryException when the name would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -1326,14 +1363,17 @@ final class Attachment
      * outside the PDF.
      *
      * @throws PdfiumException when the document's attachments changed since it was fetched, or
-     *         reading the file fails partway
+     *         reading the file fails partway; for an annotation's file, also when setAttachment()
+     *         replaced it, the annotation was removed, or PDFium cannot find the file
      * @throws MemoryException when the file would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function contents(): ?string {}
 
     /**
-     * @throws PdfiumException when the document's attachments changed since it was fetched
+     * @throws PdfiumException when the document's attachments changed since it was fetched; for an
+     *         annotation's file, when setAttachment() replaced it, the annotation was removed, or PDFium
+     *         cannot find the file
      * @throws MemoryException when an entry would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */

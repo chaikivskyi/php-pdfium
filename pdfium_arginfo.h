@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 891ce7a6d6b6aefd84b105dc5cffc27c2916d11c */
+ * Stub hash: 45994fa04bfceef111b342cf666f2a09eb66f1df */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -307,6 +307,11 @@ ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setUri, 
 	ZEND_ARG_TYPE_INFO(0, uri, IS_STRING, 0)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_attachment, 0, 0, Pdfium\\Attachment, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_setAttachment arginfo_class_Pdfium_Document_addAttachment
+
 #define arginfo_class_Pdfium_Annotation_remove arginfo_class_Pdfium_Annotation_removeInkStrokes
 
 #define arginfo_class_Pdfium_Attachment___construct arginfo_class_Pdfium_Document___construct
@@ -480,6 +485,8 @@ ZEND_METHOD(Pdfium_Annotation, setAppearance);
 ZEND_METHOD(Pdfium_Annotation, clearAppearance);
 ZEND_METHOD(Pdfium_Annotation, link);
 ZEND_METHOD(Pdfium_Annotation, setUri);
+ZEND_METHOD(Pdfium_Annotation, attachment);
+ZEND_METHOD(Pdfium_Annotation, setAttachment);
 ZEND_METHOD(Pdfium_Annotation, remove);
 ZEND_METHOD(Pdfium_Attachment, __construct);
 ZEND_METHOD(Pdfium_Attachment, index);
@@ -687,6 +694,8 @@ static const zend_function_entry class_Pdfium_Annotation_methods[] = {
 	ZEND_ME(Pdfium_Annotation, clearAppearance, arginfo_class_Pdfium_Annotation_clearAppearance, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, link, arginfo_class_Pdfium_Annotation_link, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, setUri, arginfo_class_Pdfium_Annotation_setUri, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, attachment, arginfo_class_Pdfium_Annotation_attachment, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setAttachment, arginfo_class_Pdfium_Annotation_setAttachment, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Annotation, remove, arginfo_class_Pdfium_Annotation_remove, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };

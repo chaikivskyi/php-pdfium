@@ -26,6 +26,9 @@ Features:
 - ``Annotation::linkedAnnotation()``: the annotation of the same page that a key such as ``Popup``
   or ``IRT`` points to. ``Annotation::link()``: a link annotation's ``Link``. ``setUri()``: make it
   open a URI.
+- ``Annotation::attachment()`` and ``setAttachment()``: read and replace the file of a
+  FileAttachment annotation, as an ``Attachment`` that keeps the annotation alive. It is separate
+  from the document's attachment list, so its ``index()`` throws.
 
 v0.3.0 (2026-11-21)
 -------------------

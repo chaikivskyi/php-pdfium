@@ -223,10 +223,10 @@ string it came from; ``save()`` or ``toString()`` writes the change out. A delet
 the list: its bytes stay in the saved PDF, unused.
 
 The list is kept sorted by name, so adding or deleting a file can shift the indexes of the others.
-After either call, every :php:class:`Attachment <Pdfium\\Attachment>` fetched before it is stale:
-its methods throw ``PdfiumException`` instead of reading a different file. Fetch it again with
-``attachments()`` or ``attachment()``. The one ``addAttachment()`` returns is current. To delete
-several files, see ``deleteAttachment()`` in :doc:`php_api`.
+After either call, every :php:class:`Attachment <Pdfium\\Attachment>` of this list fetched before
+it is stale: its methods throw ``PdfiumException`` instead of reading a different file. Fetch it
+again with ``attachments()`` or ``attachment()``. The one ``addAttachment()`` returns is current.
+To delete several files, see ``deleteAttachment()`` in :doc:`php_api`.
 
 Strictly, the list is sorted and checked by a key PDFium does not show. PDFium sets it to the file
 name, but other tools may not, so two entries can have the same ``name()``, and ``addAttachment()``
@@ -267,7 +267,12 @@ outside, for example under PHP-FPM's ``request_terminate_timeout``.
 Ordinary large lists can be slow too: ``attachments()`` takes about two seconds for 20,000 files
 stored as a tree of nested parts of 50 entries each. A flat list stays fast.
 
-``extractPages()`` and ``merge()`` copy pages only, so their results have no attachments.
+An ``Attachment`` from a FileAttachment annotation is separate from this list: ``attachments()``
+lists only the files the document's list names. When the list names the same file, it shows up in
+both, and only the ``Attachment`` from ``attachments()`` has an index. See :ref:`annotations`.
+
+``extractPages()`` and ``merge()`` copy pages only, so their results have no attachment list; a
+copied page keeps its annotations, and a FileAttachment annotation keeps its file.
 
 .. _accessibility:
 
@@ -459,6 +464,30 @@ Annotations
    makes that entry optional, so some files leave it out. A key that points back to the annotation
    itself gives a second object for it.
 
+**File attachments.**
+   A FileAttachment annotation holds one file, read with ``attachment()`` and replaced with
+   ``setAttachment()``. The file need not be in the document's attachment list, and the
+   ``Attachment`` from the annotation throws from ``index()`` even when it is. That ``Attachment``
+   keeps the annotation alive and asks the annotation for its file on each call.
+
+   Every ``Attachment`` fetched from an annotation goes stale, and its methods throw
+   ``PdfiumException`` instead of reading another file, after either of these on any annotation of
+   the document:
+
+   - ``setAttachment()``;
+   - ``setStringValue()`` with the key ``FS``.
+
+   Fetch it again with ``attachment()``; the one ``setAttachment()`` returns is current. Nothing
+   goes stale when PDFium refuses a ``setAttachment()`` because the annotation is not a
+   FileAttachment, or when a document file is added or deleted. Once its annotation is removed from
+   the page, the ``Attachment`` throws too.
+
+   ``setAttachment()`` replaces the file in steps. When PDFium cannot store the contents or
+   description, it has already dropped the previous file and cannot undo it: the
+   ``PdfiumException`` says so, and the annotation is left with a file entry without that content.
+
+   The old file's bytes stay in a saved PDF, unused, as a deleted document file's do.
+
 **Not covered.**
    The extension does not reach the page objects inside an annotation, such as the text and images
    of a Stamp, or the form-field calls for Widget annotations; a Widget is listed with its common
@@ -491,7 +520,7 @@ Rough memory needed:
 - ``openAction()`` and ``closeAction()``: about 1 KB, and the length of the URI or file path.
 - ``links()``, ``linkAt()`` and ``Annotation::link()``: about 2 KB per link, 256 bytes per quad, and the length of its
   URI or file path.
-- ``attachments()``: about 100 bytes per attachment.
+- ``attachments()``: about 130 bytes per attachment.
 - ``Attachment::name()`` and ``metadata()``: about 5 bytes per character.
 - ``Attachment::contents()``: the size of the file. See :ref:`attachments` for PDFium's own copy.
 - ``addAttachment()``: 2 bytes per character of the name and description.

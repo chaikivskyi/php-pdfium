@@ -43,7 +43,14 @@ typedef struct { pdfium_page_handle *ph; int index; zend_object std; } pdfium_pa
 typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std; } pdfium_page_iterator;
 typedef struct { unsigned char *pixels; int width, height; bool alpha, gray; zend_object std; } pdfium_bitmap;
 typedef struct { pdfium_page_handle *ph; FPDF_TEXTPAGE tp; zend_object std; } pdfium_text_page;
-typedef struct { pdfium_doc_handle *h; FPDF_ATTACHMENT att; int index; uint64_t changes; zend_object std; } pdfium_attachment;
+typedef struct {
+	pdfium_doc_handle *h;
+	FPDF_ATTACHMENT att;
+	int index;
+	uint64_t changes;
+	zend_object *owner;
+	zend_object std;
+} pdfium_attachment;
 typedef struct { pdfium_page_handle *ph; FPDF_ANNOTATION annot; uint64_t removals; bool removed; zend_object std; } pdfium_annotation;
 
 typedef struct { smart_str s; bool oom; } pdfium_buf;
@@ -174,9 +181,15 @@ void pdfium_bitmap_free_obj(zend_object *obj);
 
 void pdfium_attachment_free_obj(zend_object *obj);
 bool pdfium_attachment_slots_match(void);
+zend_object *pdfium_attachment_for_annotation(zend_object *annotation);
+bool pdfium_attachment_args(zend_string *name, zend_string *contents, zend_string *description, unsigned short **wname,
+	unsigned short **wdesc);
+void pdfium_attachment_args_free(unsigned short *wname, unsigned short *wdesc);
+bool pdfium_attachment_fill(FPDF_ATTACHMENT att, FPDF_DOCUMENT doc, zend_string *contents, const unsigned short *description);
 
 bool pdfium_signature_slots_match(void);
 void pdfium_annotation_free_obj(zend_object *obj);
+FPDF_ATTACHMENT pdfium_annotation_file_enter(zend_object *annotation, uint64_t fetched);
 bool pdfium_annotation_slots_match(void);
 
 bool pdfium_memory_fits(size_t bytes);
@@ -207,9 +220,7 @@ typedef unsigned long (*pdfium_utf16le_getter)(void *source, unsigned short *buf
 zend_string *pdfium_utf16le_fetch(pdfium_utf16le_getter get, void *source, unsigned long bytes);
 zend_string *pdfium_utf16le_fetch_under_limit(pdfium_utf16le_getter get, void *source, size_t *used, bool *oom);
 size_t pdfium_utf8_encode(uint32_t cp, char *out);
-const char *pdfium_utf8_to_utf16le(const zend_string *s, unsigned short *units, size_t *count);
 unsigned short *pdfium_utf8_to_utf16le_sized(const zend_string *s, size_t count);
-unsigned short *pdfium_utf8_to_utf16le_alloc(const zend_string *s);
 const char *pdfium_pdf_text_fault(const zend_string *s, size_t *units);
 bool pdfium_utf16_arg_units(const zend_string *s, uint32_t arg, size_t *units);
 unsigned short *pdfium_utf16_arg(const zend_string *s, uint32_t arg, const char *what);

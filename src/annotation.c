@@ -154,6 +154,28 @@ static pdfium_annotation *annotation_enter(zend_object *obj)
 	return annotation_enter_at(obj, NULL);
 }
 
+FPDF_ATTACHMENT pdfium_annotation_file_enter(zend_object *annotation, uint64_t fetched)
+{
+	pdfium_annotation *a = annotation_enter(annotation);
+
+	if (!a) {
+		return NULL;
+	}
+	if (fetched != a->ph->h->annotation_file_changes) {
+		pdfium_leave();
+		zend_throw_exception(pdfium_ce_exception,
+			"An annotation's file in this document changed since this Attachment was fetched; fetch it again", 0);
+		return NULL;
+	}
+	FPDF_ATTACHMENT att = FPDFAnnot_GetFileAttachment(a->annot);
+
+	if (!att) {
+		pdfium_leave();
+		zend_throw_exception(pdfium_ce_exception, "Cannot read the annotation's file", 0);
+	}
+	return att;
+}
+
 static int annotation_count(FPDF_PAGE page)
 {
 	int count = FPDFPage_GetAnnotCount(page);
@@ -1044,6 +1066,9 @@ ZEND_METHOD(Pdfium_Annotation, setStringValue)
 	if (a) {
 		bool set = FPDFAnnot_SetStringValue(a->annot, ZSTR_VAL(key), wvalue);
 
+		if (set && zend_string_equals_literal(key, "FS")) {
+			a->ph->h->annotation_file_changes++;
+		}
 		done = edit_done(a, before, set, "Cannot set the value of a %s annotation");
 	}
 	efree(wvalue);
@@ -1120,6 +1145,63 @@ ZEND_METHOD(Pdfium_Annotation, setUri)
 	if (!a || !edit_done(a, before, FPDFAnnot_SetURI(a->annot, ZSTR_VAL(uri)), "Cannot set the URI of a %s annotation")) {
 		RETURN_THROWS();
 	}
+}
+
+ZEND_METHOD(Pdfium_Annotation, attachment)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+	pdfium_annotation *a = annotation_enter(Z_OBJ_P(ZEND_THIS));
+
+	if (!a) {
+		RETURN_THROWS();
+	}
+	bool has = FPDFAnnot_GetFileAttachment(a->annot) != NULL;
+
+	pdfium_leave();
+	if (!has) {
+		RETURN_NULL();
+	}
+	RETURN_OBJ(pdfium_attachment_for_annotation(Z_OBJ_P(ZEND_THIS)));
+}
+
+ZEND_METHOD(Pdfium_Annotation, setAttachment)
+{
+	zend_string *name, *contents, *description = NULL;
+	unsigned short *wname, *wdesc;
+
+	ZEND_PARSE_PARAMETERS_START(2, 3)
+		Z_PARAM_STR(name)
+		Z_PARAM_STR(contents)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_STR_OR_NULL(description)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!pdfium_attachment_args(name, contents, description, &wname, &wdesc)) {
+		RETURN_THROWS();
+	}
+	FPDF_ANNOTATION_SUBTYPE before;
+	pdfium_annotation *a = edit_enter(ZEND_THIS, &before);
+	bool added = false, stored = false;
+
+	if (a) {
+		FPDF_ATTACHMENT att = FPDFAnnot_AddFileAttachment(a->annot, wname);
+
+		if (att) {
+			a->ph->h->annotation_file_changes++;
+			stored = pdfium_attachment_fill(att, a->ph->h->doc, contents, wdesc);
+		}
+		added = edit_done(a, before, att != NULL, "Cannot attach a file to a %s annotation");
+	}
+	pdfium_attachment_args_free(wname, wdesc);
+	if (!added) {
+		RETURN_THROWS();
+	}
+	if (!stored) {
+		zend_throw_exception(pdfium_ce_exception,
+			"Cannot store the attachment's contents; the annotation's previous file is gone", 0);
+		RETURN_THROWS();
+	}
+	RETURN_OBJ(pdfium_attachment_for_annotation(Z_OBJ_P(ZEND_THIS)));
 }
 
 ZEND_METHOD(Pdfium_Annotation, remove)
