@@ -238,10 +238,12 @@ Document
 
    .. php:method:: deleteAttachment(int $index) -> void
 
-      Removes an embedded file from this document, in place. Its bytes stay in the saved PDF,
-      unused. Every :php:class:`Attachment` fetched from the document's list before this call is
-      now stale (an annotation's file is not), so to delete several, collect their indexes first
-      and delete from the highest down:
+      Removes an embedded file from this document, in place. A saved PDF leaves out a deleted
+      file that came with the loaded document, unless something else in the document still points
+      to it; a file added since loading and then deleted stays in the saved PDF, unused. Every
+      :php:class:`Attachment` fetched from the document's list before this call is now stale; an
+      annotation's file is not. To delete several, collect their indexes first and delete from the
+      highest down:
 
       .. code-block:: php
 
@@ -593,8 +595,10 @@ Page
       :param ?Rect $region: Render only this area, in points, as for
          :ref:`text positions <text-positions>`.
       :param bool $transparent: Render on a transparent background instead of white.
-      :param bool $annotations: Draw annotations and form fields. The first such render can add
-         appearance streams that a later save writes; ``false`` leaves the document unchanged.
+      :param bool $annotations: Draw annotations and form fields. Form fields, and annotations of
+         most types, that have no appearance stream get one, stored in the document; on a form with
+         ``/NeedAppearances true`` the fields' streams can be replaced too. A later save writes
+         them. ``false`` leaves the document unchanged. See :ref:`annotations`.
       :param bool $grayscale: Render in gray: PNG and JPEG output have one gray channel, two in a
          transparent PNG.
       :rtype: Bitmap
@@ -739,7 +743,9 @@ Page
 
       Removes an annotation from the page, in place. The annotations after it move down one index,
       and every :php:class:`Annotation` for the removed one throws from then on; the others stay
-      usable. To remove several by index, remove from the highest down.
+      usable. On a damaged page that lists the annotation twice, nothing throws; see
+      :ref:`annotations`. To remove several by index, remove from the highest down. A Widget's form
+      field stays in the document.
 
       :param int $index: Annotation number, starting at 0.
       :throws \\ValueError: The index is out of range.
@@ -758,11 +764,12 @@ Attachment
    again; see :ref:`attachments`.
 
    One from :php:meth:`Annotation::attachment` or :php:meth:`Annotation::setAttachment` is the file
-   of a ``FileAttachment`` annotation instead. It keeps its annotation alive and is separate from
-   the document's list. It goes stale when :php:meth:`Annotation::setAttachment`, or
-   :php:meth:`Annotation::setStringValue` with the key ``FS``, is called on any annotation of the
-   document, not when a document file is added or deleted. Every method throws once the annotation
-   is removed from its page, and :php:meth:`index` always throws. See :ref:`annotations`.
+   of a FileAttachment annotation instead. It keeps its annotation alive, is separate from the
+   document's list, and its :php:meth:`index` always throws. It goes stale after
+   :php:meth:`Annotation::setAttachment` on any FileAttachment annotation of the document, or after
+   :php:meth:`Annotation::setStringValue` with the key ``FS`` on any of its annotations, of any type.
+   Adding or deleting a document file does not make it stale. Every method throws once the
+   annotation is removed from its page. See :ref:`annotations`.
 
    .. php:method:: index() -> int
 
@@ -781,8 +788,8 @@ Attachment
 
       :rtype: string
       :throws PdfiumException: The document's attachments changed since this one was fetched.
-         For an annotation's file: its annotation's file was replaced since this one was
-         fetched, the annotation was removed from its page, or PDFium cannot find the file.
+         For an annotation's file: it went stale or its annotation was removed (see above), or
+         PDFium cannot find the file.
       :throws MemoryException: The name would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -795,8 +802,8 @@ Attachment
       :rtype: ?string
       :throws PdfiumException: The document's attachments changed since this one was fetched, or
          reading the file fails partway.
-         For an annotation's file: its annotation's file was replaced since this one was
-         fetched, the annotation was removed from its page, or PDFium cannot find the file.
+         For an annotation's file: it went stale or its annotation was removed (see above), or
+         PDFium cannot find the file.
       :throws MemoryException: The file would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -806,8 +813,8 @@ Attachment
 
       :rtype: AttachmentMetadata
       :throws PdfiumException: The document's attachments changed since this one was fetched.
-         For an annotation's file: its annotation's file was replaced since this one was
-         fetched, the annotation was removed from its page, or PDFium cannot find the file.
+         For an annotation's file: it went stale or its annotation was removed (see above), or
+         PDFium cannot find the file.
       :throws MemoryException: An entry would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -831,24 +838,61 @@ Annotation
    The bits of :php:meth:`flags`, as the PDF standard defines them:
 
    .. php:const:: FLAG_INVISIBLE
+
+      ``1``
+
    .. php:const:: FLAG_HIDDEN
+
+      ``2``
+
    .. php:const:: FLAG_PRINT
+
+      ``4``
+
    .. php:const:: FLAG_NO_ZOOM
+
+      ``8``
+
    .. php:const:: FLAG_NO_ROTATE
+
+      ``16``
+
    .. php:const:: FLAG_NO_VIEW
+
+      ``32``
+
    .. php:const:: FLAG_READ_ONLY
+
+      ``64``
+
    .. php:const:: FLAG_LOCKED
+
+      ``128``
+
    .. php:const:: FLAG_TOGGLE_NO_VIEW
+
+      ``256``
+
 
    Appearance modes, for how the annotation looks normally, under the pointer and when pressed:
 
    .. php:const:: APPEARANCE_NORMAL
+
+      ``0``
+
    .. php:const:: APPEARANCE_ROLLOVER
+
+      ``1``
+
    .. php:const:: APPEARANCE_DOWN
+
+      ``2``
+
 
    .. php:method:: index() -> int
 
-      The annotation's current position on its page, starting at 0.
+      The annotation's current position on its page, starting at 0. For an annotation that a
+      damaged page lists twice, the first; see :ref:`annotations`.
 
       :rtype: int
       :throws PdfiumException: The annotation was removed from its page.
@@ -941,7 +985,7 @@ Annotation
       normal appearance stream, which most types get from a :php:meth:`Page::render` with
       annotations. Call :php:meth:`clearAppearance` first; the extension never drops one for you.
       The next render then draws the new colour for the types listed in :ref:`annotations`; any
-      other type is left with no appearance and draws nothing.
+      other type, except a form field, is left with no appearance and draws nothing.
 
       :param int $red: From 0 to 255.
       :param int $green: From 0 to 255.
@@ -956,7 +1000,8 @@ Annotation
    .. php:method:: setInteriorColor(int $red, int $green, int $blue, int $alpha = 255) -> void
 
       Sets the interior colour (``/IC``) and the opacity (``/CA``), as :php:meth:`setColor` does,
-      with the same refusal while the annotation has a normal appearance stream.
+      with the same refusal while the annotation has a normal appearance stream. Both colours share
+      ``/CA``, so ``$alpha``, 255 by default, replaces an opacity :php:meth:`setColor` set.
 
       :param int $red: From 0 to 255.
       :param int $green: From 0 to 255.
@@ -980,8 +1025,8 @@ Annotation
 
       Sets the border (``/Border``), in points. This also removes the annotation's appearance
       streams of every mode, including one another tool wrote. The next :php:meth:`Page::render`
-      generates a new one only for the types listed in :ref:`annotations`; an annotation of
-      another type, such as a Stamp, then draws nothing.
+      generates a new one only for the types listed in :ref:`annotations` and for form fields; an
+      annotation of another type, such as a Stamp, then draws nothing.
 
       :param float $horizontalRadius: The horizontal radius of the rounded corners.
       :param float $verticalRadius: The vertical radius of the rounded corners.
@@ -1225,6 +1270,10 @@ Annotation
       PDFDocEncoding, all of it is stored as UTF-16 and draws nothing. Keep it to ASCII, and write
       other bytes in strings as octal escapes or hex strings.
 
+      On a form with ``/NeedAppearances true``, the next :php:meth:`Page::render` of the page with
+      annotations replaces a Widget's stream with one PDFium generates, and a later save writes
+      that; on other forms the stream stays. See :ref:`annotations`.
+
       :param string $stream: The content stream, as UTF-8.
       :param int $mode: One of the ``APPEARANCE_*`` constants.
       :throws \\ValueError: ``$stream`` is not valid UTF-8 or contains a null byte, or ``$mode`` is
@@ -1238,8 +1287,9 @@ Annotation
 
       Removes the appearance stream of one mode; for ``APPEARANCE_NORMAL``, of all three. The next
       :php:meth:`Page::render` with annotations generates a new normal appearance only for the
-      types listed in :ref:`annotations`. An annotation of any other type, such as a Stamp, or a
-      Line or Polygon from another tool, is left with no appearance and draws nothing.
+      types listed in :ref:`annotations` and for form fields. An annotation of any other type, such
+      as a Stamp, or a Line or Polygon from another tool, is left with no appearance and draws
+      nothing.
 
       :param int $mode: One of the ``APPEARANCE_*`` constants.
       :throws \\ValueError: ``$mode`` is not one of the ``APPEARANCE_*`` constants.
@@ -1259,8 +1309,10 @@ Annotation
    .. php:method:: setUri(string $uri) -> void
 
       Makes a Link annotation open a URI, in place: its action becomes a URI action, replacing
-      any action it had. The URI is stored as its bytes, as PDF URIs are, so keep it to ASCII and
-      percent-encode other characters.
+      any action it had. A destination (``/Dest``) the link had stays: :php:meth:`link` and
+      :php:meth:`Page::links` report the action, but another viewer may follow the destination.
+      The URI is stored as its bytes, as PDF URIs are, so keep it to ASCII and percent-encode other
+      characters.
 
       .. code-block:: php
 
@@ -1319,7 +1371,9 @@ Annotation
 
       Removes the annotation from its page, in place, as :php:meth:`Page::removeAnnotation` does
       with its index. The annotations after it move down one index; this object and every other
-      one for the same annotation throw from then on.
+      one for the same annotation throw from then on. One exception: when a damaged page lists the
+      annotation twice, the first entry goes and only this object throws; the others find the entry
+      that is left.
 
       .. code-block:: php
 

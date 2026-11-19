@@ -181,9 +181,10 @@ final class Document implements \Countable, \IteratorAggregate
     public function addAttachment(string $name, string $contents, ?string $description = null): Attachment {}
 
     /**
-     * Removes an embedded file from this document, in place. Its bytes stay in the saved PDF, unused.
-     * Every Attachment fetched from the document's list before this call is now stale (an
-     * annotation's file is not); to delete several, delete from the highest index down.
+     * Removes an embedded file from this document, in place. A saved PDF leaves it out, unless it was
+     * added since loading (it then stays, unused) or something else still points to it. Attachments
+     * fetched earlier from the document's list are now stale, but not an annotation's file. To delete
+     * several, delete from the highest index down.
      *
      * @throws \ValueError when $index is outside 0..attachmentCount()-1
      * @throws PdfiumException when PDFium cannot delete the entry
@@ -769,9 +770,10 @@ final class Page
      *        with background outside the page, and the image size limits apply to it, not the whole page
      * @param bool $transparent render on a transparent background instead: PNG keeps the alpha channel;
      *        JPEG has none, so it is drawn on white
-     * @param bool $annotations draw annotations and form fields. The first such render, of any page, can
-     *        add appearance streams to the document's form fields, which save() and toString() then
-     *        include; false leaves the document unchanged
+     * @param bool $annotations draw annotations and form fields. Form fields, and annotations of most
+     *        types, that have no appearance stream get one, and on a /NeedAppearances form the fields'
+     *        streams can be replaced; save() and toString() then include them. false leaves the
+     *        document unchanged
      * @param bool $grayscale render in gray: PNG and JPEG output have one gray channel, two in a
      *        transparent PNG
      *
@@ -876,7 +878,8 @@ final class Page
 
     /**
      * Removes an annotation from the page, in place. The annotations after it move down one index,
-     * and every Annotation for the removed one throws from then on.
+     * and every Annotation for the removed one throws from then on, unless a damaged page lists it
+     * twice (see the behaviour notes). A Widget's form field stays in the document.
      *
      * @throws \ValueError when $index is outside 0..annotationCount()-1
      * @throws PdfiumException when PDFium cannot remove the annotation
@@ -948,7 +951,8 @@ final class Annotation
     private function __construct() {}
 
     /**
-     * The annotation's current position on its page, starting at 0.
+     * The annotation's current position on its page, starting at 0; for one a damaged page lists
+     * twice, the first.
      *
      * @throws PdfiumException when the annotation was removed from its page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -1037,7 +1041,8 @@ final class Annotation
     public function setColor(int $red, int $green, int $blue, int $alpha = 255): void {}
 
     /**
-     * Sets the interior colour (/IC) and the opacity (/CA), as setColor() does.
+     * Sets the interior colour (/IC) and the opacity (/CA), as setColor() does. Both colours share
+     * /CA, so $alpha, 255 by default, replaces an opacity setColor() set.
      *
      * @throws \ValueError when a component is outside 0..255
      * @throws PdfiumException when the annotation was removed from its page, the annotation has a
@@ -1239,7 +1244,8 @@ final class Annotation
     /**
      * Sets the appearance stream, in page coordinates, for one of the APPEARANCE_* modes; render()
      * draws it instead of generating one. Keep it to ASCII: one character outside PDFDocEncoding makes
-     * the whole stream stored as UTF-16, which draws nothing.
+     * the whole stream stored as UTF-16, which draws nothing. On a /NeedAppearances form, render()
+     * replaces a Widget's stream.
      *
      * @throws \ValueError when $stream is not valid UTF-8 or contains a null byte, or $mode is not
      *         one of the APPEARANCE_* constants
@@ -1272,8 +1278,8 @@ final class Annotation
     public function link(): ?Link {}
 
     /**
-     * Makes a Link annotation open this URI, replacing its action with a URI action. The URI is
-     * stored as its bytes, as PDF URIs are: ASCII, with other characters percent-encoded.
+     * Makes a Link annotation open this URI, replacing its action. A /Dest it had stays, so another
+     * viewer may still follow that. Keep the URI to ASCII and percent-encode other characters.
      *
      * @throws \ValueError when $uri is empty or contains a null byte
      * @throws PdfiumException when the annotation was removed from its page, or it is not a Link
@@ -1302,15 +1308,17 @@ final class Annotation
      *         null byte or the escape character, or starts with what a PDF reader would take for a
      *         byte order mark; or $contents is longer than 2147483647 bytes, the most PDFium can store
      * @throws PdfiumException when the annotation was removed from its page, or it is not a
-     *         FileAttachment annotation; or when PDFium cannot store the contents or description, in
-     *         which case the annotation's previous file is gone too
+     *         FileAttachment annotation; or when PDFium cannot store the contents or description,
+     *         in which case the annotation's previous file is gone too
      * @throws MemoryException when the name or description would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function setAttachment(string $name, string $contents, ?string $description = null): Attachment {}
 
     /**
-     * Removes the annotation from its page, as Page::removeAnnotation() does with its index.
+     * Removes the annotation from its page, as Page::removeAnnotation() does with its index; every
+     * object for it throws from then on. If a damaged page lists it twice, the first entry goes and
+     * only this object throws.
      *
      * @throws PdfiumException when the annotation was already removed from its page, or PDFium
      *         cannot remove it
@@ -1323,10 +1331,10 @@ final class Annotation
  * A file embedded in the document. It keeps the document alive. Once a file is added to or deleted
  * from the document, it is stale: every method throws; fetch it again.
  *
- * One from Annotation::attachment() or setAttachment() is the file of that annotation instead: it
- * keeps the annotation alive, and is separate from the document's list. Adding or deleting a
- * document file does not make it stale; setAttachment() on any annotation of the document does.
- * Every method throws once the annotation is removed from its page, and index() always throws.
+ * One from Annotation::attachment() or setAttachment() is that annotation's own file, separate from
+ * the document's list; it keeps the annotation alive and its index() throws. It goes stale after
+ * setAttachment() on any FileAttachment annotation of the document, setStringValue("FS", ...) on any
+ * annotation of it, or removal of its annotation, but not when a document file is added or deleted.
  *
  * @strict-properties
  * @not-serializable
@@ -1350,8 +1358,8 @@ final class Attachment
      * the list is sorted by, which PDFium does not show.
      *
      * @throws PdfiumException when the document's attachments changed since it was fetched; for an
-     *         annotation's file, when setAttachment() replaced it, the annotation was removed, or PDFium
-     *         cannot find the file
+     *         annotation's file, when it went stale or its annotation was removed, or PDFium cannot
+     *         find the file
      * @throws MemoryException when the name would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -1363,8 +1371,8 @@ final class Attachment
      * outside the PDF.
      *
      * @throws PdfiumException when the document's attachments changed since it was fetched, or
-     *         reading the file fails partway; for an annotation's file, also when setAttachment()
-     *         replaced it, the annotation was removed, or PDFium cannot find the file
+     *         reading the file fails partway; for an annotation's file, also when it went stale or
+     *         its annotation was removed, or PDFium cannot find the file
      * @throws MemoryException when the file would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -1372,8 +1380,8 @@ final class Attachment
 
     /**
      * @throws PdfiumException when the document's attachments changed since it was fetched; for an
-     *         annotation's file, when setAttachment() replaced it, the annotation was removed, or PDFium
-     *         cannot find the file
+     *         annotation's file, when it went stale or its annotation was removed, or PDFium cannot
+     *         find the file
      * @throws MemoryException when an entry would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */

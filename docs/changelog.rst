@@ -29,6 +29,10 @@ Features:
 - ``Annotation::attachment()`` and ``setAttachment()``: read and replace the file of a
   FileAttachment annotation, as an ``Attachment`` that keeps the annotation alive. It is separate
   from the document's attachment list, so its ``index()`` throws.
+- What you set on annotations of an encrypted document is encrypted on save. Form fields (Widget
+  annotations) can be changed and removed, and the next render shows the change. Two ``Page``
+  objects for one page share its annotations. See the behaviour notes for these and for damaged
+  annotation lists.
 
 v0.3.0 (2026-11-21)
 -------------------

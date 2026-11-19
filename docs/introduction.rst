@@ -15,6 +15,8 @@ What it does
 - List, extract, add and delete embedded files (attachments).
 - List digital signatures and read their details.
 - Read whether a document is tagged, and read and set its language.
+- List, read, add, change and remove annotations, such as highlights, notes and links. Form
+  fields can be read, changed and removed, but not added.
 - Split, merge and save documents.
 
 It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
@@ -236,6 +238,33 @@ Language and tagging
    var_dump($doc->isTagged());
 
 ``isTagged()`` is the document's own claim; see :ref:`accessibility`.
+
+Annotations
+~~~~~~~~~~~
+
+.. code-block:: php
+
+   use Pdfium\Quad;
+
+   $page = $doc->page(0);
+   foreach ($page->annotations() as $a) {
+       echo $a->type(), ': ', $a->stringValue('Contents') ?? '', "\n";   // Text: Check this
+   }
+
+   // Highlight a word; changes this document in place:
+   $r = $page->textPage()->search('total')[0]->rects[0];
+   $h = $page->addAnnotation('Highlight', $r);
+   $h->addQuadPoints(new Quad(
+       $r->left, $r->top, $r->right, $r->top, $r->left, $r->bottom, $r->right, $r->bottom,
+   ));
+   $h->setColor(255, 200, 0);
+   $h->setStringValue('Contents', 'Check the total');
+
+   $page->render();   // draws the highlight and stores its appearance, for other viewers
+   $doc->save('/tmp/highlighted.pdf');
+
+Other viewers draw an annotation from its appearance stream, which ``render()`` generates for most
+types, so render the page before saving; see :ref:`annotations`.
 
 Free a document
 ~~~~~~~~~~~~~~~
