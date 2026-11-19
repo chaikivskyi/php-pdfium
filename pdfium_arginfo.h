@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 73a6d1e8eb66dae0d7efe4053c8342dfe2cfdae9 */
+ * Stub hash: d805187a564eccfe061f4092303cda799fb003c5 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -25,10 +25,15 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_permissions, 0, 0, Pdfium\\Permissions, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_permanentId, 0, 0, IS_STRING, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_isTagged, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Pdfium_Document_changingId arginfo_class_Pdfium_Document_permanentId
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_language, 0, 0, IS_STRING, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Document_permanentId arginfo_class_Pdfium_Document_language
+
+#define arginfo_class_Pdfium_Document_changingId arginfo_class_Pdfium_Document_language
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_bookmarks, 0, 0, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -155,7 +160,7 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Attachment_name arginfo_class_Pdfium_Page_text
 
-#define arginfo_class_Pdfium_Attachment_contents arginfo_class_Pdfium_Document_permanentId
+#define arginfo_class_Pdfium_Attachment_contents arginfo_class_Pdfium_Document_language
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Attachment_metadata, 0, 0, Pdfium\\AttachmentMetadata, 0)
 ZEND_END_ARG_INFO()
@@ -207,8 +212,7 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_PageIterator_rewind arginfo_class_Pdfium_PageIterator_next
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_PageIterator_valid, 0, 0, _IS_BOOL, 0)
-ZEND_END_ARG_INFO()
+#define arginfo_class_Pdfium_PageIterator_valid arginfo_class_Pdfium_Document_isTagged
 
 #define arginfo_class_Pdfium_Bitmap___construct arginfo_class_Pdfium_Document___construct
 
@@ -237,6 +241,8 @@ ZEND_METHOD(Pdfium_Document, fromString);
 ZEND_METHOD(Pdfium_Document, pageCount);
 ZEND_METHOD(Pdfium_Document, metadata);
 ZEND_METHOD(Pdfium_Document, permissions);
+ZEND_METHOD(Pdfium_Document, isTagged);
+ZEND_METHOD(Pdfium_Document, language);
 ZEND_METHOD(Pdfium_Document, permanentId);
 ZEND_METHOD(Pdfium_Document, changingId);
 ZEND_METHOD(Pdfium_Document, bookmarks);
@@ -317,6 +323,8 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 #endif
 	ZEND_ME(Pdfium_Document, metadata, arginfo_class_Pdfium_Document_metadata, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, permissions, arginfo_class_Pdfium_Document_permissions, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, isTagged, arginfo_class_Pdfium_Document_isTagged, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, language, arginfo_class_Pdfium_Document_language, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, permanentId, arginfo_class_Pdfium_Document_permanentId, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, changingId, arginfo_class_Pdfium_Document_changingId, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, bookmarks, arginfo_class_Pdfium_Document_bookmarks, ZEND_ACC_PUBLIC)

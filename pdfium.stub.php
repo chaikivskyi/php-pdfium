@@ -85,6 +85,23 @@ final class Document implements \Countable, \IteratorAggregate
     public function permissions(): Permissions {}
 
     /**
+     * Whether the document says it is a tagged PDF (its /MarkInfo has /Marked set). It does not
+     * check that the document has a usable structure tree.
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function isTagged(): bool {}
+
+    /**
+     * The document's language (its /Lang, for example "en-US") as PDFium reads it, as UTF-8; null
+     * when there is none, it is empty, or PDFium cannot read it as text.
+     *
+     * @throws MemoryException when it would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function language(): ?string {}
+
+    /**
      * The first of the file's two identifiers (its /ID), set when the file was created, as raw
      * bytes; null when there is none or it is empty.
      *
