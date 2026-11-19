@@ -217,9 +217,8 @@ ZEND_METHOD(Pdfium_Page, formFields)
 	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
 
 	if (!form) {
-		array_init(return_value);
 		pdfium_leave();
-		return;
+		RETURN_EMPTY_ARRAY();
 	}
 	page_form_load(ph, form);
 
