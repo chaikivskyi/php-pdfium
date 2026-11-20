@@ -248,8 +248,9 @@ ZEND_METHOD(Pdfium_Document, permissions)
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	unsigned long perms = FPDF_GetDocUserPermissions(doc);
-	bool r2 = FPDF_GetSecurityHandlerRevision(doc) == 2;
+	int revision = FPDF_GetSecurityHandlerRevision(doc);
+	unsigned long perms = revision == -1 ? 0xFFFFFFFFUL : FPDF_GetDocUserPermissions(doc);
+	bool r2 = revision == 2;
 	pdfium_leave();
 
 	object_init_ex(return_value, pdfium_ce_permissions);

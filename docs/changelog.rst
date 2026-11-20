@@ -29,6 +29,11 @@ Features:
 - ``Document::addAttachment()`` and ``deleteAttachment()``: embed a file in the document or remove
   one, written out by ``save()`` and ``toString()``.
 
+Changes:
+
+- ``Document::permissions()`` reports every permission for an unencrypted document PDFium built in
+  memory, such as the result of ``extractPages()`` or ``merge()``; it reported none.
+
 v0.2.0 (2026-11-15)
 -------------------
 
