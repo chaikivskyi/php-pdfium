@@ -113,6 +113,19 @@ final class Document implements \Countable, \IteratorAggregate
     public function bookmarks(): array {}
 
     /**
+     * The scripts in the document's /JavaScript name tree, in the order PDFium lists them; empty
+     * when there are none. The document's open action and document actions, and scripts on pages,
+     * links, annotations and form fields, are not included, so an empty result does not mean the
+     * file has no JavaScript. Nothing is run. A crafted script list can keep this call busy for
+     * minutes.
+     *
+     * @return JavaScript[]
+     * @throws MemoryException when the scripts would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function javaScripts(): array {}
+
+    /**
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function attachmentCount(): int {}
@@ -591,6 +604,23 @@ final readonly class Action
      * Where a GoTo action leads; null for every other type.
      */
     public ?Destination $destination;
+
+    private function __construct() {}
+}
+
+/**
+ * One script, as Document::javaScripts() returns it.
+ */
+final readonly class JavaScript
+{
+    /**
+     * The name the document gives the script, as UTF-8.
+     */
+    public string $name;
+    /**
+     * The source, as UTF-8.
+     */
+    public string $script;
 
     private function __construct() {}
 }

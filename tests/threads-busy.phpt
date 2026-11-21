@@ -1,5 +1,5 @@
 --TEST--
-While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
+While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment() and javaScripts() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -31,10 +31,15 @@ $future = $runtime->run(static function (string $fixture, string $stop): int {
     return $renders;
 }, [__DIR__ . '/fixtures/a4.pdf', $stop]);
 
-$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = false;
+$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $jsBusy = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
-while ((!$busyMessage || !$saveBusy || !$addBusy) && microtime(true) < $end) {
+while ((!$busyMessage || !$saveBusy || !$addBusy || !$jsBusy) && microtime(true) < $end) {
+    try {
+        $doc->javaScripts();
+    } catch (Pdfium\BusyException $e) {
+        $jsBusy = true;
+    }
     try {
         $it->next();
         unset($page);
@@ -94,6 +99,7 @@ var_dump($renders > 0);
 echo 'busy: ', $busyMessage ? 'yes' : 'no', "\n";
 echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no', "\n";
 echo 'busy add changed nothing: ', $addBusy && $addBusyChangedNothing ? 'yes' : 'no', "\n";
+echo 'javaScripts busy, then an array: ', $jsBusy && $doc->javaScripts() === [] ? 'yes' : 'no', "\n";
 echo 'bitmap never busy: ', $bitmapNeverBusy ? 'yes' : 'no', "\n";
 echo 'release never busy: ', $releaseNeverBusy ? 'yes' : 'no', "\n";
 echo 'loaded current never busy: ', $currentNeverBusy ? 'yes' : 'no', "\n";
@@ -104,6 +110,7 @@ bool(true)
 busy: yes
 save busy left no file: yes
 busy add changed nothing: yes
+javaScripts busy, then an array: yes
 bitmap never busy: yes
 release never busy: yes
 loaded current never busy: yes

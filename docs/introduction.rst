@@ -8,6 +8,7 @@ What it does
 - Read the page count, metadata, permissions, file identifiers, page sizes, rotation and text.
 - Read the outline (bookmarks), link annotations and page open and close actions, with where they
   lead.
+- List the scripts in the document's JavaScript name tree, without running them.
 - Find text on a page: search it, read the text inside a rectangle, list the URLs written in it,
   and get every character with its position, font and colour.
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
@@ -109,6 +110,7 @@ Read document information
    $doc->permissions()->copy;      // false
 
    $doc->bookmarks();              // Bookmark[]: the outline, each with title, destination, children
+   $doc->javaScripts();            // JavaScript[]: the named scripts, each with name and source
 
 Work with pages
 ~~~~~~~~~~~~~~~

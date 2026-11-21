@@ -211,6 +211,32 @@ Actions PDFium does not read, such as JavaScript, form submission and named acti
 page*, have the type ``"Unsupported"`` and nothing else set.
 
 
+.. _javascript:
+
+JavaScript
+----------
+
+``javaScripts()`` reads only the scripts in the document's script list (its ``/JavaScript`` name
+tree). It leaves out scripts chained after an entry with ``/Next`` and scripts on page actions,
+links, annotations and form fields; those actions still have the type ``"Unsupported"``. It also
+leaves out the document's open action (``/OpenAction``) and document actions (``/AA``, such as
+before closing or printing), which no method reads; ``Page::openAction()`` reads only a page's. So
+an empty result does not mean the file has no JavaScript. An entry that is not JavaScript, or whose
+source is missing or is not a string or stream, is left out. An entry whose source is empty is
+returned with an empty ``script``.
+
+Nothing is ever run: the extension only returns the source. It comes from the file, so treat it as
+untrusted text. NUL bytes in a name or script are kept, so nothing is cut short.
+
+A damaged script list, one that loops or nests too deeply, is read as far as PDFium can follow it.
+A crafted PDF of a few kilobytes can keep ``javaScripts()`` busy for minutes. The extension cannot
+detect such a file, and ``max_execution_time`` cannot interrupt PDFium. On NTS PHP the process is
+killed ``hard_timeout`` seconds (2 by default) after the time limit runs out, without running
+shutdown functions; on ZTS PHP the limit only takes effect when PDFium returns, and other threads
+get ``BusyException`` meanwhile. With PDFs you do not trust, run this work where it can be killed
+from outside, for example under PHP-FPM's ``request_terminate_timeout``.
+
+
 .. _attachments:
 
 Attachments
@@ -249,7 +275,9 @@ nests too deeply.
 A crafted PDF of a few kilobytes can keep ``attachments()``, ``attachment()``, ``addAttachment()``
 and ``deleteAttachment()`` busy for minutes, and ``index()`` of an added file too.
 ``attachmentCount()`` and the other ``Attachment`` methods stay fast. The extension cannot detect
-such a file, and ``max_execution_time`` does not stop PDFium; on ZTS PHP, other threads get
+such a file, and ``max_execution_time`` cannot interrupt PDFium. On NTS PHP the process is killed
+``hard_timeout`` seconds (2 by default) after the time limit runs out, without running shutdown
+functions; on ZTS PHP the limit only takes effect when PDFium returns, and other threads get
 ``BusyException`` meanwhile. With PDFs you do not trust, run this work where it can be killed from
 outside, for example under PHP-FPM's ``request_terminate_timeout``.
 
@@ -282,6 +310,7 @@ Rough memory needed:
 - ``bookmarks()``: about 2 KB per entry, 5 bytes per character of its title, and the length of
   its URI or file path.
 - ``openAction()`` and ``closeAction()``: about 1 KB, and the length of the URI or file path.
+- ``javaScripts()``: about 100 bytes per script and 5 bytes per character of each name and script.
 - ``links()`` and ``linkAt()``: about 2 KB per link, 256 bytes per quad, and the length of its
   URI or file path.
 - ``attachments()``: about 100 bytes per attachment.

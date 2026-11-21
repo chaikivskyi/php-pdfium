@@ -4,7 +4,7 @@ Document, Page, PageIterator, Bitmap and Attachment cannot be created except thr
 pdfium
 --FILE--
 <?php
-foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'Metadata', 'AttachmentMetadata', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Rect'] as $c) {
+foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'Metadata', 'AttachmentMetadata', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'JavaScript', 'Rect'] as $c) {
     $fq = "Pdfium\\$c";
     $r = new ReflectionClass($fq);
     echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true),
@@ -92,6 +92,10 @@ Destination final=true cloneable=true instantiable=false abstract=false
   created
   created
 Action final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
+JavaScript final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created

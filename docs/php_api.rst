@@ -15,8 +15,8 @@ everything else from the document. You create a :php:class:`Rect` to pass to
 (:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`, :php:class:`Char`,
 :php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`, :php:class:`WebLink`,
 :php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`, :php:class:`Destination`,
-:php:class:`Action` and :php:class:`AttachmentMetadata`) are read-only and can be cloned and
-serialized.
+:php:class:`Action`, :php:class:`JavaScript` and :php:class:`AttachmentMetadata`) are read-only and
+can be cloned and serialized.
 
 
 Document
@@ -138,6 +138,25 @@ Document
 
       :rtype: Bookmark[]
       :throws MemoryException: The outline would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. rubric:: JavaScript
+
+   .. php:method:: javaScripts() -> array
+
+      The scripts in the document's ``/JavaScript`` name tree, as :php:class:`JavaScript` values in
+      the order PDFium lists them. Empty when the document has none. Nothing is run; see
+      :ref:`javascript` for what is and is not included, and for a crafted file that can keep this
+      call busy for minutes.
+
+      .. code-block:: php
+
+         foreach ($doc->javaScripts() as $js) {
+             echo $js->name, ': ', strlen($js->script), " bytes\n";
+         }
+
+      :rtype: JavaScript[]
+      :throws MemoryException: The scripts would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Attachments
@@ -1272,6 +1291,22 @@ Action
    .. php:attr:: destination
 
       ``?Destination``: for ``"GoTo"``, where it leads; ``null`` for every other type.
+
+
+JavaScript
+----------
+
+.. php:class:: JavaScript
+
+   One script from :php:meth:`Document::javaScripts`: a final, read-only value.
+
+   .. php:attr:: name
+
+      ``string``: the name the document gives the script, as UTF-8.
+
+   .. php:attr:: script
+
+      ``string``: the source, as UTF-8.
 
 
 .. _exceptions:

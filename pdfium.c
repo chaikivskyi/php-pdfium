@@ -28,6 +28,7 @@ zend_class_entry *pdfium_ce_link;
 zend_class_entry *pdfium_ce_quad;
 zend_class_entry *pdfium_ce_destination;
 zend_class_entry *pdfium_ce_action;
+zend_class_entry *pdfium_ce_javascript;
 zend_class_entry *pdfium_ce_exception;
 zend_class_entry *pdfium_ce_file_exception;
 zend_class_entry *pdfium_ce_format_exception;
@@ -126,6 +127,7 @@ PHP_MINIT_FUNCTION(pdfium)
 	pdfium_ce_quad = register_class_Pdfium_Quad();
 	pdfium_ce_destination = register_class_Pdfium_Destination();
 	pdfium_ce_action = register_class_Pdfium_Action();
+	pdfium_ce_javascript = register_class_Pdfium_JavaScript();
 	pdfium_ce_attachment_metadata = register_class_Pdfium_AttachmentMetadata();
 
 	/* Before Document: its getIterator() return type narrows IteratorAggregate's to PageIterator. */
@@ -163,6 +165,10 @@ PHP_MINIT_FUNCTION(pdfium)
 	}
 	if (!pdfium_attachment_slots_match()) {
 		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/attachment.c do not match pdfium.stub.php");
+		return FAILURE;
+	}
+	if (!pdfium_javascript_slots_match()) {
+		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/javascript.c do not match pdfium.stub.php");
 		return FAILURE;
 	}
 	return SUCCESS;

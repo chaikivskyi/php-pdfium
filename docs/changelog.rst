@@ -28,6 +28,8 @@ Features:
   MIME type, relationship, dates and checksum.
 - ``Document::addAttachment()`` and ``deleteAttachment()``: embed a file in the document or remove
   one, written out by ``save()`` and ``toString()``.
+- ``Document::javaScripts()``: the scripts in the document's JavaScript name tree, as ``JavaScript``
+  values with a name and the source. Nothing is run.
 
 v0.2.0 (2026-11-15)
 -------------------
