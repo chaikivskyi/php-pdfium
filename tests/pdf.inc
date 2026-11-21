@@ -100,6 +100,17 @@ function file_spec(string $name, int $stream, string $more = ''): string
     return "<< /Type /Filespec /F ($name) /UF ($name) /EF << /F $stream 0 R >> $more >>";
 }
 
+function font_pdf(string $baseFont): string
+{
+    return build_pdf([
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 300] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>',
+        stream_obj("BT /F1 100 Tf 100 100 Td (A) Tj ET"),
+        "<< /Type /Font /Subtype /TrueType /BaseFont /$baseFont >>",
+    ]);
+}
+
 function js_pdf(string $names, array $extra): string
 {
     return nav_pdf("/Names << /JavaScript << /Names [$names] >> >>", $extra);

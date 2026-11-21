@@ -1325,6 +1325,15 @@ JavaScript
       ``string``: the source, as UTF-8.
 
 
+Ini settings
+------------
+
+``pdfium.font_paths``
+   The directories PDFium scans for fonts a PDF does not embed, separated by ``:``. Empty by
+   default, which means PDFium's own directories. Read once when PHP starts; ``ini_set()`` cannot
+   change it. See :ref:`fonts`.
+
+
 .. _exceptions:
 
 Exceptions

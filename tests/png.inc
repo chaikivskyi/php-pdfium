@@ -53,3 +53,20 @@ function png_pixel(array $img, int $x, int $y): array
 {
     return array_values(unpack('C*', substr($img['rows'][$y], $x * $img['channels'], $img['channels'])));
 }
+
+function ink_in(array $img, int $from, int $to): bool
+{
+    for ($y = $from; $y <= $to; $y++) {
+        for ($x = $from; $x <= $to; $x++) {
+            if (png_pixel($img, $x, $y)[0] < 128) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function png_render(string $pdf): array
+{
+    return png_decode(Pdfium\Document::fromString($pdf)->page(0)->render(dpi: 72)->toPng());
+}

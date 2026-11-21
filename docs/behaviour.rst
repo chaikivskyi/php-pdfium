@@ -188,6 +188,44 @@ Alpha is straight, not premultiplied. JPEG has no alpha channel, so a transparen
 drawn on white.
 
 
+.. _fonts:
+
+Fonts
+-----
+
+A PDF either carries its fonts or only names them. For a font it only names, PDFium looks in the
+system's font directories and, when it finds nothing suitable, draws the text with a built-in
+substitute. That is never an error, so a page can render with the wrong letter shapes without any
+sign from the extension, and characters the substitute lacks may not be drawn at all.
+
+The 14 standard fonts (Helvetica, Times, Courier and their styles, Symbol and ZapfDingbats) are
+named rather than carried in most PDFs. PDFium draws Helvetica, Times and Courier with Arial, Times
+New Roman and Courier New when it finds them in the font directories, and with its built-in fonts
+otherwise.
+
+The ini setting ``pdfium.font_paths`` lists the directories PDFium scans, separated by ``:`` like
+``include_path``:
+
+.. code-block:: ini
+
+   pdfium.font_paths = /app/fonts:/usr/share/fonts:/usr/local/share/fonts
+
+- The list **replaces** PDFium's own directories: on Linux, ``/usr/share/fonts``,
+  ``/usr/local/share/fonts``, ``/usr/share/X11/fonts/Type1`` and ``/usr/share/X11/fonts/TTF``. List
+  the ones you still want. Empty, the default, means PDFium's own directories, and so does a value
+  with no directory in it, such as ``:``.
+- It is read once, when PHP starts. Set it in ``php.ini`` or a file in its ``conf.d``
+  directory, or with ``-d`` on the command line, and restart PHP-FPM after changing it.
+  ``ini_set()`` refuses it. A value set later, with ``php_admin_value`` in a PHP-FPM pool or an
+  Apache virtual host, has no effect on PDFium, even though ``ini_get()`` and ``phpinfo()`` show it.
+- A directory that does not exist is ignored, without a warning. Use absolute paths.
+- It is one setting for the whole process: every document sees the same fonts.
+
+This is the usual fix for a container image with no fonts installed: copy the fonts your PDFs name
+into a directory and list it. A copy of Arial, Times New Roman or Courier New there also changes how
+Helvetica, Times or Courier text looks.
+
+
 .. _text-positions:
 
 Text positions

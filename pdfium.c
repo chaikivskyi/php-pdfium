@@ -93,6 +93,50 @@ static void init_handlers(zend_object_handlers *h, int offset, zend_object_free_
 	h->compare = zend_objects_not_comparable;
 }
 
+PHP_INI_BEGIN()
+	PHP_INI_ENTRY("pdfium.font_paths", "", PHP_INI_SYSTEM, NULL)
+PHP_INI_END()
+
+static char **font_paths;
+
+static char **font_paths_parse(const char *value)
+{
+	static const char sep[] = {DEFAULT_DIR_SEPARATOR, 0};
+	size_t entries = 0, n = 0;
+
+	for (const char *p = value; *p; p += strcspn(p, sep)) {
+		p += strspn(p, sep);
+		entries += *p != '\0';
+	}
+	if (!entries) {
+		return NULL;
+	}
+	char **paths = pecalloc(entries + 1, sizeof(*paths), 1);
+
+	for (const char *p = value; *p; ) {
+		p += strspn(p, sep);
+		size_t len = strcspn(p, sep);
+
+		if (len) {
+			paths[n++] = pestrndup(p, len, 1);
+		}
+		p += len;
+	}
+	return paths;
+}
+
+static void font_paths_free(void)
+{
+	if (!font_paths) {
+		return;
+	}
+	for (char **p = font_paths; *p; p++) {
+		pefree(*p, 1);
+	}
+	pefree(font_paths, 1);
+	font_paths = NULL;
+}
+
 PHP_MINIT_FUNCTION(pdfium)
 {
 	FPDF_LIBRARY_CONFIG config = {.version = 2};
@@ -104,6 +148,9 @@ PHP_MINIT_FUNCTION(pdfium)
 	}
 #endif
 	ZEND_TSRMLS_CACHE_UPDATE();
+	REGISTER_INI_ENTRIES();
+	font_paths = font_paths_parse(INI_STR("pdfium.font_paths"));
+	config.m_pUserFontPaths = (const char **) font_paths;
 	FPDF_InitLibraryWithConfig(&config);
 	pdfium_guard_startup();
 
@@ -177,6 +224,8 @@ PHP_MINIT_FUNCTION(pdfium)
 PHP_MSHUTDOWN_FUNCTION(pdfium)
 {
 	FPDF_DestroyLibrary();
+	font_paths_free();
+	UNREGISTER_INI_ENTRIES();
 	return SUCCESS;
 }
 
@@ -198,6 +247,7 @@ PHP_MINFO_FUNCTION(pdfium)
 	php_info_print_table_row(2, "Extension version", PHP_PDFIUM_VERSION);
 	php_info_print_table_row(2, "PDFium version", PHP_PDFIUM_LIB_VERSION);
 	php_info_print_table_end();
+	DISPLAY_INI_ENTRIES();
 }
 
 static const zend_module_dep pdfium_deps[] = {

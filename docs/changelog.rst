@@ -32,6 +32,8 @@ Features:
   values with a name and the source. Nothing is run.
 - ``Document::save()`` and ``toString()`` options ``incremental: true`` (keep the original file
   and append the changes) and ``version`` (the PDF version written in the header).
+- Ini setting ``pdfium.font_paths``: the directories PDFium scans for fonts that a PDF does not
+  embed.
 
 v0.2.0 (2026-11-15)
 -------------------

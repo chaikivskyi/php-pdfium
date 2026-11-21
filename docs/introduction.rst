@@ -16,7 +16,8 @@ What it does
 - List, extract, add and delete embedded files (attachments).
 - Split, merge and save documents, incrementally if you want to keep the original file.
 
-It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
+It needs PHP 8.2 to 8.5, NTS or ZTS, and no FFI. The only ini setting, ``pdfium.font_paths``, is
+optional and tells PDFium where to find fonts; see :ref:`fonts`.
 See :doc:`platforms` for the supported systems.
 
 

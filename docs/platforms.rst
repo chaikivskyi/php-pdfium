@@ -32,6 +32,10 @@ on demand only (the ``macOS`` workflow); the others run on every push and pull r
 ``configure`` picks the right build automatically and checks it against
 ``pdfium.sha256``.
 
+The ``pdfium.font_paths`` tests (see :ref:`fonts`) pass on Linux. They also run in the macOS
+workflow, which has not been run since they were added. PDFium's documentation says a platform may
+ignore the directories it is given, so they may fail there.
+
 
 Not supported
 -------------
