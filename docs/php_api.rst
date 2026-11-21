@@ -29,14 +29,17 @@ Document
 
    .. rubric:: Opening
 
-   .. php:staticmethod:: fromFile(string $path, ?string $password = null) -> Document
+   .. php:staticmethod:: fromFile(string $path, ?string $password = null, bool $lazy = false) -> Document
 
       Reads a PDF file through PHP streams, so stream wrappers such as ``phar://`` or ``s3://`` work
       and ``open_basedir`` is respected. The whole file is kept in PHP memory; the file itself is
-      not used again.
+      not used again. With ``$lazy`` true, a local file is instead kept open and read as PDFium
+      needs it; see :ref:`large-files`.
 
       :param string $path: Path or stream URL.
       :param ?string $password: Password for an encrypted document.
+      :param bool $lazy: Read the file on demand instead of loading it whole. Local files only, and
+         the file must not change while the document exists.
       :rtype: Document
       :throws \\ValueError: The path is empty, or the path or password contains a NUL byte.
       :throws FileException: The file cannot be read, the path is too long, or it is outside
@@ -44,7 +47,8 @@ Document
       :throws MemoryException: The file would not fit under ``memory_limit``.
       :throws FormatException: The file is not a PDF or is corrupted.
       :throws PasswordException: A password is needed, or the password is wrong.
-      :throws UnsupportedException: The document uses an encryption PDFium does not support.
+      :throws UnsupportedException: The document uses an encryption PDFium does not support, or
+         ``$lazy`` is true and the path goes through a stream wrapper.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:staticmethod:: fromString(string $bytes, ?string $password = null) -> Document
@@ -280,6 +284,8 @@ Document
       :throws \\ValueError: The list is empty, or an index is out of range.
       :throws \\TypeError: An element is not an ``int``.
       :throws UnsupportedException: This document is encrypted and ``$removeSecurity`` is ``false``.
+      :throws FormatException: This document was opened with ``lazy: true`` and its file could not
+         be read in full; see :ref:`large-files`.
       :throws PdfiumException: PDFium cannot copy the pages.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -299,6 +305,8 @@ Document
       :throws \\ValueError: The list is empty.
       :throws \\TypeError: An element is not a ``Document``.
       :throws UnsupportedException: A document is encrypted and ``$removeSecurity`` is ``false``.
+      :throws FormatException: A document was opened with ``lazy: true`` and its file could not be
+         read in full; see :ref:`large-files`.
       :throws PdfiumException: PDFium cannot copy the pages.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -319,6 +327,8 @@ Document
       :rtype: string
       :throws \\ValueError: ``$version`` does not fit a 32-bit integer.
       :throws MemoryException: The result would not fit under ``memory_limit``.
+      :throws FormatException: The document was opened with ``lazy: true`` and its file could not
+         be read in full; see :ref:`large-files`.
       :throws PdfiumException: PDFium cannot write the document.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -339,8 +349,11 @@ Document
          PDFium ignores other values. ``null`` lets PDFium choose. An incremental save keeps the
          original header unless it falls back to a full copy; see :ref:`pdfium-defaults`.
       :throws \\ValueError: The path is empty, or ``$version`` does not fit a 32-bit integer.
-      :throws FileException: The file cannot be written.
+      :throws FileException: The file cannot be written, or it could only be overwritten in place
+         while a document opened with ``lazy: true`` reads it; see :ref:`large-files`.
       :throws MemoryException: The result would not fit under ``memory_limit``.
+      :throws FormatException: The document was opened with ``lazy: true`` and its file could not
+         be read in full; see :ref:`large-files`.
       :throws PdfiumException: PDFium cannot write the document.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -879,7 +892,8 @@ Bitmap
 
       :param string $path: File to write.
       :throws \\ValueError: The path is empty.
-      :throws FileException: The file cannot be written.
+      :throws FileException: The file cannot be written, or it could only be overwritten in place
+         while a document opened with ``lazy: true`` reads it; see :ref:`large-files`.
       :throws MemoryException: The PNG would not fit under ``memory_limit``.
       :throws PdfiumException: Encoding fails.
 
@@ -890,7 +904,8 @@ Bitmap
       :param string $path: File to write.
       :param int $quality: Quality, from 1 to 100.
       :throws \\ValueError: The path is empty, or the quality is out of range.
-      :throws FileException: The file cannot be written.
+      :throws FileException: The file cannot be written, or it could only be overwritten in place
+         while a document opened with ``lazy: true`` reads it; see :ref:`large-files`.
       :throws MemoryException: The JPEG would not fit under ``memory_limit``.
       :throws PdfiumException: Encoding fails.
 
@@ -1352,17 +1367,22 @@ these:
 
 .. php:exception:: FileException
 
-   The file cannot be read or written, the path is too long, or ``open_basedir`` blocks it.
+   The file cannot be read or written, the path is too long, or ``open_basedir`` blocks it. Also
+   thrown when a save would have to overwrite a file in place while a document opened with
+   ``lazy: true`` reads it.
 
    When opening or saving fails, the PHP warning that says why (for example ``No such file or
    directory``) is attached as the previous exception (``$e->getPrevious()``). No warning is shown
    or logged. Through stream wrappers the call behaves like ``@fopen()``: your error handler, if you
-   set one, still sees the wrapper's warnings, and fatal errors are shown as usual.
+   set one, still sees the wrapper's warnings, and fatal errors are shown as usual. With
+   ``fromFile(lazy: true)``, a read that fails while PDFium opens the document has no previous
+   exception.
 
 .. php:exception:: FormatException
 
    The data is not a PDF, or it is too damaged to read. Also thrown when a page or its text cannot
-   be loaded.
+   be loaded, and when saving, extracting from or merging a document opened with ``lazy: true``
+   whose file could not be read in full.
 
 .. php:exception:: PasswordException
 
@@ -1370,8 +1390,9 @@ these:
 
 .. php:exception:: UnsupportedException
 
-   The document uses an encryption PDFium does not support, or :php:meth:`Document::extractPages` or
-   :php:meth:`Document::merge` was given an encrypted document without ``removeSecurity: true``.
+   The document uses an encryption PDFium does not support, :php:meth:`Document::extractPages` or
+   :php:meth:`Document::merge` was given an encrypted document without ``removeSecurity: true``, or
+   ``fromFile(lazy: true)`` was given a path that goes through a stream wrapper.
 
 .. php:exception:: MemoryException
 

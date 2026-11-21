@@ -16,12 +16,20 @@ extern zend_module_entry pdfium_module_entry;
 ZEND_TSRMLS_CACHE_EXTERN()
 #endif
 
+typedef struct pdfium_local_file {
+	FPDF_FILEACCESS access;
+	int fd;
+	bool read_failed;
+	struct pdfium_local_file *next;
+} pdfium_local_file;
+
 typedef struct pdfium_doc_handle {
 	FPDF_DOCUMENT doc;
 	FPDF_FORMHANDLE form;
 	bool form_tried;
 	FPDF_FORMFILLINFO form_info;
 	zend_string *buffer;
+	pdfium_local_file file;
 	uint32_t refs;
 	uint64_t attachment_changes;
 } pdfium_doc_handle;
@@ -160,6 +168,9 @@ bool pdfium_memory_fits(size_t bytes);
 bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);
 bool pdfium_path_given(size_t len);
 zend_string *pdfium_read_file(const char *path);
+bool pdfium_local_open(pdfium_local_file *f, const char *path);
+void pdfium_local_close(pdfium_local_file *f);
+void pdfium_io_request_start(void);
 void pdfium_write_and_release(zend_string *data, const char *path);
 
 static inline bool pdfium_high_surrogate(uint32_t u)

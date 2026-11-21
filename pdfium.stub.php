@@ -30,19 +30,25 @@ final class Document implements \Countable, \IteratorAggregate
     private function __construct() {}
 
     /**
-     * Reads the whole file through PHP streams, so stream wrappers and open_basedir apply. The
-     * document keeps the bytes in PHP memory and does not touch the file again.
+     * By default reads the whole file through PHP streams, so stream wrappers and open_basedir
+     * apply. The document keeps the bytes in PHP memory and does not touch the file again.
      *
+     * With $lazy true, the document keeps the file open and PDFium reads the parts it needs, when
+     * it needs them. The file must not change while the document exists. Only local files can be
+     * opened this way.
+     *
+     * @param bool $lazy read the file on demand instead of loading it whole
      * @throws \ValueError when $path is empty
      * @throws FileException when the path cannot be read, is a local path of MAXPATHLEN or longer, or is outside open_basedir;
-     *         the PHP warning saying why is its previous exception
+     *         the PHP warning saying why, if there is one, is its previous exception
      * @throws MemoryException when the file would not fit under memory_limit
      * @throws FormatException when the file is not a PDF or is corrupted
      * @throws PasswordException when the password is missing or wrong
-     * @throws UnsupportedException when the document uses a security handler PDFium does not support
+     * @throws UnsupportedException when the document uses a security handler PDFium does not support,
+     *         or when $lazy is true and the path goes through a stream wrapper
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public static function fromFile(string $path, ?string $password = null): Document {}
+    public static function fromFile(string $path, ?string $password = null, bool $lazy = false): Document {}
 
     /**
      * The document keeps $bytes alive for its whole life.
@@ -202,6 +208,7 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when $indexes is empty or an index is outside 0..pageCount()-1
      * @throws \TypeError when an element is not an int
      * @throws UnsupportedException when this document is encrypted and $removeSecurity is false
+     * @throws FormatException when this document was opened lazily and its file could not be read in full
      * @throws PdfiumException when PDFium cannot import the pages
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -219,6 +226,7 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when $documents is empty
      * @throws \TypeError when an element is not a Document
      * @throws UnsupportedException when a document is encrypted and $removeSecurity is false
+     * @throws FormatException when a document was opened lazily and its file could not be read in full
      * @throws PdfiumException when PDFium cannot import the pages
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -237,8 +245,10 @@ final class Document implements \Countable, \IteratorAggregate
      *        PDFium ignores other values. null lets PDFium choose. An incremental save keeps the
      *        original header unless it falls back to a full copy.
      * @throws \ValueError when $path is empty or $version does not fit a 32-bit integer
-     * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
+     * @throws FileException when $path cannot be written, or could only be overwritten in place while a
+     *         lazily opened document reads it; the PHP warning saying why is its previous exception
      * @throws MemoryException when the serialised document would not fit under memory_limit
+     * @throws FormatException when the document was opened lazily and its file could not be read in full
      * @throws PdfiumException when PDFium cannot serialise the document
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -257,6 +267,7 @@ final class Document implements \Countable, \IteratorAggregate
      *        original header unless it falls back to a full copy.
      * @throws \ValueError when $version does not fit a 32-bit integer
      * @throws MemoryException when the serialised document would not fit under memory_limit
+     * @throws FormatException when the document was opened lazily and its file could not be read in full
      * @throws PdfiumException when PDFium cannot serialise the document
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -973,7 +984,8 @@ final class Bitmap
      * Writes through PHP streams, so open_basedir and stream wrappers apply.
      *
      * @throws \ValueError when $path is empty
-     * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
+     * @throws FileException when $path cannot be written, or could only be overwritten in place while a
+     *         lazily opened document reads it; the PHP warning saying why is its previous exception
      * @throws MemoryException when the PNG would not fit under memory_limit
      * @throws PdfiumException when encoding fails
      */
@@ -983,7 +995,8 @@ final class Bitmap
      * Writes through PHP streams, so open_basedir and stream wrappers apply.
      *
      * @throws \ValueError when $path is empty or $quality is outside 1..100
-     * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
+     * @throws FileException when $path cannot be written, or could only be overwritten in place while a
+     *         lazily opened document reads it; the PHP warning saying why is its previous exception
      * @throws MemoryException when the JPEG would not fit under memory_limit
      * @throws PdfiumException when encoding fails
      */

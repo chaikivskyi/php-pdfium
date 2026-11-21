@@ -298,6 +298,25 @@ static bool write_in_place(const char *target, const char *path, zend_string *da
 }
 
 ZEND_TLS char pending_tmp[MAXPATHLEN];
+ZEND_TLS pdfium_local_file *local_files;
+
+void pdfium_io_request_start(void)
+{
+	local_files = NULL;
+}
+
+static bool read_by_lazy(const zend_stat_t *target, const char *path)
+{
+	for (pdfium_local_file *f = local_files; f; f = f->next) {
+		zend_stat_t own;
+
+		if (zend_fstat(f->fd, &own) == 0 && own.st_dev == target->st_dev && own.st_ino == target->st_ino) {
+			warn_path(path, "A lazily opened document reads from this file, and it can only be overwritten in place");
+			return true;
+		}
+	}
+	return false;
+}
 
 static bool write_replacing(const char *local_path, const char *path, zend_string *data)
 {
@@ -307,7 +326,12 @@ static bool write_replacing(const char *local_path, const char *path, zend_strin
 	if (php_check_open_basedir(local_path)) {
 		return false;
 	}
-	if (VCWD_STAT(local_path, &st) != 0 || !S_ISREG(st.st_mode) || !VCWD_REALPATH(local_path, target)) {
+	bool regular = VCWD_STAT(local_path, &st) == 0 && S_ISREG(st.st_mode);
+
+	if (!regular || !VCWD_REALPATH(local_path, target)) {
+		if (regular && read_by_lazy(&st, path)) {
+			return false;
+		}
 		bool created = VCWD_LSTAT(local_path, &st) != 0;
 
 		return write_stream(&php_plain_files_wrapper, path, data, created);
@@ -339,20 +363,21 @@ static bool write_replacing(const char *local_path, const char *path, zend_strin
 			fd = -1;
 		}
 	}
-	if (fd < 0) {
-		return write_in_place(target, path, data);
-	}
+	if (fd >= 0) {
+		bool ok = write_fd(fd, path, data, false);
 
-	bool ok = write_fd(fd, path, data, false);
-
-	if (ok && VCWD_RENAME(tmp, target) == 0) {
+		if (ok && VCWD_RENAME(tmp, target) == 0) {
+			pending_tmp[0] = '\0';
+			sync_dir(target, slash);
+			return true;
+		}
+		VCWD_UNLINK(tmp);
 		pending_tmp[0] = '\0';
-		sync_dir(target, slash);
-		return true;
+		if (!ok) {
+			return false;
+		}
 	}
-	VCWD_UNLINK(tmp);
-	pending_tmp[0] = '\0';
-	return ok && write_in_place(target, path, data);
+	return !read_by_lazy(&st, path) && write_in_place(target, path, data);
 }
 
 typedef struct {
@@ -513,20 +538,20 @@ static bool read_all(php_stream *stream, pdfium_buf *out, const char *path, bool
 	}
 }
 
-static php_stream *open_regular(const char *local_path, const char *path)
+static int open_regular_fd(const char *local_path, const char *path, size_t *size)
 {
 	zend_stat_t st;
 
 	if (VCWD_STAT(local_path, &st) == 0 && !S_ISREG(st.st_mode)) {
 		warn_path(path, "Failed to open stream: Not a regular file");
-		return NULL;
+		return -1;
 	}
 
 	int fd = VCWD_OPEN(local_path, O_RDONLY | O_NONBLOCK | O_NOCTTY | O_CLOEXEC);
 
 	if (fd < 0) {
 		warn_path(path, "Failed to open stream: %s", strerror(errno));
-		return NULL;
+		return -1;
 	}
 
 	bool statted = zend_fstat(fd, &st) == 0;
@@ -538,6 +563,19 @@ static php_stream *open_regular(const char *local_path, const char *path)
 
 		close(fd);
 		warn_path(path, "Failed to open stream: %s", other_type ? "Not a regular file" : strerror(error));
+		return -1;
+	}
+	if (size) {
+		*size = (size_t) st.st_size;
+	}
+	return fd;
+}
+
+static php_stream *open_regular(const char *local_path, const char *path)
+{
+	int fd = open_regular_fd(local_path, path, NULL);
+
+	if (fd < 0) {
 		return NULL;
 	}
 
@@ -585,4 +623,77 @@ zend_string *pdfium_read_file(const char *path)
 		return NULL;
 	}
 	return smart_str_extract(&out.s);
+}
+
+static int read_block(void *param, unsigned long position, unsigned char *buf, unsigned long size)
+{
+	pdfium_local_file *f = param;
+
+	while (size) {
+		ssize_t n = pread(f->fd, buf, size > SSIZE_MAX ? SSIZE_MAX : size, (off_t) position);
+
+		if (n < 0 && errno == EINTR) {
+			continue;
+		}
+		if (n <= 0) {
+			f->read_failed = true;
+			return 0;
+		}
+		buf += n;
+		position += n;
+		size -= n;
+	}
+	return 1;
+}
+
+bool pdfium_local_open(pdfium_local_file *f, const char *path)
+{
+	stream_scope sc;
+	volatile int fd = -1;
+	size_t size = 0;
+
+	if (scope_begin(&sc, path) && sc.local) {
+		zend_try {
+			if (php_check_open_basedir(sc.local_path) == 0) {
+				fd = open_regular_fd(sc.local_path, path, &size);
+			}
+		} zend_catch {
+			scope_abort(&sc);
+			zend_bailout();
+		} zend_end_try();
+	}
+	scope_end(&sc, fd >= 0 || !sc.local);
+	if (fd >= 0) {
+		f->access.m_FileLen = size;
+		f->access.m_GetBlock = read_block;
+		f->access.m_Param = f;
+		f->fd = fd;
+		f->next = local_files;
+		local_files = f;
+	} else if (sc.local) {
+		throw_path(pdfium_ce_file_exception, 0, "Cannot open ", path, "");
+	} else if (strlen(path) > 200) {
+		zend_throw_exception_ex(pdfium_ce_unsupported_exception, 0, "Lazy loading needs a local file; %.*s... is read through a "
+			"stream wrapper", (int) MIN(strcspn(path, ":") + 1, 32), path);
+	} else {
+		throw_path(pdfium_ce_unsupported_exception, 0, "Lazy loading needs a local file; ", path, " is read through a stream wrapper");
+	}
+	return fd >= 0;
+}
+
+void pdfium_local_close(pdfium_local_file *f)
+{
+	pdfium_local_file **p = &local_files;
+
+	if (!f->access.m_GetBlock) {
+		return;
+	}
+	while (*p && *p != f) {
+		p = &(*p)->next;
+	}
+	if (*p) {
+		*p = f->next;
+	}
+	close(f->fd);
+	f->access.m_GetBlock = NULL;
 }

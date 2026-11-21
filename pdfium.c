@@ -229,16 +229,14 @@ PHP_MSHUTDOWN_FUNCTION(pdfium)
 	return SUCCESS;
 }
 
-#ifdef ZTS
 PHP_RINIT_FUNCTION(pdfium)
 {
+#ifdef ZTS
 	ZEND_TSRMLS_CACHE_UPDATE();
+#endif
+	pdfium_io_request_start();
 	return SUCCESS;
 }
-#define PDFIUM_RINIT PHP_RINIT(pdfium)
-#else
-#define PDFIUM_RINIT NULL
-#endif
 
 PHP_MINFO_FUNCTION(pdfium)
 {
@@ -263,7 +261,7 @@ zend_module_entry pdfium_module_entry = {
 	NULL,
 	PHP_MINIT(pdfium),
 	PHP_MSHUTDOWN(pdfium),
-	PDFIUM_RINIT,
+	PHP_RINIT(pdfium),
 	NULL,
 	PHP_MINFO(pdfium),
 	PHP_PDFIUM_VERSION,

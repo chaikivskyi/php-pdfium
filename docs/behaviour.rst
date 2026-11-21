@@ -17,7 +17,8 @@ document alive:
 
 A :php:class:`TextPage <Pdfium\\TextPage>` also keeps its page loaded.
 
-A document opened with ``fromString()`` also keeps its string in memory.
+A document opened with ``fromString()`` also keeps its string in memory, and one opened with
+``fromFile(lazy: true)`` keeps its file open.
 
 These do **not** keep a document alive:
 
@@ -34,7 +35,10 @@ it.
 PDFium defaults
 ---------------
 
-The extension follows PDFium and adds no rules of its own.
+The extension follows PDFium and adds few rules of its own. ``extractPages()`` and ``merge()``
+refuse an encrypted source unless you pass ``removeSecurity: true`` (below). For a document opened
+with ``fromFile(lazy: true)``, a save will not overwrite its file in place, and once its file could
+not be read in full it will not be saved, split or merged; see :ref:`large-files`.
 
 **Permissions are not enforced.**
    ``permissions()`` tells you what the document allows, but nothing stops you. For example, you can
@@ -57,7 +61,8 @@ The extension follows PDFium and adds no rules of its own.
 **Reading and writing files work differently.**
    Both go through PHP streams, so stream wrappers and ``open_basedir`` work. ``fromFile()`` reads the
    whole file into PHP memory (counted against ``memory_limit``) and never touches it again, so you
-   can save over a file while its document is open.
+   can save over a file while its document is open. With ``lazy: true``, ``fromFile()`` instead
+   keeps the file open and reads it as needed; see :ref:`large-files`.
 
    Saving over an existing local file writes a complete new file next to it and renames it into
    place, keeping the owner, mode and extended attributes. When that is not possible (other hard
@@ -186,6 +191,54 @@ none                                RGB              RGB
 
 Alpha is straight, not premultiplied. JPEG has no alpha channel, so a transparent render's JPEG is
 drawn on white.
+
+
+.. _large-files:
+
+Large files
+-----------
+
+``fromFile($path, lazy: true)`` opens a local file without reading it whole. The document keeps the
+file open, and PDFium reads the parts it needs when it needs them: opening a well-formed file and
+counting its pages typically reads a few kilobytes, and rendering a page reads what that page uses.
+A file whose cross-reference table (the index of where each object is) is damaged can make PDFium
+read all of it while opening. In one measurement, a 120 MB file whose pages are large images needed
+about 20 MB to open and render one page, against about 140 MB when loaded whole. The file does not
+need to be linearized ("fast web view"); that made no difference in this measurement.
+
+- Only local files: a path that goes through a stream wrapper (``s3://``, ``ftp://``, ``data:``,
+  ``php://``, ``phar://``, your own) throws :php:exc:`Pdfium\\UnsupportedException`. If PHP
+  cannot use the wrapper, because it is not registered or ``allow_url_fopen`` disables it, the call
+  throws :php:exc:`Pdfium\\FileException` instead. ``open_basedir`` applies, and ``file://`` paths
+  are local.
+- The file must not change while the document exists. PDFium cannot tell, and would read a mix of
+  old and new bytes. Deleting or renaming the file is fine: the document keeps reading the open
+  file, and its disk space stays in use until the document is freed.
+- Each document opened this way holds one open file, which counts against the process's open-file
+  limit.
+- PDFium keeps what it has read until the document is freed. Rendering every page or a full save
+  reads the whole file, and PDFium's memory grows to about the file's size.
+- PDFium's own memory is not counted against ``memory_limit``; only what the extension builds in
+  PHP is. So a file larger than ``memory_limit`` can be opened lazily and its pages rendered.
+- ``save()`` and ``toString()`` still build the whole output in PHP memory, counted against
+  ``memory_limit``, as for any document. A full save is about the size of the file and an
+  incremental save at least that, so saving a file larger than ``memory_limit`` throws
+  :php:exc:`Pdfium\\MemoryException`.
+- You can save over the file the document reads: the save writes a new copy and renames it into
+  place, and the document keeps reading the old one. When the save would have to overwrite the file
+  in place instead (see :ref:`pdfium-defaults` for when), it throws :php:exc:`Pdfium\\FileException`
+  and leaves the file alone. The check covers every save the extension makes in the same request or
+  thread, by any document or bitmap. It does not cover saves through a stream wrapper, or writes by
+  other threads or processes.
+- If the file is truncated or a read fails while the document is open, anything read from the
+  document, such as pages, text, bookmarks, links, attachment contents and ``javaScripts()``, may
+  come back incomplete without an error, or fail as it would for a damaged file. From then on,
+  ``save()``, ``toString()``, ``extractPages()`` and ``merge()`` throw
+  :php:exc:`Pdfium\\FormatException` rather than produce an incomplete copy.
+
+The extension does not expose PDFium's API for opening a document while it is still downloading
+(``fpdf_dataavail.h``). For a remote file, download it to a temporary file and open that with
+``lazy: true``.
 
 
 .. _fonts:
@@ -382,6 +435,7 @@ first and throws :php:exc:`Pdfium\\MemoryException` instead, so you can catch it
 
 Rough memory needed:
 
+- ``fromFile()``: the size of the file; nothing with ``lazy: true``.
 - ``render()``: about 7 bytes per pixel; 8 with ``transparent``, 5 with ``grayscale`` and 6 with
   both.
 - ``text()``: about 8 bytes per character.

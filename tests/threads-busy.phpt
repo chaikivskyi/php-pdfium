@@ -1,5 +1,5 @@
 --TEST--
-While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment() and javaScripts() included; Bitmap methods, an iterator's already loaded page and releasing objects never do
+While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), javaScripts() and a lazy document included; Bitmap methods, an iterator's already loaded page and releasing objects never do
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -18,6 +18,7 @@ $it = $doc->pages();
 $page = $it->current();
 $adoc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $held = $adoc->addAttachment('held', 'h');
+$lazy = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf', lazy: true);
 
 $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
 $future = $runtime->run(static function (string $fixture, string $stop): int {
@@ -31,10 +32,15 @@ $future = $runtime->run(static function (string $fixture, string $stop): int {
     return $renders;
 }, [__DIR__ . '/fixtures/a4.pdf', $stop]);
 
-$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $jsBusy = false;
+$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $jsBusy = $lazyBusy = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
-while ((!$busyMessage || !$saveBusy || !$addBusy || !$jsBusy) && microtime(true) < $end) {
+while ((!$busyMessage || !$saveBusy || !$addBusy || !$jsBusy || !$lazyBusy) && microtime(true) < $end) {
+    try {
+        $lazy->pageCount();
+    } catch (Pdfium\BusyException $e) {
+        $lazyBusy = true;
+    }
     try {
         $doc->javaScripts();
     } catch (Pdfium\BusyException $e) {
@@ -100,6 +106,7 @@ echo 'busy: ', $busyMessage ? 'yes' : 'no', "\n";
 echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no', "\n";
 echo 'busy add changed nothing: ', $addBusy && $addBusyChangedNothing ? 'yes' : 'no', "\n";
 echo 'javaScripts busy, then an array: ', $jsBusy && $doc->javaScripts() === [] ? 'yes' : 'no', "\n";
+echo 'lazy busy, then 3: ', $lazyBusy && $lazy->pageCount() === 3 ? 'yes' : 'no', "\n";
 echo 'bitmap never busy: ', $bitmapNeverBusy ? 'yes' : 'no', "\n";
 echo 'release never busy: ', $releaseNeverBusy ? 'yes' : 'no', "\n";
 echo 'loaded current never busy: ', $currentNeverBusy ? 'yes' : 'no', "\n";
@@ -111,6 +118,7 @@ busy: yes
 save busy left no file: yes
 busy add changed nothing: yes
 javaScripts busy, then an array: yes
+lazy busy, then 3: yes
 bitmap never busy: yes
 release never busy: yes
 loaded current never busy: yes
