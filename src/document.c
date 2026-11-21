@@ -545,14 +545,24 @@ static int string_writer_write(FPDF_FILEWRITE *self, const void *data, unsigned 
 	return pdfium_buf_append(&((string_writer *) self)->out, data, size);
 }
 
-static zend_string *serialise(pdfium_doc_handle *h, bool remove_security)
+static bool version_fits(zend_long version, uint32_t arg)
+{
+	if (version < INT_MIN || version > INT_MAX) {
+		zend_argument_value_error(arg, "must be between %d and %d", INT_MIN, INT_MAX);
+		return false;
+	}
+	return true;
+}
+
+static zend_string *serialise(pdfium_doc_handle *h, bool remove_security, bool incremental, bool has_version, zend_long version)
 {
 	string_writer w = {.fw = {.version = 1, .WriteBlock = string_writer_write}};
+	FPDF_DWORD flags = (incremental ? FPDF_INCREMENTAL : FPDF_NO_INCREMENTAL) | (remove_security ? FPDF_REMOVE_SECURITY : 0);
 
 	if (!pdfium_enter()) {
 		return NULL;
 	}
-	bool saved = FPDF_SaveAsCopy(h->doc, &w.fw, FPDF_NO_INCREMENTAL | (remove_security ? FPDF_REMOVE_SECURITY : 0));
+	bool saved = has_version ? FPDF_SaveWithVersion(h->doc, &w.fw, flags, (int) version) : FPDF_SaveAsCopy(h->doc, &w.fw, flags);
 
 	pdfium_leave();
 	if (!saved || w.out.oom) {
@@ -568,30 +578,39 @@ ZEND_METHOD(Pdfium_Document, save)
 {
 	char *path;
 	size_t path_len;
-	bool remove_security = false;
+	bool remove_security = false, incremental = false, version_is_null = true;
+	zend_long version = 0;
 
-	ZEND_PARSE_PARAMETERS_START(1, 2)
+	ZEND_PARSE_PARAMETERS_START(1, 4)
 		Z_PARAM_PATH(path, path_len)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_BOOL(remove_security)
+		Z_PARAM_BOOL(incremental)
+		Z_PARAM_LONG_OR_NULL(version, version_is_null)
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (!pdfium_path_given(path_len)) {
+	if (!pdfium_path_given(path_len) || !version_fits(version, 4)) {
 		RETURN_THROWS();
 	}
-	pdfium_write_and_release(serialise(pdfium_this_document(ZEND_THIS), remove_security), path);
+	pdfium_write_and_release(serialise(pdfium_this_document(ZEND_THIS), remove_security, incremental, !version_is_null, version), path);
 }
 
 ZEND_METHOD(Pdfium_Document, toString)
 {
-	bool remove_security = false;
+	bool remove_security = false, incremental = false, version_is_null = true;
+	zend_long version = 0;
 
-	ZEND_PARSE_PARAMETERS_START(0, 1)
+	ZEND_PARSE_PARAMETERS_START(0, 3)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_BOOL(remove_security)
+		Z_PARAM_BOOL(incremental)
+		Z_PARAM_LONG_OR_NULL(version, version_is_null)
 	ZEND_PARSE_PARAMETERS_END();
 
-	zend_string *bytes = serialise(pdfium_this_document(ZEND_THIS), remove_security);
+	if (!version_fits(version, 3)) {
+		RETURN_THROWS();
+	}
+	zend_string *bytes = serialise(pdfium_this_document(ZEND_THIS), remove_security, incremental, !version_is_null, version);
 	if (!bytes) {
 		RETURN_THROWS();
 	}

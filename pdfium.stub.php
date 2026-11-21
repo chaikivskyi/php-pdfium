@@ -229,22 +229,38 @@ final class Document implements \Countable, \IteratorAggregate
      * wrappers apply. A new file at a plain local path left partly written by a failed write is
      * removed; an existing one is replaced by renaming a complete copy over it where possible.
      *
-     * @throws \ValueError when $path is empty
+     * @param bool $incremental true keeps the original file from its %PDF header on and appends
+     *        the changes, with copies of the objects PDFium has read. PDFium writes a full copy
+     *        instead when $removeSecurity is true, or when the document came from extractPages()
+     *        or merge() and has no original bytes.
+     * @param int|null $version the PDF version for the header, from 10 for 1.0 to 17 for 1.7;
+     *        PDFium ignores other values. null lets PDFium choose. An incremental save keeps the
+     *        original header unless it falls back to a full copy.
+     * @throws \ValueError when $path is empty or $version does not fit a 32-bit integer
      * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
      * @throws MemoryException when the serialised document would not fit under memory_limit
      * @throws PdfiumException when PDFium cannot serialise the document
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public function save(string $path, bool $removeSecurity = false): void {}
+    public function save(string $path, bool $removeSecurity = false, bool $incremental = false, ?int $version = null): void {}
 
     /**
-     * A full, non-incremental copy. Encryption is kept unless $removeSecurity is true.
+     * The document as a PDF file: a full copy unless $incremental is true. Encryption is kept
+     * unless $removeSecurity is true.
      *
+     * @param bool $incremental true keeps the original file from its %PDF header on and appends
+     *        the changes, with copies of the objects PDFium has read. PDFium writes a full copy
+     *        instead when $removeSecurity is true, or when the document came from extractPages()
+     *        or merge() and has no original bytes.
+     * @param int|null $version the PDF version for the header, from 10 for 1.0 to 17 for 1.7;
+     *        PDFium ignores other values. null lets PDFium choose. An incremental save keeps the
+     *        original header unless it falls back to a full copy.
+     * @throws \ValueError when $version does not fit a 32-bit integer
      * @throws MemoryException when the serialised document would not fit under memory_limit
      * @throws PdfiumException when PDFium cannot serialise the document
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public function toString(bool $removeSecurity = false): string {}
+    public function toString(bool $removeSecurity = false, bool $incremental = false, ?int $version = null): string {}
 }
 
 /**

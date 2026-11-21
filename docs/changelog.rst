@@ -30,6 +30,8 @@ Features:
   one, written out by ``save()`` and ``toString()``.
 - ``Document::javaScripts()``: the scripts in the document's JavaScript name tree, as ``JavaScript``
   values with a name and the source. Nothing is run.
+- ``Document::save()`` and ``toString()`` options ``incremental: true`` (keep the original file
+  and append the changes) and ``version`` (the PDF version written in the header).
 
 v0.2.0 (2026-11-15)
 -------------------

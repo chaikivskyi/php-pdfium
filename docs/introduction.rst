@@ -14,7 +14,7 @@ What it does
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
   transparent.
 - List, extract, add and delete embedded files (attachments).
-- Split, merge and save documents.
+- Split, merge and save documents, incrementally if you want to keep the original file.
 
 It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
 See :doc:`platforms` for the supported systems.
@@ -192,8 +192,15 @@ Split, merge and save
    // Save an encrypted document without its password:
    $doc->save('/tmp/open.pdf', removeSecurity: true);
 
-The new documents keep only the pages: no encryption, bookmarks, viewer preferences or metadata
-beyond what PDFium writes, and form fields can no longer be filled in. See :ref:`pdfium-defaults`.
+   // Keep the original file and append the changes:
+   $doc->save('/tmp/appended.pdf', incremental: true);
+
+   // Write a PDF 1.4 header:
+   $doc->save('/tmp/old.pdf', version: 14);
+
+Documents from ``extractPages()`` and ``merge()`` keep only the pages and the viewer preferences: no
+encryption, bookmarks or metadata beyond what PDFium writes, and form fields can no longer be filled
+in. See :ref:`pdfium-defaults`.
 
 Embedded files
 ~~~~~~~~~~~~~~

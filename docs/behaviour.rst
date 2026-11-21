@@ -71,6 +71,53 @@ The extension follows PDFium and adds no rules of its own.
    write: the extension cannot tell reliably whether the target existed, and the wrapper knows best
    how to clean up.
 
+**An incremental save falls back to a full copy without saying so.**
+   ``incremental: true`` writes the original file as it was, from its ``%PDF`` header on, and
+   appends a section after it; bytes before the header, which some files have, are dropped. The
+   appended section holds the changes and also unchanged copies of the objects PDFium has read, such
+   as the document catalog, the metadata once you call ``metadata()``, and a page's objects once you
+   open it. An encrypted document stays encrypted.
+
+   PDFium writes a full copy instead, and reports success, in two cases: with
+   ``removeSecurity: true``, and for a document from ``extractPages()`` or ``merge()``, which has no
+   original bytes. To check that a save was incremental, test that it starts with the original from
+   its ``%PDF`` on:
+
+   .. code-block:: php
+
+      $fromHeader = substr($original, strpos($original, '%PDF'));
+      $wasIncremental = str_starts_with($saved, $fromHeader);
+
+   Each incremental save appends one section to the bytes the document was opened from, even when
+   nothing changed. A second save of the same ``Document`` also starts from those bytes, not from
+   the first save's output; opening the result and saving it incrementally adds another section, so
+   a file updated that way over and over keeps growing.
+
+   The original is not rewritten, so the ranges a digital signature covers stay as they were.
+   Whether a viewer still accepts the signature depends on what you read as well as what you
+   changed, since some validators treat any object written after signing as a modification; the
+   extension does not check signatures.
+
+   Most files from PDF 1.5 on index their objects with a cross-reference stream. For those, PDFium
+   writes the appended index without the ``/Type /XRef`` entry the format requires. PDFium reads the
+   result, but other tools, qpdf for one, cannot, and a signature validator may not get as far as
+   the signature.
+
+**The version option only changes the header.**
+   ``version`` sets the PDF version in the file header, from ``10`` for 1.0 to ``17`` for 1.7.
+   Nothing in the document is converted to suit an older version. PDFium ignores any other value
+   without an error, as if ``version`` were not given, and writes the source's 1.x version, or 1.7
+   for a document from ``extractPages()`` or ``merge()``. An incremental save keeps the original
+   header, so ``version`` only applies when the save falls back to a full copy.
+
+   A full save of a PDF 2.0 file writes a ``%PDF-1.0`` header unless you pass a ``version`` from 10
+   to 17; ``version: 20`` is outside the range and ignored like any other value.
+
+**Saves of one document usually differ.**
+   Every save, full or incremental, writes a new changing identifier (see ``changingId()``), so two
+   saves of the same document are normally not byte-identical. An incremental save keeps the
+   permanent identifier. Compare documents by their content, not their bytes.
+
 **Rendering can change what saving writes.**
    The first time any page of a document is rendered with annotations (the default), PDFium sets up
    form support for the document. For form fields without an appearance stream, PDFium then

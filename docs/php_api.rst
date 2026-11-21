@@ -302,18 +302,27 @@ Document
       :throws PdfiumException: PDFium cannot copy the pages.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
-   .. php:method:: toString(bool $removeSecurity = false) -> string
+   .. php:method:: toString(bool $removeSecurity = false, bool $incremental = false, ?int $version = null) -> string
 
-      The whole document as a PDF file in a string.
+      The whole document as a PDF file in a string: a full copy, unless ``$incremental`` is
+      ``true``.
 
       :param bool $removeSecurity: ``true`` writes the document without encryption. By default an
          encrypted document stays encrypted.
+      :param bool $incremental: ``true`` keeps the original file from its ``%PDF`` header on and
+         appends the changes, with copies of the objects PDFium has read. PDFium writes a full copy
+         instead when ``$removeSecurity`` is ``true`` or the document came from
+         :php:meth:`extractPages` or :php:meth:`merge`; see :ref:`pdfium-defaults`.
+      :param ?int $version: The PDF version for the header, from ``10`` for 1.0 to ``17`` for 1.7;
+         PDFium ignores other values. ``null`` lets PDFium choose. An incremental save keeps the
+         original header unless it falls back to a full copy; see :ref:`pdfium-defaults`.
       :rtype: string
+      :throws \\ValueError: ``$version`` does not fit a 32-bit integer.
       :throws MemoryException: The result would not fit under ``memory_limit``.
       :throws PdfiumException: PDFium cannot write the document.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
-   .. php:method:: save(string $path, bool $removeSecurity = false) -> void
+   .. php:method:: save(string $path, bool $removeSecurity = false, bool $incremental = false, ?int $version = null) -> void
 
       Writes :php:meth:`toString` to a file, replacing it if it exists. Stream wrappers and
       ``open_basedir`` work here. If writing a new file fails, the half-written file is deleted.
@@ -322,7 +331,14 @@ Document
 
       :param string $path: File to write.
       :param bool $removeSecurity: ``true`` writes the document without encryption.
-      :throws \\ValueError: The path is empty.
+      :param bool $incremental: ``true`` keeps the original file from its ``%PDF`` header on and
+         appends the changes, with copies of the objects PDFium has read. PDFium writes a full copy
+         instead when ``$removeSecurity`` is ``true`` or the document came from
+         :php:meth:`extractPages` or :php:meth:`merge`; see :ref:`pdfium-defaults`.
+      :param ?int $version: The PDF version for the header, from ``10`` for 1.0 to ``17`` for 1.7;
+         PDFium ignores other values. ``null`` lets PDFium choose. An incremental save keeps the
+         original header unless it falls back to a full copy; see :ref:`pdfium-defaults`.
+      :throws \\ValueError: The path is empty, or ``$version`` does not fit a 32-bit integer.
       :throws FileException: The file cannot be written.
       :throws MemoryException: The result would not fit under ``memory_limit``.
       :throws PdfiumException: PDFium cannot write the document.
