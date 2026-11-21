@@ -422,10 +422,10 @@ Signature
 
 .. php:class:: Signature
 
-   What a signature field says about its signature, returned by :php:meth:`Document::signatures`:
-   a final, read-only value. A value that is missing or empty comes back as ``null``
-   (``byteRange`` as an empty array), so an unsigned field is all nulls. The signer's name,
-   location and contact details and the signature handler (``/Filter``) are not available.
+   A signature field's details, returned by :php:meth:`Document::signatures`: a final, read-only
+   value. A value that is missing or empty comes back as ``null`` (``byteRange`` as an empty
+   array), so an unsigned field is all nulls. The signer's name, location and contact details and
+   the signature handler (``/Filter``) are not available.
 
    .. php:attr:: contents
 
