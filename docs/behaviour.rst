@@ -249,7 +249,9 @@ A file added to an encrypted document is encrypted with it on save, unless you p
 ``removeSecurity: true``.
 
 ``addAttachment()`` refuses some names and descriptions with ``ValueError``, by the same rules as
-``setLanguage()``; see :ref:`accessibility`.
+``setLanguage()``; see :ref:`accessibility`. It also throws ``ValueError`` for ``$contents`` longer
+than 2147483647 bytes. The limit is PDFium's: it stores a file's size as a 32-bit number and refuses
+anything longer, so raising ``memory_limit`` does not help.
 
 A damaged list, one that loops or nests too deeply, is read as far as PDFium can follow it. Entries
 past that point are not counted, and ``addAttachment()`` throws ``PdfiumException`` on a list that

@@ -205,8 +205,8 @@ ZEND_METHOD(Pdfium_Document, addAttachment)
 		zend_argument_value_error(1, "%s", bad);
 		RETURN_THROWS();
 	}
-	if (ZSTR_LEN(contents) >= INT_MAX) {
-		zend_argument_value_error(2, "must be at most %d bytes", INT_MAX - 1);
+	if (ZSTR_LEN(contents) > INT_MAX) {
+		zend_argument_value_error(2, "must be at most %d bytes", INT_MAX);
 		RETURN_THROWS();
 	}
 	if (description && (bad = pdfium_pdf_text_fault(description, &desc_units))) {
