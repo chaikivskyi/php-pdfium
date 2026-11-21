@@ -171,7 +171,7 @@ final class Document implements \Countable, \IteratorAggregate
      *
      * @throws \ValueError when $name is empty; $name or $description is not valid UTF-8, contains a
      *         null byte or the escape character, or starts with what a PDF reader would take for a
-     *         byte order mark; or $contents is longer than 2147483646 bytes
+     *         byte order mark; or $contents is longer than 2147483647 bytes, the most PDFium can store
      * @throws PdfiumException when PDFium refuses: the name may already be used, or the attachment list is damaged;
      *         or when PDFium cannot store the contents or description (the message says if the entry stays)
      * @throws MemoryException when the name or description would not fit under memory_limit
