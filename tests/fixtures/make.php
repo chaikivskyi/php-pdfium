@@ -157,6 +157,30 @@ if (!file_exists("$dir/encrypted-signed.pdf")) {
     ], ''));
     sh('qpdf --encrypt user owner 256 -- ' . escapeshellarg("$tmp/signed.pdf") . ' ' . escapeshellarg("$dir/encrypted-signed.pdf"));
 }
+if (!file_exists("$dir/signed-cms.pdf")) {
+    $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+    $csr = openssl_csr_new(['commonName' => 'php-pdfium test signer'], $key, ['digest_alg' => 'sha256']);
+    $cert = openssl_csr_sign($csr, null, $key, 36500, ['digest_alg' => 'sha256']);
+    openssl_x509_export_to_file($cert, "$dir/signer.pem");
+    $range = '/ByteRange [0 0000000000 0000000000 0000000000]';
+    $hole = '<' . str_repeat('0', 8192) . '>';
+    $pdf = build([
+        1 => '<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R] /SigFlags 3 >> >>',
+        2 => '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        3 => '<< /Type /Page /Parent 2 0 R /MediaBox ' . MEDIA . ' >>',
+        4 => '<< /FT /Sig /T (Sig) /V 5 0 R >>',
+        5 => "<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached $range /Contents $hole "
+            . "/Reason (Tested) /M (D:20261121120000Z) >>",
+    ], '');
+    $start = strpos($pdf, $hole);
+    $end = $start + strlen($hole);
+    $pdf = str_replace($range, str_pad(sprintf('/ByteRange [0 %d %d %d]', $start, $end, strlen($pdf) - $end), strlen($range)), $pdf);
+    file_put_contents("$tmp/signed-bytes", substr($pdf, 0, $start) . substr($pdf, $end));
+    openssl_cms_sign("$tmp/signed-bytes", "$tmp/signature.der", $cert, $key, [], OPENSSL_CMS_DETACHED | OPENSSL_CMS_BINARY,
+        OPENSSL_ENCODING_DER) or throw new RuntimeException(openssl_error_string());
+    $signature = strtoupper(bin2hex(file_get_contents("$tmp/signature.der")));
+    file_put_contents("$dir/signed-cms.pdf", substr_replace($pdf, '<' . str_pad($signature, 8192, '0') . '>', $start, strlen($hole)));
+}
 
 // Written raw: qpdf refuses a security handler it does not know.
 file_put_contents("$dir/unsupported-security.pdf", build([
