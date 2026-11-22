@@ -406,7 +406,7 @@ Forms
    - a character above U+FFFF, such as most emoji, is stored wrongly: U+1F600 reads back as U+F600.
      Such characters already in the document read correctly.
 
-**Read-only follows PDFium.**
+**Read-only is not uniformly enforced.**
    Forms fill even when ``permissions()->fillForms`` is ``false``. PDFium still changes a
    read-only text field, combo box or list box; check ``flags()->readOnly`` to refuse. It ignores
    a read-only checkbox or radio button, so ``setChecked()`` throws ``PdfiumException`` ending in
@@ -474,8 +474,6 @@ Forms
    - ``/Annots`` entries that are not annotations are skipped;
    - ``/Opt`` entries that are neither strings nor pairs give options with empty labels;
    - a ``/Rect`` with fewer than four numbers gives a rectangle of ``0, 0, 0, 0``.
-
-   None of these made PDFium slow in testing.
 
 
 .. _memory-limit:
