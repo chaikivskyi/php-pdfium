@@ -943,8 +943,6 @@ static const char *web_links_of(FPDF_TEXTPAGE tp, zval *return_value)
 
 ZEND_METHOD(Pdfium_Page, text)
 {
-	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
-
 	ZEND_PARSE_PARAMETERS_NONE();
 	FPDF_TEXTPAGE tp = enter_text_page(ZEND_THIS);
 
