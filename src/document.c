@@ -56,7 +56,7 @@ static void throw_error_code(unsigned long err, const char *context)
 	zend_throw_exception_ex(ce, 0, "%s: %s", context, reason);
 }
 
-static const char read_failed_message[] = "The document's file could not be read in full: "
+const char pdfium_read_failed_message[] = "The document's file could not be read in full: "
 	"a read failed, or the file changed or was truncated after the document was opened";
 
 static pdfium_doc_handle *doc_handle_create(zend_string *buffer)
@@ -476,7 +476,7 @@ static void throw_assemble_error(assemble_status status)
 	if (status == CANNOT_CREATE) {
 		zend_throw_exception(pdfium_ce_memory_exception, "Cannot create a new document", 0);
 	} else if (status == SOURCE_UNREADABLE) {
-		zend_throw_exception(pdfium_ce_format_exception, read_failed_message, 0);
+		zend_throw_exception(pdfium_ce_format_exception, pdfium_read_failed_message, 0);
 	} else {
 		zend_throw_exception(pdfium_ce_exception, "Cannot import pages", 0);
 	}
@@ -763,10 +763,20 @@ ZEND_METHOD(Pdfium_Document, nUp)
 		RETURN_THROWS();
 	}
 	out->doc = FPDF_ImportNPagesToOne(h->doc, sides[0], sides[1], (size_t) columns, (size_t) rows);
+	bool unread = h->file.read_failed;
+
+	if (unread && out->doc) {
+		FPDF_CloseDocument(out->doc);
+		out->doc = NULL;
+	}
 	pdfium_leave();
 	if (!out->doc) {
 		OBJ_RELEASE(obj);
-		zend_throw_exception(pdfium_ce_exception, "Cannot put the pages on sheets", 0);
+		if (unread) {
+			zend_throw_exception(pdfium_ce_format_exception, pdfium_read_failed_message, 0);
+		} else {
+			zend_throw_exception(pdfium_ce_exception, "Cannot put the pages on sheets", 0);
+		}
 		RETURN_THROWS();
 	}
 	RETURN_OBJ(obj);
@@ -804,7 +814,7 @@ static zend_string *serialise(pdfium_doc_handle *h, bool remove_security, bool i
 	pdfium_leave();
 	if (!w.out.oom && h->file.read_failed) {
 		smart_str_free(&w.out.s);
-		zend_throw_exception(pdfium_ce_format_exception, read_failed_message, 0);
+		zend_throw_exception(pdfium_ce_format_exception, pdfium_read_failed_message, 0);
 		return NULL;
 	}
 	if (!saved || w.out.oom) {

@@ -408,6 +408,9 @@ Document
       :throws \\TypeError: An element of ``$indexes`` is not an int.
       :throws UnsupportedException: ``$source`` is another, encrypted document and
          ``$removeSecurity`` is false.
+      :throws FormatException: ``$source`` or this document was opened with ``lazy: true`` and its
+         file could not be read in full; a target that was not is left as it was. See
+         :ref:`large-files`.
       :throws MemoryException: The indexes would not fit under ``memory_limit``, or PDFium cannot
          make the temporary copy that copying within this document needs.
       :throws PdfiumException: PDFium cannot copy the pages, as can happen on a :ref:`damaged page
@@ -493,6 +496,8 @@ Document
       :throws \\ValueError: A size is not finite or not above 0 once rounded to a float, or a count
          is below 1.
       :throws UnsupportedException: This document is encrypted and ``$removeSecurity`` is ``false``.
+      :throws FormatException: This document was opened with ``lazy: true`` and its file could not
+         be read in full; see :ref:`large-files`.
       :throws PdfiumException: This document has no pages, or ``$columns`` and ``$rows`` are too
          large to lay out.
       :throws BusyException: ZTS only: another thread is using PDFium.
@@ -527,8 +532,9 @@ Document
          encrypted document stays encrypted.
       :param bool $incremental: ``true`` keeps the original file from its ``%PDF`` header on and
          appends the changes, with copies of the objects PDFium has read. PDFium writes a full copy
-         instead when ``$removeSecurity`` is ``true`` or the document came from
-         :php:meth:`extractPages` or :php:meth:`merge`; see :ref:`pdfium-defaults`.
+         instead when ``$removeSecurity`` is ``true`` or the document came from :php:meth:`create`,
+         :php:meth:`extractPages`, :php:meth:`merge` or :php:meth:`nUp`; see
+         :ref:`pdfium-defaults`.
       :param ?int $version: The PDF version for the header, from ``10`` for 1.0 to ``17`` for 1.7;
          PDFium ignores other values. ``null`` lets PDFium choose. An incremental save keeps the
          original header unless it falls back to a full copy; see :ref:`pdfium-defaults`.
@@ -551,8 +557,9 @@ Document
       :param bool $removeSecurity: ``true`` writes the document without encryption.
       :param bool $incremental: ``true`` keeps the original file from its ``%PDF`` header on and
          appends the changes, with copies of the objects PDFium has read. PDFium writes a full copy
-         instead when ``$removeSecurity`` is ``true`` or the document came from
-         :php:meth:`extractPages` or :php:meth:`merge`; see :ref:`pdfium-defaults`.
+         instead when ``$removeSecurity`` is ``true`` or the document came from :php:meth:`create`,
+         :php:meth:`extractPages`, :php:meth:`merge` or :php:meth:`nUp`; see
+         :ref:`pdfium-defaults`.
       :param ?int $version: The PDF version for the header, from ``10`` for 1.0 to ``17`` for 1.7;
          PDFium ignores other values. ``null`` lets PDFium choose. An incremental save keeps the
          original header unless it falls back to a full copy; see :ref:`pdfium-defaults`.
@@ -2733,8 +2740,8 @@ these:
 
    The data is not a PDF, or it is too damaged to read. Also thrown when a page or its text cannot
    be loaded, when an entry of a page's annotation list is not an annotation, and when saving,
-   extracting from or merging a document opened with ``lazy: true`` whose file could not be read in
-   full.
+   extracting from, merging or laying out with ``nUp()`` a document opened with ``lazy: true``
+   whose file could not be read in full, or inserting pages from or into one.
 
 .. php:exception:: PasswordException
 

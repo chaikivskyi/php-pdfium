@@ -43,7 +43,8 @@ The extension follows PDFium and adds few rules of its own. ``extractPages()``, 
 (below), and ``setLanguage()`` and ``addAttachment()`` refuse a few values PDFium would read back
 wrongly; see :ref:`accessibility`. For a document opened with ``fromFile(lazy: true)``, a save will
 not overwrite its file in place, and once its file could not be read in full it will not be saved,
-split or merged; see :ref:`large-files`.
+split, merged, copied from with ``insertPages()`` or laid out with ``nUp()``; see
+:ref:`large-files`.
 
 **Permissions are not enforced.**
    ``permissions()`` tells you what the document allows, but nothing stops you. For example, you can
@@ -96,9 +97,9 @@ split or merged; see :ref:`large-files`.
    open it. An encrypted document stays encrypted.
 
    PDFium writes a full copy instead, and reports success, in two cases: with
-   ``removeSecurity: true``, and for a document from ``extractPages()`` or ``merge()``, which has no
-   original bytes. To check that a save was incremental, test that it starts with the original from
-   its ``%PDF`` on:
+   ``removeSecurity: true``, and for a document from ``create()``, ``extractPages()``, ``merge()`` or
+   ``nUp()``, which has no original bytes. To check that a save was incremental, test that it starts
+   with the original from its ``%PDF`` on:
 
    .. code-block:: php
 
@@ -124,8 +125,9 @@ split or merged; see :ref:`large-files`.
    ``version`` sets the PDF version in the file header, from ``10`` for 1.0 to ``17`` for 1.7.
    Nothing in the document is converted to suit an older version. PDFium ignores any other value
    without an error, as if ``version`` were not given, and writes the source's 1.x version, or 1.7
-   for a document from ``extractPages()`` or ``merge()``. An incremental save keeps the original
-   header, so ``version`` only applies when the save falls back to a full copy.
+   for a document from ``create()``, ``extractPages()``, ``merge()`` or ``nUp()``. An incremental
+   save keeps the original header, so ``version`` only applies when the save falls back to a full
+   copy.
 
    A full save of a PDF 2.0 file writes a ``%PDF-1.0`` header unless you pass a ``version`` from 10
    to 17; ``version: 20`` is outside the range and ignored like any other value.
@@ -248,8 +250,12 @@ need to be linearized ("fast web view"); that made no difference in this measure
 - If the file is truncated or a read fails while the document is open, anything read from the
   document, such as pages, text, bookmarks, links, attachment contents and ``javaScripts()``, may
   come back incomplete without an error, or fail as it would for a damaged file. From then on,
-  ``save()``, ``toString()``, ``extractPages()`` and ``merge()`` throw
-  :php:exc:`Pdfium\\FormatException` rather than produce an incomplete copy.
+  ``save()``, ``toString()``, ``extractPages()``, ``merge()`` and ``nUp()`` throw
+  :php:exc:`Pdfium\\FormatException` rather than produce an incomplete copy, and so does
+  ``insertPages()`` when it reads such a document, as source or as target. It first removes the
+  pages it copied into a target that is not such a document, so that target is left as it was; a
+  target that is such a document can be left with an undefined page order, as after a
+  :ref:`failed edit <failed-edits>`.
 
 The extension does not expose PDFium's API for opening a document while it is still downloading
 (``fpdf_dataavail.h``). For a remote file, download it to a temporary file and open that with

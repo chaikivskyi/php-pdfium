@@ -302,6 +302,8 @@ final class Document implements \Countable, \IteratorAggregate
      *         $source's pages, or $index is outside 0..pageCount()
      * @throws \TypeError when an element of $indexes is not an int
      * @throws UnsupportedException when $source is another, encrypted document and $removeSecurity is false
+     * @throws FormatException when $source or this document was opened lazily and its file could not
+     *         be read in full; a target that was not is left as it was
      * @throws MemoryException when the indexes would not fit under memory_limit, or PDFium cannot make the
      *         temporary copy that copying within this document needs
      * @throws PdfiumException when PDFium cannot copy the pages; held pages may then throw, see
@@ -374,6 +376,8 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when a size is not finite or not above 0 once rounded to a float, or a count
      *         is below 1
      * @throws UnsupportedException when this document is encrypted and $removeSecurity is false
+     * @throws FormatException when this document was opened lazily and its file could not be read in
+     *         full
      * @throws PdfiumException when this document has no pages, or $columns and $rows are too large to
      *         lay out
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -405,8 +409,8 @@ final class Document implements \Countable, \IteratorAggregate
      *
      * @param bool $incremental true keeps the original file from its %PDF header on and appends
      *        the changes, with copies of the objects PDFium has read. PDFium writes a full copy
-     *        instead when $removeSecurity is true, or when the document came from extractPages()
-     *        or merge() and has no original bytes.
+     *        instead when $removeSecurity is true, or when the document came from create(),
+     *        extractPages(), merge() or nUp() and has no original bytes.
      * @param int|null $version the PDF version for the header, from 10 for 1.0 to 17 for 1.7;
      *        PDFium ignores other values. null lets PDFium choose. An incremental save keeps the
      *        original header unless it falls back to a full copy.
@@ -426,8 +430,8 @@ final class Document implements \Countable, \IteratorAggregate
      *
      * @param bool $incremental true keeps the original file from its %PDF header on and appends
      *        the changes, with copies of the objects PDFium has read. PDFium writes a full copy
-     *        instead when $removeSecurity is true, or when the document came from extractPages()
-     *        or merge() and has no original bytes.
+     *        instead when $removeSecurity is true, or when the document came from create(),
+     *        extractPages(), merge() or nUp() and has no original bytes.
      * @param int|null $version the PDF version for the header, from 10 for 1.0 to 17 for 1.7;
      *        PDFium ignores other values. null lets PDFium choose. An incremental save keeps the
      *        original header unless it falls back to a full copy.

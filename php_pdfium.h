@@ -264,6 +264,7 @@ bool pdfium_fits_or_throw(size_t bytes, const char *what);
 bool pdfium_buf_append(pdfium_buf *b, const void *data, size_t len);
 bool pdfium_path_given(size_t len);
 zend_string *pdfium_read_file(const char *path);
+extern const char pdfium_read_failed_message[];
 bool pdfium_local_open(pdfium_local_file *f, const char *path);
 void pdfium_local_close(pdfium_local_file *f);
 void pdfium_io_request_start(void);
