@@ -46,12 +46,12 @@ not overwrite its file in place, and once its file could not be read in full it 
 split, merged, copied from with ``insertPages()`` or laid out with ``nUp()``; see
 :ref:`large-files`.
 
-**Permissions are not enforced.**
+**Permissions.**
    ``permissions()`` tells you what the document allows, but nothing stops you. For example, you can
    read the text of a document that forbids copying. Page edits work whatever ``permissions()`` says
    about modifying or assembling the document, and do not change what it reports.
 
-**Removing encryption is always explicit.**
+**Removing encryption.**
    ``save()`` and ``toString()`` keep the encryption. Pass ``removeSecurity: true`` to save without
    it. PDFium cannot encrypt a new document, so ``extractPages()``, ``merge()`` and ``nUp()`` throw
    :php:exc:`Pdfium\\UnsupportedException` for an encrypted source, whether it was opened with a user
@@ -60,7 +60,7 @@ split, merged, copied from with ``insertPages()`` or laid out with ``nUp()``; se
    encrypted document, because the copied pages are no longer protected by the source's password.
    They take the encryption of the document they are copied into, if it has any.
 
-**Split, merge and nUp() output keeps little but the pages.**
+**Split, merge and nUp() output.**
    ``extractPages()`` keeps its document's viewer preferences and ``merge()`` the first document's,
    so a right-to-left document still reads right to left; ``nUp()`` keeps none of them. The result
    has no bookmarks, attachments or language, is not tagged, and has none of the sources' metadata:
@@ -71,7 +71,7 @@ split, merged, copied from with ``insertPages()`` or laid out with ``nUp()``; se
    links, form fields and other annotations. PDFium has no API to set metadata, add encryption or
    create bookmarks.
 
-**Reading and writing files work differently.**
+**Reading and writing files.**
    Both go through PHP streams, so stream wrappers and ``open_basedir`` work. ``fromFile()`` reads the
    whole file into PHP memory (counted against ``memory_limit``) and never touches it again, so you
    can save over a file while its document is open. With ``lazy: true``, ``fromFile()`` instead
@@ -137,7 +137,7 @@ split, merged, copied from with ``insertPages()`` or laid out with ``nUp()``; se
    saves of the same document are normally not byte-identical. An incremental save keeps the
    permanent identifier. Compare documents by their content, not their bytes.
 
-**Rendering or reading a form can change what saving writes.**
+**Generated appearance streams.**
    The first time any page of a document is rendered with annotations (the default), or any form
    method other than ``Document::formType()`` is called, PDFium sets up form support for the
    document. For form fields without an appearance stream, PDFium then generates one, and a later
@@ -741,7 +741,7 @@ Annotations
 Forms
 -----
 
-**A FormField is one widget.**
+**Fields and widgets.**
    A field is drawn by one or more widgets: a radio group has one per button, and a field can be
    repeated on one page or on several. ``Page::formFields()`` gives a
    :php:class:`FormField <Pdfium\\FormField>` for each widget on that page, back to front, and
@@ -749,7 +749,7 @@ Forms
    pages to reach the widgets there. Widgets are listed even when the document has no ``/AcroForm``
    or the field is missing from its ``/Fields``.
 
-**Changes stay in the loaded document.**
+**Changes.**
    ``setValue()``, ``setChecked()``, ``select()`` and ``flatten()`` never touch the file or string
    the document came from; ``save()`` or ``toString()`` writes them out. An encrypted document is
    saved encrypted with the same password, unless you pass ``removeSecurity: true``. Reading a form
@@ -776,17 +776,17 @@ Forms
    - a character above U+FFFF, such as most emoji, is stored wrongly: U+1F600 reads back as U+F600.
      Such characters already in the document read correctly.
 
-**Read-only is not uniformly enforced.**
+**Read-only fields.**
    Forms fill even when ``permissions()->fillForms`` is ``false``. PDFium still changes a
    read-only text field, combo box or list box; check ``flags()->readOnly`` to refuse. It ignores
    a read-only checkbox or radio button, so ``setChecked()`` throws ``PdfiumException`` ending in
    "; it is read-only".
 
-**Scripts do not run.**
+**Scripts.**
    Calculated, formatted and validated fields are not updated when another field changes, and a
    field's own format script does not reshape what ``setValue()`` stores.
 
-**XFA is not supported.**
+**XFA forms.**
    The AcroForm fields of an XFA document are read and filled like any others; the XFA data is
    not. ``Document::formType()`` tells such documents apart.
 
@@ -803,7 +803,7 @@ Forms
    Checkboxes of one field that share an export value change together, and so do radio buttons
    with the same export value in a group with ``RadiosInUnison``.
 
-**Filling shows on every page.**
+**Fields on several pages.**
    Filling rebuilds the appearance of every widget of the field, on every page, so the saved file
    shows the new value with or without ``/NeedAppearances``. One exception while the document is
    loaded: once a second ``Page`` object for a page has drawn or listed its fields, the first one
@@ -858,7 +858,7 @@ setters change the loaded document, never the file or string it came from. ``sav
 ``toString()`` writes the changes out. The edits leave ``metadata()`` as it was, except that
 ``insertPages()`` sets the producer; see ``insertPages()`` in :doc:`php_api`.
 
-**Held pages follow their page.**
+**Held pages.**
    A :php:class:`Page <Pdfium\\Page>` taken before an edit keeps working on the same page, and
    ``index()`` reports where that page is now. So do the
    :php:class:`Annotation <Pdfium\\Annotation>` and :php:class:`FormField <Pdfium\\FormField>`
@@ -937,7 +937,7 @@ setters change the loaded document, never the file or string it came from. ``sav
    setter is called on a ``Page`` at its index. ``Document::page()`` gives a ``Page`` with the
    current size.
 
-**Sizes and sides are floats.**
+**Sizes and box sides.**
    PDFium stores page sizes and box sides as 32-bit floats, so ``addPage()``, ``nUp()`` and the box
    setters round what you pass to the nearest float, and a value beyond the float range becomes the
    largest float of the same sign, about ``±3.4e38``. They check the rounded values: a size that
