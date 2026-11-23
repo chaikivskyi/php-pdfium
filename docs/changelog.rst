@@ -58,7 +58,7 @@ Features:
   ``FormField`` made from it throw ``PdfiumException`` from every method.
   ``PageIterator::current()`` gives the page at ``key()`` after the edit.
 
-Changes:
+Fixes:
 
 - ``Document::permissions()`` reports every permission for an unencrypted document PDFium built in
   memory, such as the result of ``extractPages()`` or ``merge()``; it reported none.
