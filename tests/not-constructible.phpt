@@ -1,10 +1,10 @@
 --TEST--
-Document, Page, PageIterator, Bitmap, Attachment and Annotation cannot be created except through the API; the read-only values cannot be created with new, except Rect, Quad and Point, but can be cloned and serialized
+Document, Page, PageIterator, Bitmap, Attachment, Annotation and FormField cannot be created except through the API; the read-only values cannot be created with new, except Rect, Quad and Point, but can be cloned and serialized
 --EXTENSIONS--
 pdfium
 --FILE--
 <?php
-foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'Annotation', 'Metadata', 'AttachmentMetadata', 'Signature', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Border', 'Rect', 'Point'] as $c) {
+foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'Annotation', 'FormField', 'Metadata', 'AttachmentMetadata', 'Signature', 'FormFieldOption', 'FormFieldFlags', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Border', 'Rect', 'Point'] as $c) {
     $fq = "Pdfium\\$c";
     $r = new ReflectionClass($fq);
     echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true),
@@ -47,6 +47,10 @@ Annotation final=true cloneable=false instantiable=false abstract=false
   Error
   ReflectionException
   Exception
+FormField final=true cloneable=false instantiable=false abstract=false
+  Error
+  ReflectionException
+  Exception
 Metadata final=true cloneable=true instantiable=false abstract=false
   Error
   created
@@ -56,6 +60,14 @@ AttachmentMetadata final=true cloneable=true instantiable=false abstract=false
   created
   created
 Signature final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
+FormFieldOption final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
+FormFieldFlags final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created

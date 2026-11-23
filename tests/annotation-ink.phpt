@@ -24,15 +24,15 @@ echo strokes($ink), "\n";
 $unset = (new ReflectionClass(Pdfium\Point::class))->newInstanceWithoutConstructor();
 $nan = unserialize(str_replace('d:1;', 'd:NAN;', serialize(new Pdfium\Point(1, 2))));
 $text = $page->addAnnotation('Text', new Pdfium\Rect(10, 10, 30, 30));
-attempt(fn() => $ink->addInkStroke([]));
-attempt(fn() => $ink->addInkStroke([1]));
-attempt(fn() => $ink->addInkStroke([new Pdfium\Point(1, 2), new Pdfium\Rect(0, 0, 1, 1)]));
-attempt(fn() => $ink->addInkStroke([new Pdfium\Point(1, 2), $unset]));
-attempt(fn() => $ink->addInkStroke([$nan]));
-attempt(fn() => $ink->addInkStroke([$unset, new Pdfium\Rect(0, 0, 1, 1)]));
-attempt(fn() => $ink->addInkStroke([new Pdfium\Point(1, 2), $nan, $unset]));
-attempt(fn() => $text->addInkStroke([new Pdfium\Point(1, 2)]));
-attempt(fn() => $text->removeInkStrokes());
+echo_outcome(fn() => $ink->addInkStroke([]));
+echo_outcome(fn() => $ink->addInkStroke([1]));
+echo_outcome(fn() => $ink->addInkStroke([new Pdfium\Point(1, 2), new Pdfium\Rect(0, 0, 1, 1)]));
+echo_outcome(fn() => $ink->addInkStroke([new Pdfium\Point(1, 2), $unset]));
+echo_outcome(fn() => $ink->addInkStroke([$nan]));
+echo_outcome(fn() => $ink->addInkStroke([$unset, new Pdfium\Rect(0, 0, 1, 1)]));
+echo_outcome(fn() => $ink->addInkStroke([new Pdfium\Point(1, 2), $nan, $unset]));
+echo_outcome(fn() => $text->addInkStroke([new Pdfium\Point(1, 2)]));
+echo_outcome(fn() => $text->removeInkStrokes());
 echo strokes($ink), "\n";
 ?>
 --EXPECT--

@@ -33,7 +33,7 @@ $reopened = Pdfium\Document::fromString($saved)->page(0);
 var_dump($reopened->annotationCount(), png_md5($reopened) === $bare);
 unset($w, $page, $other, $doc);
 
-function form_pdf(): string
+function widget_pdf(): string
 {
     $ap = '/AP << /N << /On 13 0 R /Off 14 0 R >> >>';
     return build_pdf([
@@ -55,7 +55,7 @@ function form_pdf(): string
 }
 
 echo "-- two Page objects, both drawn\n";
-$doc = Pdfium\Document::fromString(form_pdf());
+$doc = Pdfium\Document::fromString(widget_pdf());
 $p1 = $doc->page(0);
 $p2 = $doc->page(0);
 png_md5($p1);
@@ -94,7 +94,7 @@ $edits = [
     'Subtype' => fn($l) => $l[0]->setStringValue('Subtype', 'Square'),
 ];
 foreach ($edits as $name => $edit) {
-    $doc = Pdfium\Document::fromString(form_pdf());
+    $doc = Pdfium\Document::fromString(widget_pdf());
     $p1 = $doc->page(0);
     $p2 = $doc->page(0);
     $before = png_md5($p1);
@@ -106,7 +106,7 @@ foreach ($edits as $name => $edit) {
 }
 
 echo "-- every widget removed, then saved\n";
-$doc = Pdfium\Document::fromString(form_pdf());
+$doc = Pdfium\Document::fromString(widget_pdf());
 $page = $doc->page(0);
 png_md5($page);
 for ($i = $page->annotationCount() - 1; $i >= 0; $i--) {
@@ -120,7 +120,7 @@ var_dump(Pdfium\Document::fromString($doc->toString())->page(0)->annotationCount
 unset($fresh, $doc);
 
 echo "-- removed before the first render\n";
-$doc = Pdfium\Document::fromString(form_pdf());
+$doc = Pdfium\Document::fromString(widget_pdf());
 $page = $doc->page(0);
 $page->removeAnnotation(0);
 png_md5($page);
@@ -128,7 +128,7 @@ var_dump($page->annotationCount());
 unset($page, $doc);
 
 echo "-- page freed before the removal\n";
-$doc = Pdfium\Document::fromString(form_pdf());
+$doc = Pdfium\Document::fromString(widget_pdf());
 $page = $doc->page(0);
 png_md5($page);
 $a = $page->annotation(1);
@@ -143,7 +143,7 @@ try { $a->type(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "
 unset($a);
 
 echo "-- removed, then the page, document and annotation freed in turn\n";
-$doc = Pdfium\Document::fromString(form_pdf());
+$doc = Pdfium\Document::fromString(widget_pdf());
 $page = $doc->page(0);
 png_md5($page);
 $a = $page->annotation(0);
@@ -154,7 +154,7 @@ try { $a->index(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), 
 unset($a);
 
 echo "-- removed, then split and merged\n";
-$doc = Pdfium\Document::fromString(form_pdf());
+$doc = Pdfium\Document::fromString(widget_pdf());
 $page = $doc->page(0);
 png_md5($page);
 $page->annotation(3)->remove();

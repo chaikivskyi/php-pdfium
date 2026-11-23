@@ -6,6 +6,15 @@ Unreleased
 
 Features:
 
+- ``Document::formType()``: whether the document has an AcroForm, an XFA form or none.
+- ``Page::formFields()`` and ``Page::formFieldAt()``: the page's form fields as ``FormField``
+  objects, with their name, tooltip, type, value, checked state, rectangle, options and flags.
+- ``FormField::setValue()``, ``setChecked()`` and ``select()``: fill in text fields, checkboxes,
+  radio buttons, combo boxes and list boxes, in place, also in encrypted documents.
+- ``Page::flatten()``: turn a page's annotations and form fields into page content, for the screen
+  or for printing, in place.
+- Value classes ``FormFieldOption`` and ``FormFieldFlags``, and the enums ``FormType`` and
+  ``FormFieldType``.
 - ``Page::annotationCount()``, ``annotations()`` and ``annotation()``: a page's annotations, as
   ``Annotation`` objects with ``type()``, ``index()``, ``rect()`` and ``flags()``, and the
   ``Annotation::FLAG_*`` constants for the flags.

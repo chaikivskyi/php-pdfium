@@ -29,7 +29,7 @@ var_dump($doc->page(1)->annotations(), $doc->page(1)->annotationCount());
 foreach ([-1, 8] as $i) {
     try { $page->annotation($i); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 }
-attempt(fn() => $page->annotation(7));
+echo_outcome(fn() => $page->annotation(7));
 try { $doc->page(1)->annotation(0); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 ?>
 --EXPECTF--

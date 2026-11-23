@@ -41,10 +41,10 @@ $h->addQuadPoints($quad);
 $h->setColor(255, 0, 0);
 $page->render(dpi: 72);
 var_dump($h->appearance() !== null, $h->color());
-attempt(fn() => $h->setColor(0, 0, 255));
-attempt(fn() => $h->setInteriorColor(0, 0, 255));
+echo_outcome(fn() => $h->setColor(0, 0, 255));
+echo_outcome(fn() => $h->setInteriorColor(0, 0, 255));
 $h->clearAppearance();
-attempt(fn() => $h->setColor(0, 0, 255));
+echo_outcome(fn() => $h->setColor(0, 0, 255));
 $page->render(dpi: 72);
 var_dump($h->appearance() !== null);
 $saved = Pdfium\Document::fromString($doc->toString())->page(0)->annotation(0);
@@ -53,7 +53,7 @@ var_dump($saved->appearance() !== null, $saved->appearance() === $h->appearance(
 $s = $page->addAnnotation('Stamp', $rect);
 $s->setAppearance('1 0 0 rg 100 650 200 50 re f');
 var_dump($s->appearance());
-attempt(fn() => $s->setColor(0, 255, 0));
+echo_outcome(fn() => $s->setColor(0, 255, 0));
 $s->setAppearance('0 0 1 rg 100 650 200 50 re f', Pdfium\Annotation::APPEARANCE_ROLLOVER);
 $s->setAppearance('0 1 0 rg 100 650 200 50 re f', Pdfium\Annotation::APPEARANCE_DOWN);
 var_dump($s->appearance(Pdfium\Annotation::APPEARANCE_ROLLOVER), $s->appearance(Pdfium\Annotation::APPEARANCE_DOWN));
@@ -69,9 +69,9 @@ var_dump($s->appearance(), $s->appearance(Pdfium\Annotation::APPEARANCE_ROLLOVER
 $sq = $page->addAnnotation('Square', $rect);
 $sq->setAppearance('');
 var_dump($sq->appearance(), $sq->hasKey('AP'));
-attempt(fn() => $sq->setColor(0, 255, 0));
+echo_outcome(fn() => $sq->setColor(0, 255, 0));
 $sq->clearAppearance();
-attempt(fn() => $sq->setColor(0, 255, 0));
+echo_outcome(fn() => $sq->setColor(0, 255, 0));
 
 $ink = $page->addAnnotation('Ink', $rect);
 $ink->addInkStroke([new Pdfium\Point(110, 690), new Pdfium\Point(290, 660)]);

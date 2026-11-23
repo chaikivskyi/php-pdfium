@@ -15,12 +15,13 @@ classes with ``new``. Get a :php:class:`Document` from :php:meth:`Document::from
 :php:meth:`Annotation::addInkStroke`.
 
 :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
-:php:class:`Bitmap`, :php:class:`Attachment` and :php:class:`Annotation` cannot be cloned or
-serialized. The value classes (:php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`,
-:php:class:`Char`, :php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`,
-:php:class:`WebLink`, :php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`,
-:php:class:`Destination`, :php:class:`Action`, :php:class:`AttachmentMetadata`, :php:class:`Border`,
-:php:class:`Signature` and :php:class:`Point`) are read-only and can be cloned and serialized.
+:php:class:`Bitmap`, :php:class:`Attachment`, :php:class:`Annotation` and :php:class:`FormField`
+cannot be cloned or serialized. The value classes (:php:class:`Metadata`, :php:class:`Permissions`,
+:php:class:`Rect`, :php:class:`Char`, :php:class:`Color`, :php:class:`Matrix`,
+:php:class:`TextMatch`, :php:class:`WebLink`, :php:class:`Bookmark`, :php:class:`Link`,
+:php:class:`Quad`, :php:class:`Destination`, :php:class:`Action`, :php:class:`AttachmentMetadata`,
+:php:class:`Border`, :php:class:`Signature`, :php:class:`Point`, :php:class:`FormFieldOption` and
+:php:class:`FormFieldFlags`) are read-only and can be cloned and serialized.
 
 
 Document
@@ -287,6 +288,16 @@ Document
 
       :rtype: Signature[]
       :throws MemoryException: The list would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. rubric:: Forms
+
+   .. php:method:: formType() -> FormType
+
+      Which kind of form the document has, read from its catalog; see :php:class:`FormType`. Unlike
+      the other form methods, it leaves the document unchanged.
+
+      :rtype: FormType
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Pages
@@ -750,6 +761,59 @@ Page
       :param int $index: Annotation number, starting at 0.
       :throws \\ValueError: The index is out of range.
       :throws PdfiumException: PDFium cannot remove the annotation.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. rubric:: Forms
+
+   .. php:method:: formFields() -> array
+
+      A :php:class:`FormField` for every widget on the page, back to front. A field with several
+      widgets, such as a radio group, gives one for each. Links and other annotations are not
+      listed. Empty when the page has no widgets or PDFium cannot set up its form. Like
+      :php:meth:`render`, this can add appearance streams that a later save writes; see
+      :ref:`pdfium-defaults`.
+
+      .. code-block:: php
+
+         foreach ($page->formFields() as $field) {
+             echo $field->name(), ' (', $field->type()->name, '): ', $field->value(), "\n";
+         }
+
+      :rtype: FormField[]
+      :throws MemoryException: The fields would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: formFieldAt(float $x, float $y) -> ?FormField
+
+      The form field whose widget is at a point, or ``null`` if there is none. A widget that PDFium
+      cannot tie to a field, which :php:meth:`formFields` lists with the type ``Unknown``, is not
+      found; see :ref:`forms`.
+
+      :param float $x: Horizontal position in points.
+      :param float $y: Vertical position in points, from the bottom of the page.
+      :rtype: ?FormField
+      :throws \\ValueError: ``$x`` or ``$y`` is not finite.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: flatten(bool $forPrint = false) -> bool
+
+      Turns every annotation of the page, form fields with their current values and links included,
+      into page content, in place and for good. This ``Page`` shows the new content, but objects made
+      before the flatten do not; see :ref:`forms`.
+
+      .. code-block:: php
+
+         $page->formFields()[0]->setValue('Jane');
+         $page->flatten();
+         $doc->save('flat.pdf');
+
+      :param bool $forPrint: Flatten for printing instead of for the screen.
+      :returns: ``false`` when the page has nothing to flatten.
+      :rtype: bool
+      :throws PdfiumException: PDFium cannot flatten the page.
+      :throws FormatException: PDFium cannot load the flattened page again; every later call on this
+         ``Page`` but :php:meth:`index` throws it too, so fetch the page again with
+         :php:meth:`Document::page`.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
 
@@ -1384,6 +1448,248 @@ Annotation
       :throws PdfiumException: The annotation was already removed from its page, or PDFium cannot
          remove it.
       :throws BusyException: ZTS only: another thread is using PDFium.
+
+
+FormField
+---------
+
+.. php:class:: FormField
+
+   One widget of a form field, from :php:meth:`Page::formFields` or :php:meth:`Page::formFieldAt`.
+   A field with several widgets, such as a radio group, gives one ``FormField`` for each;
+   :php:meth:`controlIndex` tells them apart. It keeps its page and document alive and reads the
+   field's current state on every call. Every method throws :php:class:`PdfiumException` once its
+   page is flattened, because the field is gone.
+
+   .. php:method:: name() -> string
+
+      The field's fully qualified name, as UTF-8, such as ``parent.notes``. Empty when it has none.
+
+      :rtype: string
+      :throws PdfiumException: The field is gone.
+      :throws MemoryException: The name would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: alternateName() -> ?string
+
+      The field's tooltip, as UTF-8. ``null`` when it has none.
+
+      :rtype: ?string
+      :throws PdfiumException: The field is gone.
+      :throws MemoryException: The text would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: type() -> FormFieldType
+
+      The field's type.
+
+      :rtype: FormFieldType
+      :throws PdfiumException: The field is gone.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: value() -> string
+
+      The field's value exactly as PDFium reports it, as UTF-8; empty when there is none. Combo
+      boxes, list boxes and buttons give export values; see :ref:`forms`.
+
+      :rtype: string
+      :throws PdfiumException: The field is gone.
+      :throws MemoryException: The value would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: exportValue() -> ?string
+
+      What the field's value is when this checkbox or radio button is checked, as UTF-8. ``null``
+      for any other type, and when the button gives none.
+
+      :rtype: ?string
+      :throws PdfiumException: The field is gone.
+      :throws MemoryException: The value would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: isChecked() -> bool
+
+      Whether this checkbox or radio button is checked. ``false`` for any other type.
+
+      :rtype: bool
+      :throws PdfiumException: The field is gone.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: rect() -> Rect
+
+      The widget's rectangle on its page, in points.
+
+      :rtype: Rect
+      :throws PdfiumException: The field is gone.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: controlIndex() -> int
+
+      This widget's place among the field's widgets, starting at 0.
+
+      :rtype: int
+      :throws PdfiumException: The field is gone, or PDFium cannot read the field's group.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: controlCount() -> int
+
+      The number of widgets the field has.
+
+      :rtype: int
+      :throws PdfiumException: The field is gone, or PDFium cannot read the field's group.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: options() -> array
+
+      The options of a combo box or list box, in order, as :php:class:`FormFieldOption` objects.
+      An empty array for any other type. PDFium does not give an option's export value, only its
+      label; :php:meth:`value` gives the export value of the selected option.
+
+      :rtype: FormFieldOption[]
+      :throws PdfiumException: The field is gone.
+      :throws MemoryException: The options would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: flags() -> FormFieldFlags
+
+      The field's flags. A flag that does not apply to the field's type is ``false``.
+
+      :rtype: FormFieldFlags
+      :throws PdfiumException: The field is gone.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setValue(string $value) -> void
+
+      Sets the text of a text field or of a combo box with the ``editable`` flag, as if a user typed
+      it, in place; an empty string clears the field. PDFium cuts text to the field's length limit,
+      changes read-only fields and does not store characters above U+FFFF correctly; see
+      :ref:`forms`.
+
+      :param string $value: The text, as UTF-8.
+      :throws \\ValueError: ``$value`` is not valid UTF-8 or contains a null byte.
+      :throws PdfiumException: The field is gone, it is not a text field or a combo box with the
+         ``editable`` flag, or PDFium refuses to edit it.
+      :throws MemoryException: The text would not fit under ``memory_limit``.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setChecked(bool $checked = true) -> void
+
+      Checks or unchecks a checkbox or radio button, as if a user clicked it, in place. Nothing is
+      done when the button is already in the requested state. PDFium does not change a read-only
+      button or uncheck a radio button, so those throw; see :ref:`forms`.
+
+      :param bool $checked: The state to leave the button in.
+      :throws PdfiumException: The field is gone, the field is not a checkbox or radio button, or
+         PDFium did not leave the button in the requested state.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: select(int $option, bool $selected = true) -> void
+
+      Selects or deselects one option of a combo box or list box, as if a user picked it, in place.
+      It replaces the selection, except in a list box with ``multiSelect``. PDFium changes read-only
+      fields too, but does not deselect a combo box's option, so that throws; see :ref:`forms`.
+
+      :param int $option: The index into :php:meth:`options`.
+      :param bool $selected: Whether the option ends up selected.
+      :throws \\ValueError: ``$option`` is not an option index of the field.
+      :throws PdfiumException: The field is gone, the field is not a combo box or list box, or
+         PDFium does not change the selection.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+
+FormFieldOption
+---------------
+
+.. php:class:: FormFieldOption
+
+   One option of a combo box or list box, from :php:meth:`FormField::options`. Read-only.
+
+   .. php:attr:: label
+
+      ``string``
+
+      The text shown for the option, as UTF-8.
+
+   .. php:attr:: selected
+
+      ``bool``
+
+      Whether the option is selected.
+
+
+FormFieldFlags
+--------------
+
+.. php:class:: FormFieldFlags
+
+   The flags of a form field, from :php:meth:`FormField::flags`. Read-only. Each flag is ``false``
+   unless it applies to the field's type.
+
+   .. php:attr:: readOnly
+
+      ``bool``
+
+      The field is read-only.
+
+   .. php:attr:: required
+
+      ``bool``
+
+      The field must have a value before the form is submitted.
+
+   .. php:attr:: noExport
+
+      ``bool``
+
+      The field is left out when the form is submitted.
+
+   .. php:attr:: multiline
+
+      ``bool``
+
+      Text fields only: the text can have several lines.
+
+   .. php:attr:: password
+
+      ``bool``
+
+      Text fields only: the text is hidden.
+
+   .. php:attr:: editable
+
+      ``bool``
+
+      Combo boxes only: the user can type a value that is not an option.
+
+   .. php:attr:: multiSelect
+
+      ``bool``
+
+      List boxes only: several options can be selected.
+
+
+FormType
+--------
+
+.. php:class:: FormType
+
+   An enum, returned by :php:meth:`Document::formType`. XFA forms are told apart but not
+   supported; see :ref:`forms`.
+
+   - ``None``: no form.
+   - ``AcroForm``: an ordinary form.
+   - ``XfaFull``: a full XFA form (the catalog has ``/NeedsRendering true``).
+   - ``XfaForeground``: an AcroForm that also carries XFA data (an ``/XFA`` entry).
+
+
+FormFieldType
+-------------
+
+.. php:class:: FormFieldType
+
+   An enum, returned by :php:meth:`FormField::type`, with the cases ``Unknown``, ``PushButton``,
+   ``Checkbox``, ``RadioButton``, ``ComboBox``, ``ListBox``, ``Text`` and ``Signature``. A type
+   PDFium reports that is not in this list is ``Unknown``.
 
 
 TextPage
@@ -2109,10 +2415,10 @@ these:
 
    Base class for all exceptions below. Extends ``\RuntimeException``.
 
-   Also thrown on its own when PDFium cannot copy pages, write a document or encode a bitmap, or
-   refuses a change to an annotation; by an :php:class:`Annotation` once its annotation is removed
-   from its page; by a stale :php:class:`Attachment`; and by :php:meth:`Attachment::index` for an
-   annotation's file.
+   Also thrown on its own when PDFium cannot copy pages, write a document, encode a bitmap or
+   flatten a page, or refuses a change to an annotation; when a :php:class:`FormField` cannot be
+   read or changed; by an :php:class:`Annotation` once its annotation is removed from its page; by a
+   stale :php:class:`Attachment`; and by :php:meth:`Attachment::index` for an annotation's file.
 
 .. php:exception:: FileException
 
@@ -2149,10 +2455,10 @@ these:
    that :php:meth:`Document::fromFile` has already read the file. See :ref:`threads`.
 
    Every :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
-   :php:class:`Attachment` and :php:class:`Annotation` method can throw it, including
-   ``current()`` and ``valid()`` in the middle of a ``foreach``, except :php:meth:`Document::pages`,
-   :php:meth:`Document::getIterator`, :php:meth:`Page::index`, :php:meth:`PageIterator::key`,
-   :php:meth:`PageIterator::next` and :php:meth:`PageIterator::rewind`. :php:class:`Bitmap` and the
-   value classes never throw it.
+   :php:class:`Attachment`, :php:class:`Annotation` and :php:class:`FormField` method can throw it,
+   including ``current()`` and ``valid()`` in the middle of a ``foreach``, except
+   :php:meth:`Document::pages`, :php:meth:`Document::getIterator`, :php:meth:`Page::index`,
+   :php:meth:`PageIterator::key`, :php:meth:`PageIterator::next` and
+   :php:meth:`PageIterator::rewind`. :php:class:`Bitmap` and the value classes never throw it.
 
 The exception class says what went wrong; ``$e->getCode()`` is always 0.

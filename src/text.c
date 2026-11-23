@@ -433,12 +433,12 @@ static void rects_set(zval *zv, FPDF_TEXTPAGE tp, FPDF_PAGELINK links, int link,
 	}
 }
 
-static FPDF_TEXTPAGE enter_text_page(pdfium_page_handle *ph)
+static FPDF_TEXTPAGE enter_text_page(zval *self)
 {
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(self)) {
 		return NULL;
 	}
-	FPDF_TEXTPAGE tp = FPDFText_LoadPage(ph->page);
+	FPDF_TEXTPAGE tp = FPDFText_LoadPage(pdfium_this_page(self)->page);
 
 	if (!tp) {
 		pdfium_leave();
@@ -939,7 +939,7 @@ static const char *web_links_of(FPDF_TEXTPAGE tp, zval *return_value)
 ZEND_METHOD(Pdfium_Page, text)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	FPDF_TEXTPAGE tp = enter_text_page(pdfium_this_page(ZEND_THIS));
+	FPDF_TEXTPAGE tp = enter_text_page(ZEND_THIS);
 
 	if (!tp) {
 		RETURN_THROWS();
@@ -1182,7 +1182,7 @@ ZEND_METHOD(Pdfium_Page, textPage)
 
 	t->ph = ph;
 	pdfium_page_handle_addref(ph);
-	t->tp = enter_text_page(ph);
+	t->tp = enter_text_page(ZEND_THIS);
 	if (!t->tp) {
 		zval_ptr_dtor(return_value);
 		ZVAL_NULL(return_value);

@@ -12,11 +12,12 @@ document alive:
 
 - the :php:class:`Document <Pdfium\\Document>` object itself;
 - any :php:class:`Page <Pdfium\\Page>`, :php:class:`TextPage <Pdfium\\TextPage>`,
-  :php:class:`PageIterator <Pdfium\\PageIterator>`, :php:class:`Attachment <Pdfium\\Attachment>`
-  or :php:class:`Annotation <Pdfium\\Annotation>` from it.
+  :php:class:`PageIterator <Pdfium\\PageIterator>`, :php:class:`Attachment <Pdfium\\Attachment>`,
+  :php:class:`Annotation <Pdfium\\Annotation>` or :php:class:`FormField <Pdfium\\FormField>` from it.
 
-A :php:class:`TextPage <Pdfium\\TextPage>` or an :php:class:`Annotation <Pdfium\\Annotation>`
-also keeps its page loaded. An ``Attachment`` from an annotation keeps that annotation alive.
+A :php:class:`TextPage <Pdfium\\TextPage>`, :php:class:`Annotation <Pdfium\\Annotation>` or
+:php:class:`FormField <Pdfium\\FormField>` also keeps its page loaded. An ``Attachment`` from an
+annotation keeps that annotation alive.
 
 A document opened with ``fromString()`` also keeps its string in memory.
 
@@ -26,8 +27,8 @@ These do **not** keep a document alive:
 - a document made from it with ``extractPages()`` or ``merge()``. The pages are copied, so you can
   free the source right away.
 
-To free a document, ``unset()`` it and every page, text page, iterator, attachment and annotation
-taken from it.
+To free a document, ``unset()`` it and every page, text page, iterator, attachment, annotation and
+form field taken from it.
 
 
 .. _pdfium-defaults:
@@ -54,8 +55,8 @@ The extension follows PDFium and adds no rules of its own, except that ``setLang
    so a right-to-left document still reads right to left. The result has no bookmarks, attachments
    or language, is not tagged, and has none of the sources' metadata: ``metadata()`` reports only
    ``creator`` and ``producer`` "PDFium" and the ``creationDate`` of the split or merge. Form fields
-   still draw but can no longer be filled in. PDFium has no API to set metadata, add encryption or
-   create bookmarks.
+   still draw and can be filled in, but the result has no ``/AcroForm``, so ``formType()`` is
+   ``None``. PDFium has no API to set metadata, add encryption or create bookmarks.
 
 **Reading and writing files work differently.**
    Both go through PHP streams, so stream wrappers and ``open_basedir`` work. ``fromFile()`` reads the
@@ -74,12 +75,14 @@ The extension follows PDFium and adds no rules of its own, except that ``setLang
    write: the extension cannot tell reliably whether the target existed, and the wrapper knows best
    how to clean up.
 
-**Rendering can change what saving writes.**
-   A render with annotations (the default) generates an appearance stream for each form field on
-   the page that has none, and does the same for annotations of most types. A later ``save()`` or
-   ``toString()`` includes them. On a form that asks for new appearances
-   (``/NeedAppearances true``), it can replace the streams the fields have. See
-   :ref:`annotations`. ``annotations: false`` leaves the document unchanged.
+**Rendering or reading a form can change what saving writes.**
+   The first time any page of a document is rendered with annotations (the default), or any form
+   method other than ``Document::formType()`` is called, PDFium sets up form support for the
+   document. For form fields without an appearance stream, PDFium then generates one, and a later
+   ``save()`` or ``toString()`` includes it. A render with annotations does the same for annotations
+   of most types. On a form that asks for new appearances (``/NeedAppearances true``), it can
+   replace the streams the fields have. See :ref:`annotations`. ``annotations: false`` leaves the
+   document unchanged.
 
 
 .. _rendering:
@@ -544,9 +547,119 @@ Annotations
 
 **Not covered.**
    The extension does not reach the page objects inside an annotation, such as the text and images
-   of a Stamp, or the form-field calls for Widget annotations; a Widget is listed with its common
-   properties. PDFium has no calls to remove a key, to write a value other than a string, or to
-   remove one area of the quad points.
+   of a Stamp. A Widget is listed with its common properties; its field's value, options and flags
+   come from ``formFields()``, see :ref:`forms`. PDFium has no calls to remove a key, to write a
+   value other than a string, or to remove one area of the quad points.
+
+
+.. _forms:
+
+Forms
+-----
+
+**A FormField is one widget.**
+   A field is drawn by one or more widgets: a radio group has one per button, and a field can be
+   repeated on one page or on several. ``Page::formFields()`` gives a
+   :php:class:`FormField <Pdfium\\FormField>` for each widget on that page, back to front, and
+   ``controlIndex()`` and ``controlCount()`` place it among its field's widgets. List the other
+   pages to reach the widgets there. Widgets are listed even when the document has no ``/AcroForm``
+   or the field is missing from its ``/Fields``.
+
+**Changes stay in the loaded document.**
+   ``setValue()``, ``setChecked()``, ``select()`` and ``flatten()`` never touch the file or string
+   the document came from; ``save()`` or ``toString()`` writes them out. An encrypted document is
+   saved encrypted with the same password, unless you pass ``removeSecurity: true``. Reading a form
+   can also change the saved file, as rendering does; see :ref:`pdfium-defaults`.
+
+**What** ``value()`` **returns.**
+   The value PDFium stores, as UTF-8, or ``""`` when there is none:
+
+   - a text field gives its text: a password field's in clear, and a rich-text field's plain
+     ``/V`` rather than ``/RV``;
+   - a combo box gives the selected option's export value, not its label, while ``options()``
+     gives labels only. A list box with several options selected gives only the first;
+   - a checkbox or radio group gives the checked button's export value, or ``Off``.
+     ``isChecked()`` tells one button's state.
+
+   Field values are not page text: ``text()`` and ``search()`` find them only after ``flatten()``.
+
+**What** ``setValue()`` **stores.**
+   PDFium takes the text as if it were typed:
+
+   - a ``/MaxLen`` above 0 silently cuts longer text; compare ``value()`` when it matters;
+   - a multi-line field stores ``\n``, ``\r\n`` and ``\r`` as ``\r\n``, a single-line field drops
+     line breaks, and a tab becomes a space;
+   - a character above U+FFFF, such as most emoji, is stored wrongly: U+1F600 reads back as U+F600.
+     Such characters already in the document read correctly.
+
+**Read-only is not uniformly enforced.**
+   Forms fill even when ``permissions()->fillForms`` is ``false``. PDFium still changes a
+   read-only text field, combo box or list box; check ``flags()->readOnly`` to refuse. It ignores
+   a read-only checkbox or radio button, so ``setChecked()`` throws ``PdfiumException`` ending in
+   "; it is read-only".
+
+**Scripts do not run.**
+   Calculated, formatted and validated fields are not updated when another field changes, and a
+   field's own format script does not reshape what ``setValue()`` stores.
+
+**XFA is not supported.**
+   The AcroForm fields of an XFA document are read and filled like any others; the XFA data is
+   not. ``Document::formType()`` tells such documents apart.
+
+**Combo boxes and list boxes.**
+   ``select()`` replaces the selection, except in a list box with ``multiSelect``, where the other
+   options keep their state. Selecting a selected option changes nothing. PDFium does not deselect
+   a combo box's option, so ``select($i, false)`` on one throws "PDFium did not change the
+   selection". ``setValue()`` works on a combo box with ``editable`` only, and selects the option
+   whose export value equals the text, or none.
+
+**Checkboxes and radio buttons.**
+   Checking a radio button unchecks the others of its group. PDFium does not uncheck a radio
+   button, so ``setChecked(false)`` on a checked one throws; check another button instead.
+   Checkboxes of one field that share an export value change together, and so do radio buttons
+   with the same export value in a group with ``RadiosInUnison``.
+
+**Filling shows on every page.**
+   Filling rebuilds the appearance of every widget of the field, on every page, so the saved file
+   shows the new value with or without ``/NeedAppearances``. One exception while the document is
+   loaded: once a second ``Page`` object for a page has drawn or listed its fields, the first one
+   can stop showing fills made through other ``Page`` objects. Fetch that page again, or fill
+   through a ``FormField`` from it.
+
+**Flattening.**
+   ``flatten()`` turns all of the page's annotations into page content, links and form fields
+   alike, so ``formFields()`` and ``links()`` are empty afterwards and the saved page has no form
+   fields. It cannot be undone. Without ``forPrint`` it drops annotations flagged hidden or
+   invisible; with ``forPrint`` it keeps only those flagged for printing and not hidden.
+
+   Only annotations with an appearance stream are drawn into the page. In a document with an
+   ``/AcroForm``, ``flatten()`` first builds the missing ones, so a field's value or check mark is
+   kept even when nothing read the form before.
+
+   The ``Page`` you flatten through shows the new content. Objects made before do not:
+
+   - a ``FormField`` throws "The form field is gone; its page may have been flattened";
+   - a :php:class:`TextPage <Pdfium\\TextPage>` keeps the old text;
+   - another ``Page`` for the same page lacks the flattened content: it renders the old fields or
+     none, its ``text()`` lacks the flattened text, its ``formFields()`` and ``links()`` are empty,
+     and its ``flatten()`` returns ``false``. Fetch the page again with ``Document::page()``.
+
+   A field repeated on other pages keeps its widgets there: they still read, fill and save. Until
+   the saved document is opened again, their ``controlCount()`` and ``controlIndex()`` still count
+   the flattened widgets. Flattening can remove the document's ``/AcroForm`` even while other pages
+   still have fields, and ``formType()`` then gives ``None``.
+
+**Damaged forms.**
+   The form methods read what PDFium can follow, and return a value or throw ``PdfiumException``:
+
+   - a ``/Parent`` chain that loops or is very deep gives the name and type PDFium resolves, which
+     can be ``""`` and ``Unknown``;
+   - a widget PDFium cannot tie to a field, such as one with no ``/FT`` anywhere, is ``Unknown``:
+     ``formFieldAt()`` does not find it, and its setters, ``controlIndex()`` and ``controlCount()``
+     throw;
+   - ``/Annots`` entries that are not annotations are skipped;
+   - ``/Opt`` entries that are neither strings nor pairs give options with empty labels;
+   - a ``/Rect`` with fewer than four numbers gives a rectangle of ``0, 0, 0, 0``.
 
 
 .. _memory-limit:
@@ -590,7 +703,18 @@ Rough memory needed:
   each contents, time and sub-filter, and about 5 bytes per character of each reason.
 - ``language()``: about 5 bytes per character.
 - ``setLanguage()``: 2 bytes per character.
+- ``formFields()``: about 100 bytes per annotation on the page.
+- ``FormField::name()``, ``alternateName()``, ``value()`` and ``exportValue()``: about 5 bytes per
+  character.
+- ``FormField::options()``: about 150 bytes per option and 5 bytes per character of the labels.
+- ``FormField::setValue()``: 2 bytes per character of the text.
 - ``toPng()``, ``toJpeg()``, ``toString()`` and the ``save*()`` methods: the size of the output.
+
+PDFium builds a field's value, and its copy of the text you pass to ``setValue()``, in its own
+memory, which ``memory_limit`` does not count. A value of hundreds of megabytes can exhaust the
+process's memory before ``MemoryException`` is thrown. For the length of the call, ``setValue()``,
+``setChecked()`` and ``select()`` also load every page that holds a widget of the field: a field
+repeated on thousands of pages loads them all.
 
 With ``memory_limit = -1`` there are no checks.
 
@@ -619,7 +743,7 @@ nothing, so it is safe to retry. To render in parallel, use several processes, f
 workers.
 
 - ``Bitmap`` methods never throw it.
-- Freeing a document, page, text page, page iterator, attachment or annotation, and
+- Freeing a document, page, text page, page iterator, attachment, annotation or form field, and
   ``PageIterator::next()`` and ``rewind()``, never throw it, but may wait for the other thread to
   finish.
 - ``fromFile()`` reads the file before it checks. For a stream you cannot read twice, such as

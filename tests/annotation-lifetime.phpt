@@ -13,8 +13,8 @@ unset($doc, $bytes);
 gc_collect_cycles();
 $junk = str_repeat("\xFF", $len);
 var_dump($a->type(), $a->rect()->top, $a->index());
-attempt(fn() => clone $a);
-attempt(fn() => serialize($a));
+echo_outcome(fn() => clone $a);
+echo_outcome(fn() => serialize($a));
 $GLOBALS['kept'] = Pdfium\Document::fromString(annots_pdf('<< /Type /Annot /Subtype /Text /Rect [0 0 1 1] >>'))->page(0)->annotation(0);
 echo "end\n";
 ?>

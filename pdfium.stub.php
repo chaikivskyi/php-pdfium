@@ -210,6 +210,14 @@ final class Document implements \Countable, \IteratorAggregate
     public function signatures(): array {}
 
     /**
+     * Which kind of form the document has, from its catalog. Unlike the other form methods, it leaves
+     * the document unchanged. XFA forms are told apart but not supported.
+     *
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function formType(): FormType {}
+
+    /**
      * @throws \ValueError when $index is outside 0..pageCount()-1
      * @throws FormatException when PDFium cannot load the page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -387,6 +395,45 @@ final readonly class Permissions
     public bool $extractForAccessibility;
     public bool $assemble;
     public bool $printHighQuality;
+
+    private function __construct() {}
+}
+
+/**
+ * One option of a combo box or list box. PDFium does not give the option's export value.
+ */
+final readonly class FormFieldOption
+{
+    public string $label;
+    public bool $selected;
+
+    private function __construct() {}
+}
+
+/**
+ * The flags of a form field that apply to its type; the others are false.
+ */
+final readonly class FormFieldFlags
+{
+    public bool $readOnly;
+    public bool $required;
+    public bool $noExport;
+    /**
+     * Text fields only.
+     */
+    public bool $multiline;
+    /**
+     * Text fields only.
+     */
+    public bool $password;
+    /**
+     * Combo boxes only: the user can type a value that is not an option.
+     */
+    public bool $editable;
+    /**
+     * List boxes only.
+     */
+    public bool $multiSelect;
 
     private function __construct() {}
 }
@@ -886,6 +933,38 @@ final class Page
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function removeAnnotation(int $index): void {}
+
+    /**
+     * One FormField for every widget on the page, back to front, so a radio group gives one per button.
+     * Like render(), this can add appearance streams that save() and toString() then include.
+     *
+     * @return FormField[]
+     * @throws MemoryException when the fields would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function formFields(): array {}
+
+    /**
+     * The form field whose widget is at this point, in points as TextPage gives them; null when there
+     * is none. Like formFields(), it can add appearance streams that a later save() writes.
+     *
+     * @throws \ValueError when $x or $y is not finite
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function formFieldAt(float $x, float $y): ?FormField {}
+
+    /**
+     * Turns every annotation of the page, form fields and links included, into page content, in place
+     * and for good; false when there is nothing to flatten. $forPrint keeps only annotations flagged
+     * for printing. FormFields made earlier then throw, and other Page objects for this page lack the
+     * new content, so fetch them again.
+     *
+     * @throws PdfiumException when PDFium cannot flatten the page
+     * @throws FormatException when PDFium cannot load the flattened page again; the Page then throws
+     *         FormatException from every method except index(); fetch it again with Document::page()
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function flatten(bool $forPrint = false): bool {}
 }
 
 /**
@@ -1386,6 +1465,178 @@ final class Attachment
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function metadata(): AttachmentMetadata {}
+}
+
+/**
+ * The kind of form a document has.
+ */
+enum FormType
+{
+    case None;
+    case AcroForm;
+    case XfaFull;
+    case XfaForeground;
+}
+
+/**
+ * The type of a form field. A type PDFium reports that is not listed here is Unknown.
+ */
+enum FormFieldType
+{
+    case Unknown;
+    case PushButton;
+    case Checkbox;
+    case RadioButton;
+    case ComboBox;
+    case ListBox;
+    case Text;
+    case Signature;
+}
+
+/**
+ * One widget of a form field, from Page::formFields() or Page::formFieldAt(). It keeps its page and
+ * document alive. Every method throws PdfiumException once its page is flattened.
+ *
+ * @strict-properties
+ * @not-serializable
+ */
+final class FormField
+{
+    private function __construct() {}
+
+    /**
+     * The field's fully qualified name, as UTF-8, such as "parent.notes"; empty when it has none.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened
+     * @throws MemoryException when the name would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function name(): string {}
+
+    /**
+     * The field's tooltip (/TU), as UTF-8; null when it has none.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened
+     * @throws MemoryException when the text would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function alternateName(): ?string {}
+
+    /**
+     * @throws PdfiumException when the field is gone: its page may have been flattened
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function type(): FormFieldType {}
+
+    /**
+     * The value exactly as PDFium reports it, as UTF-8; empty when there is none. For a combo box it is
+     * the selected option's export value, for a list box only the first selected option's, and for a
+     * checkbox or radio group the checked button's export value or "Off".
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened
+     * @throws MemoryException when the value would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function value(): string {}
+
+    /**
+     * What the field's value is when this button is checked, as UTF-8. Null for any other field type,
+     * and when the button gives none.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened
+     * @throws MemoryException when the value would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function exportValue(): ?string {}
+
+    /**
+     * Whether this checkbox or radio button is checked; false for any other field type.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function isChecked(): bool {}
+
+    /**
+     * The widget's rectangle on its page, in points.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function rect(): Rect {}
+
+    /**
+     * This widget's place among the field's widgets, starting at 0.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened; or when PDFium
+     *         cannot read the field's group
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function controlIndex(): int {}
+
+    /**
+     * The number of widgets the field has.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened; or when PDFium
+     *         cannot read the field's group
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function controlCount(): int {}
+
+    /**
+     * The options of a combo box or list box, in order, with which are selected; an empty array for
+     * any other type.
+     *
+     * @return FormFieldOption[]
+     * @throws PdfiumException when the field is gone: its page may have been flattened
+     * @throws MemoryException when the options would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function options(): array {}
+
+    /**
+     * The field's flags, limited to those that apply to its type.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function flags(): FormFieldFlags {}
+
+    /**
+     * Sets the text of a text field or an editable combo box, as if a user typed it; "" clears it. PDFium
+     * cuts text at the field's /MaxLen, changes read-only fields, runs no scripts and stores characters
+     * above U+FFFF wrongly, so check value() when it matters.
+     *
+     * @throws \ValueError when $value is not valid UTF-8 or contains a null byte
+     * @throws PdfiumException when the field is gone: its page may have been flattened; when it is not a
+     *         text field or editable combo box; or when PDFium refuses to edit it
+     * @throws MemoryException when the text would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setValue(string $value): void {}
+
+    /**
+     * Checks or unchecks a checkbox or radio button, as if a user clicked it; nothing happens when it is
+     * already in that state. PDFium does not change a read-only button or uncheck a radio button, so
+     * those throw.
+     *
+     * @throws PdfiumException when the field is gone: its page may have been flattened; when the field is not a
+     *         checkbox or radio button; or when PDFium did not leave the button in the requested state
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setChecked(bool $checked = true): void {}
+
+    /**
+     * Selects or deselects one option of a combo box or list box, as if a user picked it. It replaces the
+     * selection, except in a multiSelect list box; PDFium does not deselect a combo box's option, so that
+     * throws. PDFium changes read-only fields too.
+     *
+     * @throws \ValueError when $option is not an option index of the field
+     * @throws PdfiumException when the field is gone: its page may have been flattened; when the field is not a combo
+     *         box or list box; or when PDFium refuses to change the selection
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function select(int $option, bool $selected = true): void {}
 }
 
 /**

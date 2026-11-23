@@ -48,7 +48,7 @@ foreach (['', "a\0b"] as $uri) {
     try { $new->setUri($uri); } catch (ValueError $e) { echo $e->getMessage(), "\n"; }
 }
 foreach ([5, 7] as $i) {
-    attempt(fn() => $page->annotation($i)->setUri('x'));
+    echo_outcome(fn() => $page->annotation($i)->setUri('x'));
 }
 var_dump($page->annotation(7)->hasKey('A'), $new->link()->action->uri);
 $new->setUri("https://example.com/\xC3\xA9\xFF");

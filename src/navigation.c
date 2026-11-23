@@ -217,7 +217,7 @@ static void page_action(INTERNAL_FUNCTION_PARAMETERS, int which)
 	const char *oom = NULL;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	action_info a = action_read(ph->h->doc, FPDF_GetPageAAction(ph->page, which));
@@ -311,7 +311,7 @@ ZEND_METHOD(Pdfium_Page, links)
 	int pos = 0;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	int pages = FPDF_GetPageCount(ph->h->doc);
@@ -346,7 +346,7 @@ ZEND_METHOD(Pdfium_Page, linkAt)
 		zend_argument_value_error(zend_finite(x) ? 2 : 1, "must be finite");
 		RETURN_THROWS();
 	}
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	FPDF_LINK link = FPDFLink_GetLinkAtPoint(ph->page, pdfium_float_side(x), pdfium_float_side(y));

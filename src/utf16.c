@@ -30,18 +30,24 @@ zend_string *pdfium_utf16le_to_utf8(const unsigned short *units, size_t count)
 	return out;
 }
 
-zend_string *pdfium_utf16le_fetch(pdfium_utf16le_getter get, void *source, unsigned long bytes)
+size_t pdfium_utf16le_read(pdfium_utf16le_getter get, void *source, unsigned short *units, unsigned long bytes)
 {
-	if (bytes <= 2) {
-		return NULL;
-	}
-	unsigned short *units = emalloc(bytes);
 	unsigned long got = get(source, units, bytes);
 	size_t count = got <= bytes ? got / 2 : 0, n = 0;
 
 	while (n < count && units[n]) {
 		n++;
 	}
+	return n;
+}
+
+zend_string *pdfium_utf16le_fetch(pdfium_utf16le_getter get, void *source, unsigned long bytes)
+{
+	if (bytes <= 2) {
+		return NULL;
+	}
+	unsigned short *units = emalloc(bytes);
+	size_t n = pdfium_utf16le_read(get, source, units, bytes);
 	zend_string *s = n ? pdfium_utf16le_to_utf8(units, n) : NULL;
 
 	efree(units);
