@@ -754,7 +754,8 @@ Page
 
       Removes an annotation from the page, in place. The annotations after it move down one index,
       and every :php:class:`Annotation` for the removed one throws from then on; the others stay
-      usable. On a damaged page that lists the annotation twice, nothing throws; see
+      usable. So does every :php:class:`FormField` of another widget, while one of a removed Widget
+      throws. On a damaged page that lists the annotation twice, nothing throws; see
       :ref:`annotations`. To remove several by index, remove from the highest down. A Widget's form
       field stays in the document.
 
@@ -892,8 +893,8 @@ Annotation
    :php:meth:`Page::annotation`, :php:meth:`Page::addAnnotation` or :php:meth:`linkedAnnotation`. It
    keeps its page and document alive. Two objects for the same annotation see each other's
    changes, but they are not ``==``; compare :php:meth:`index` instead. Once the annotation is
-   removed from its page, by :php:meth:`remove` or :php:meth:`Page::removeAnnotation`, every method
-   throws :php:class:`PdfiumException`.
+   removed from its page, by :php:meth:`remove` or :php:meth:`Page::removeAnnotation`, or its page
+   is flattened with :php:meth:`Page::flatten`, every method throws :php:class:`PdfiumException`.
 
    The setters change the loaded document, in place: :php:meth:`Document::save` or
    :php:meth:`Document::toString` writes the change out. What :php:meth:`Page::render` draws for an
@@ -1459,7 +1460,9 @@ FormField
    A field with several widgets, such as a radio group, gives one ``FormField`` for each;
    :php:meth:`controlIndex` tells them apart. It keeps its page and document alive and reads the
    field's current state on every call. Every method throws :php:class:`PdfiumException` once its
-   page is flattened, because the field is gone.
+   widget is removed from the page, by :php:meth:`Page::removeAnnotation` or
+   :php:meth:`Annotation::remove`, or its page is flattened, because the field is gone. Removing
+   other annotations of the page does not affect it.
 
    .. php:method:: name() -> string
 

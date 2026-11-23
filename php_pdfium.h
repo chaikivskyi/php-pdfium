@@ -60,7 +60,14 @@ typedef struct {
 	zend_object std;
 } pdfium_attachment;
 typedef struct { pdfium_page_handle *ph; FPDF_ANNOTATION annot; uint64_t removals; bool removed; zend_object std; } pdfium_annotation;
-typedef struct { pdfium_page_handle *ph; int page_index; int index; zend_object std; } pdfium_form_field;
+typedef struct {
+	pdfium_page_handle *ph;
+	int page_index;
+	FPDF_ANNOTATION annot;
+	uint64_t removals;
+	bool gone;
+	zend_object std;
+} pdfium_form_field;
 
 typedef struct { smart_str s; bool oom; } pdfium_buf;
 

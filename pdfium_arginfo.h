@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 9085758cc89ceebe785b105b6a9e1a784d79c1ac */
+ * Stub hash: 78b43bc8c4632dd29c8145f704e8684c0d58a087 */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()

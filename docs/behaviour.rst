@@ -460,8 +460,9 @@ Annotations
    Removing an annotation moves the annotations after it down one index; ``index()`` always gives
    the current one. Every ``Annotation`` object for the removed annotation throws
    ``PdfiumException`` from then on, so none can change an annotation that is no longer on its
-   page. Objects for the other annotations stay usable. To remove several by index, remove from the
-   highest down.
+   page. Objects for the other annotations stay usable, and so are ``FormField`` objects for the
+   other widgets; a ``FormField`` for a removed Widget throws. To remove several by index, remove
+   from the highest down.
 
    A saved PDF leaves out a removed annotation, and anything from the loaded document that only it
    used, such as its file. Whatever something else still points to stays, such as an annotation
@@ -638,7 +639,9 @@ Forms
 
    The ``Page`` you flatten through shows the new content. Objects made before do not:
 
-   - a ``FormField`` throws "The form field is gone; its page may have been flattened";
+   - a ``FormField`` throws "The form field is gone: its widget was removed or its page flattened";
+   - an :php:class:`Annotation <Pdfium\\Annotation>` throws "The annotation was removed from its
+     page";
    - a :php:class:`TextPage <Pdfium\\TextPage>` keeps the old text;
    - another ``Page`` for the same page lacks the flattened content: it renders the old fields or
      none, its ``text()`` lacks the flattened text, its ``formFields()`` and ``links()`` are empty,

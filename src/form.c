@@ -77,7 +77,7 @@ bool pdfium_form_slots_match(void)
 		&& pdfium_slots_named(pdfium_ce_form_field_flags, "readOnly required noExport multiline password editable multiSelect");
 }
 
-static zend_object *field_new(pdfium_page *p, int index)
+static zend_object *field_new(pdfium_page *p, FPDF_ANNOTATION annot)
 {
 	zval zv;
 
@@ -86,7 +86,8 @@ static zend_object *field_new(pdfium_page *p, int index)
 
 	f->ph = p->ph;
 	f->page_index = p->index;
-	f->index = index;
+	f->annot = annot;
+	f->removals = p->ph->h->annotation_removals;
 	pdfium_page_handle_addref(p->ph);
 	return Z_OBJ(zv);
 }
@@ -137,15 +138,15 @@ static bool field_enter(zval *self, field_span *s)
 	if (!pdfium_enter()) {
 		return false;
 	}
-	s->form = pdfium_page_form(f->ph);
-	s->annot = FPDFPage_GetAnnot(f->ph->page, f->index);
-	if (s->annot && FPDFAnnot_GetSubtype(s->annot) != FPDF_ANNOT_WIDGET) {
-		FPDFPage_CloseAnnot(s->annot);
-		s->annot = NULL;
+	if (!f->gone && f->removals != f->ph->h->annotation_removals) {
+		f->removals = f->ph->h->annotation_removals;
+		f->gone = FPDFPage_GetAnnotIndex(f->ph->page, f->annot) < 0;
 	}
-	if (!s->annot) {
+	s->form = pdfium_page_form(f->ph);
+	s->annot = f->annot;
+	if (f->gone || FPDFAnnot_GetSubtype(s->annot) != FPDF_ANNOT_WIDGET) {
 		pdfium_leave();
-		zend_throw_exception(pdfium_ce_exception, "The form field is gone; its page may have been flattened", 0);
+		zend_throw_exception(pdfium_ce_exception, "The form field is gone: its widget was removed or its page flattened", 0);
 		return false;
 	}
 	f->ph->h->fill = (pdfium_fill) {f->ph->page, f->page_index, NULL, 0, false};
@@ -167,7 +168,6 @@ static void field_leave(field_span *s)
 		}
 	}
 	free(fill.pages);
-	FPDFPage_CloseAnnot(s->annot);
 	pdfium_leave();
 }
 
@@ -260,14 +260,14 @@ ZEND_METHOD(Pdfium_Page, formFields)
 		RETURN_EMPTY_ARRAY();
 	}
 	int count = FPDFPage_GetAnnotCount(ph->page);
-	int *widgets = NULL;
+	FPDF_ANNOTATION *widgets = NULL;
 	int n = 0;
 
 	if (count < 0) {
 		count = 0;
 	}
-	if (!pdfium_memory_fits((size_t) count * (sizeof(int) + sizeof(pdfium_form_field) + sizeof(zval)))
-		|| (count && !(widgets = malloc((size_t) count * sizeof(int))))) {
+	if (!pdfium_memory_fits((size_t) count * (sizeof(FPDF_ANNOTATION) + sizeof(pdfium_form_field) + sizeof(zval)))
+		|| (count && !(widgets = malloc((size_t) count * sizeof(FPDF_ANNOTATION))))) {
 		oom = "The form fields need";
 	} else {
 		for (int i = 0; i < count; i++) {
@@ -277,9 +277,10 @@ ZEND_METHOD(Pdfium_Page, formFields)
 				continue;
 			}
 			if (FPDFAnnot_GetSubtype(a) == FPDF_ANNOT_WIDGET) {
-				widgets[n++] = i;
+				widgets[n++] = a;
+			} else {
+				FPDFPage_CloseAnnot(a);
 			}
-			FPDFPage_CloseAnnot(a);
 		}
 	}
 	pdfium_leave_or_throw(return_value, oom);
@@ -314,20 +315,20 @@ ZEND_METHOD(Pdfium_Page, formFieldAt)
 		RETURN_THROWS();
 	}
 	FPDF_FORMHANDLE form = pdfium_page_form(ph);
-	int index = -1;
+	FPDF_ANNOTATION a = NULL;
 
 	if (form) {
 		FS_POINTF point = {pdfium_float_side(x), pdfium_float_side(y)};
-		FPDF_ANNOTATION a = FPDFAnnot_GetFormFieldAtPoint(form, ph->page, &point);
 
-		if (a) {
-			index = FPDFPage_GetAnnotIndex(ph->page, a);
+		a = FPDFAnnot_GetFormFieldAtPoint(form, ph->page, &point);
+		if (a && FPDFPage_GetAnnotIndex(ph->page, a) < 0) {
 			FPDFPage_CloseAnnot(a);
+			a = NULL;
 		}
 	}
 	pdfium_leave();
-	if (index >= 0) {
-		RETURN_OBJ(field_new(p, index));
+	if (a) {
+		RETURN_OBJ(field_new(p, a));
 	}
 	RETURN_NULL();
 }
@@ -358,6 +359,7 @@ ZEND_METHOD(Pdfium_Page, flatten)
 	int result = FPDFPage_Flatten(ph->page, for_print ? FLAT_PRINT : FLAT_NORMALDISPLAY);
 
 	if (result == FLATTEN_SUCCESS) {
+		ph->h->annotation_removals++;
 		fresh = FPDF_LoadPage(ph->h->doc, p->index);
 	}
 	pdfium_leave();
@@ -689,6 +691,11 @@ void pdfium_form_field_free_obj(zend_object *obj)
 {
 	pdfium_form_field *f = pdfium_form_field_from_obj(obj);
 
+	if (f->annot) {
+		pdfium_enter_wait();
+		FPDFPage_CloseAnnot(f->annot);
+		pdfium_leave();
+	}
 	if (f->ph) {
 		pdfium_page_handle_release(f->ph);
 	}
