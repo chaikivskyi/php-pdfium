@@ -8,6 +8,7 @@ What it does
 - Read the page count, metadata, permissions, file identifiers, page sizes, rotation and text.
 - Read the outline (bookmarks), link annotations and page open and close actions, with where they
   lead.
+- List the scripts in the document's JavaScript name tree, without running them.
 - Find text on a page: search it, read the text inside a rectangle, list the URLs written in it,
   and get every character with its position, font and colour.
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
@@ -20,9 +21,12 @@ What it does
 - Read and fill in form fields (text fields, checkboxes, radio buttons, combo and list boxes), and
   flatten a page's annotations and fields into page content.
 - Edit pages: delete, add, copy in from another document, move, rotate and set their boxes.
-- Split and merge documents, put several pages on one sheet, start an empty document, and save.
+- Split and merge documents, put several pages on one sheet, start an empty document, and save,
+  incrementally if you want to keep the original file.
+- Open large local files without loading them whole into memory.
 
-It needs PHP 8.2 to 8.5, NTS or ZTS. No FFI and no ini settings are needed.
+It needs PHP 8.2 to 8.5, NTS or ZTS, and no FFI. The only ini setting, ``pdfium.font_paths``, is
+optional and tells PDFium where to find fonts; see :ref:`fonts`.
 See :doc:`platforms` for the supported systems.
 
 
@@ -96,13 +100,14 @@ Open a document
 
    $doc = Document::fromFile('/path/file.pdf');
    $doc = Document::fromFile('/path/secret.pdf', password: 'secret');
+   $doc = Document::fromFile('/path/huge.pdf', lazy: true);   // read as needed, not loaded whole
 
    // From a string, for example a file from S3 or a phar archive:
    $doc = Document::fromString(file_get_contents('s3://bucket/report.pdf'));
 
 ``fromFile()`` reads through PHP streams as well, so
 ``Document::fromFile('s3://bucket/report.pdf')`` works too. Either way the whole file is held in PHP
-memory.
+memory, unless you pass ``lazy: true`` for a local file.
 
 Read document information
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -116,6 +121,7 @@ Read document information
    $doc->permissions()->copy;      // false
 
    $doc->bookmarks();              // Bookmark[]: the outline, each with title, destination, children
+   $doc->javaScripts();            // JavaScript[]: the named scripts, each with name and source
 
 Work with pages
 ~~~~~~~~~~~~~~~
@@ -204,6 +210,11 @@ Create, split, merge, put pages on a sheet and save
    // Save an encrypted document without its password:
    $doc->save('/tmp/open.pdf', removeSecurity: true);
 
+   // Keep the original file and append the changes:
+   $doc->save('/tmp/appended.pdf', incremental: true);
+
+   // Write a PDF 1.4 header:
+   $doc->save('/tmp/old.pdf', version: 14);
 The new documents keep only the pages: no encryption, bookmarks, viewer preferences or metadata
 beyond what PDFium writes, and no ``/AcroForm``, so ``formType()`` is ``None``. See
 :ref:`pdfium-defaults`.

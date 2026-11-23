@@ -19,7 +19,8 @@ A :php:class:`TextPage <Pdfium\\TextPage>`, :php:class:`Annotation <Pdfium\\Anno
 :php:class:`FormField <Pdfium\\FormField>` also keeps its page loaded. An ``Attachment`` from an
 annotation keeps that annotation alive.
 
-A document opened with ``fromString()`` also keeps its string in memory.
+A document opened with ``fromString()`` also keeps its string in memory, and one opened with
+``fromFile(lazy: true)`` keeps its file open.
 
 These do **not** keep a document alive:
 
@@ -37,15 +38,20 @@ form field taken from it.
 PDFium defaults
 ---------------
 
-The extension follows PDFium and adds no rules of its own, except that ``setLanguage()`` and
-``addAttachment()`` refuse a few values PDFium would read back wrongly; see :ref:`accessibility`.
+The extension follows PDFium and adds few rules of its own. ``extractPages()``, ``insertPages()``,
+``merge()`` and ``nUp()`` refuse an encrypted source unless you pass ``removeSecurity: true``
+(below), and ``setLanguage()`` and ``addAttachment()`` refuse a few values PDFium would read back
+wrongly; see :ref:`accessibility`. For a document opened with ``fromFile(lazy: true)``, a save will
+not overwrite its file in place, and once its file could not be read in full it will not be saved,
+split, merged, copied from with ``insertPages()`` or laid out with ``nUp()``; see
+:ref:`large-files`.
 
-**Permissions are not enforced.**
+**Permissions.**
    ``permissions()`` tells you what the document allows, but nothing stops you. For example, you can
    read the text of a document that forbids copying. Page edits work whatever ``permissions()`` says
    about modifying or assembling the document, and do not change what it reports.
 
-**Removing encryption is always explicit.**
+**Removing encryption.**
    ``save()`` and ``toString()`` keep the encryption. Pass ``removeSecurity: true`` to save without
    it. PDFium cannot encrypt a new document, so ``extractPages()``, ``merge()`` and ``nUp()`` throw
    :php:exc:`Pdfium\\UnsupportedException` for an encrypted source, whether it was opened with a user
@@ -54,7 +60,7 @@ The extension follows PDFium and adds no rules of its own, except that ``setLang
    encrypted document, because the copied pages are no longer protected by the source's password.
    They take the encryption of the document they are copied into, if it has any.
 
-**Split, merge and nUp() output keeps little but the pages.**
+**Split, merge and nUp() output.**
    ``extractPages()`` keeps its document's viewer preferences and ``merge()`` the first document's,
    so a right-to-left document still reads right to left; ``nUp()`` keeps none of them. The result
    has no bookmarks, attachments or language, is not tagged, and has none of the sources' metadata:
@@ -65,10 +71,11 @@ The extension follows PDFium and adds no rules of its own, except that ``setLang
    links, form fields and other annotations. PDFium has no API to set metadata, add encryption or
    create bookmarks.
 
-**Reading and writing files work differently.**
+**Reading and writing files.**
    Both go through PHP streams, so stream wrappers and ``open_basedir`` work. ``fromFile()`` reads the
    whole file into PHP memory (counted against ``memory_limit``) and never touches it again, so you
-   can save over a file while its document is open.
+   can save over a file while its document is open. With ``lazy: true``, ``fromFile()`` instead
+   keeps the file open and reads it as needed; see :ref:`large-files`.
 
    Saving over an existing local file writes a complete new file next to it and renames it into
    place, keeping the owner, mode and extended attributes. When that is not possible (other hard
@@ -82,7 +89,55 @@ The extension follows PDFium and adds no rules of its own, except that ``setLang
    write: the extension cannot tell reliably whether the target existed, and the wrapper knows best
    how to clean up.
 
-**Rendering or reading a form can change what saving writes.**
+**Incremental saves.**
+   ``incremental: true`` writes the original file as it was, from its ``%PDF`` header on, and
+   appends a section after it; bytes before the header, which some files have, are dropped. The
+   appended section holds the changes and also unchanged copies of the objects PDFium has read, such
+   as the document catalog, the metadata once you call ``metadata()``, and a page's objects once you
+   open it. An encrypted document stays encrypted.
+
+   PDFium writes a full copy instead, and reports success, in two cases: with
+   ``removeSecurity: true``, and for a document from ``create()``, ``extractPages()``, ``merge()`` or
+   ``nUp()``, which has no original bytes. To check that a save was incremental, test that it starts
+   with the original from its ``%PDF`` on:
+
+   .. code-block:: php
+
+      $fromHeader = substr($original, strpos($original, '%PDF'));
+      $wasIncremental = str_starts_with($saved, $fromHeader);
+
+   Each incremental save appends one section to the bytes the document was opened from, even when
+   nothing changed. A second save of the same ``Document`` also starts from those bytes, not from
+   the first save's output; opening the result and saving it incrementally adds another section, so
+   a file updated that way over and over keeps growing.
+
+   The original is not rewritten, so the ranges a digital signature covers stay as they were.
+   Whether a viewer still accepts the signature depends on what you read as well as what you
+   changed, since some validators treat any object written after signing as a modification; the
+   extension does not check signatures.
+
+   Most files from PDF 1.5 on index their objects with a cross-reference stream. For those, PDFium
+   writes the appended index without the ``/Type /XRef`` entry the format requires. PDFium reads the
+   result, but other tools, qpdf for one, cannot, and a signature validator may not get as far as
+   the signature.
+
+**The version option.**
+   ``version`` sets the PDF version in the file header, from ``10`` for 1.0 to ``17`` for 1.7.
+   Nothing in the document is converted to suit an older version. PDFium ignores any other value
+   without an error, as if ``version`` were not given, and writes the source's 1.x version, or 1.7
+   for a document from ``create()``, ``extractPages()``, ``merge()`` or ``nUp()``. An incremental
+   save keeps the original header, so ``version`` only applies when the save falls back to a full
+   copy.
+
+   A full save of a PDF 2.0 file writes a ``%PDF-1.0`` header unless you pass a ``version`` from 10
+   to 17; ``version: 20`` is outside the range and ignored like any other value.
+
+**File identifiers.**
+   Every save, full or incremental, writes a new changing identifier (see ``changingId()``), so two
+   saves of the same document are normally not byte-identical. An incremental save keeps the
+   permanent identifier. Compare documents by their content, not their bytes.
+
+**Generated appearance streams.**
    The first time any page of a document is rendered with annotations (the default), or any form
    method other than ``Document::formType()`` is called, PDFium sets up form support for the
    document. For form fields without an appearance stream, PDFium then generates one, and a later
@@ -153,6 +208,96 @@ none                                RGB              RGB
 
 Alpha is straight, not premultiplied. JPEG has no alpha channel, so a transparent render's JPEG is
 drawn on white.
+
+
+.. _large-files:
+
+Large files
+-----------
+
+``fromFile($path, lazy: true)`` opens a local file without reading it whole. The document keeps the
+file open, and PDFium reads the parts it needs when it needs them: opening a well-formed file and
+counting its pages typically reads a few kilobytes, and rendering a page reads what that page uses.
+A file whose cross-reference table (the index of where each object is) is damaged can make PDFium
+read all of it while opening. In one measurement, a 120 MB file whose pages are large images needed
+about 20 MB to open and render one page, against about 140 MB when loaded whole. The file does not
+need to be linearized ("fast web view"); that made no difference in this measurement.
+
+- Only local files: a path that goes through a stream wrapper (``s3://``, ``ftp://``, ``data:``,
+  ``php://``, ``phar://``, your own) throws :php:exc:`Pdfium\\UnsupportedException`. If PHP
+  cannot use the wrapper, because it is not registered or ``allow_url_fopen`` disables it, the call
+  throws :php:exc:`Pdfium\\FileException` instead. ``open_basedir`` applies, and ``file://`` paths
+  are local.
+- The file must not change while the document exists. PDFium cannot tell, and would read a mix of
+  old and new bytes. Deleting or renaming the file is fine: the document keeps reading the open
+  file, and its disk space stays in use until the document is freed.
+- Each document opened this way holds one open file, which counts against the process's open-file
+  limit.
+- PDFium keeps what it has read until the document is freed. Rendering every page or a full save
+  reads the whole file, and PDFium's memory grows to about the file's size.
+- PDFium's own memory is not counted against ``memory_limit``; only what the extension builds in
+  PHP is. So a file larger than ``memory_limit`` can be opened lazily and its pages rendered.
+- ``save()`` and ``toString()`` still build the whole output in PHP memory, counted against
+  ``memory_limit``, as for any document. A full save is about the size of the file and an
+  incremental save at least that, so saving a file larger than ``memory_limit`` throws
+  :php:exc:`Pdfium\\MemoryException`.
+- You can save over the file the document reads: the save writes a new copy and renames it into
+  place, and the document keeps reading the old one. When the save would have to overwrite the file
+  in place instead (see :ref:`pdfium-defaults` for when), it throws :php:exc:`Pdfium\\FileException`
+  and leaves the file alone. The check covers every save the extension makes in the same request or
+  thread, by any document or bitmap. It does not cover saves through a stream wrapper, or writes by
+  other threads or processes.
+- If the file is truncated or a read fails while the document is open, anything read from the
+  document, such as pages, text, bookmarks, links, attachment contents and ``javaScripts()``, may
+  come back incomplete without an error, or fail as it would for a damaged file. From then on,
+  ``save()``, ``toString()``, ``extractPages()``, ``merge()`` and ``nUp()`` throw
+  :php:exc:`Pdfium\\FormatException` rather than produce an incomplete copy, and so does
+  ``insertPages()`` when it reads such a document, as source or as target. It first removes the
+  pages it copied into a target that is not such a document, so that target is left as it was; a
+  target that is such a document can be left with an undefined page order, as after a
+  :ref:`failed edit <failed-edits>`.
+
+The extension does not expose PDFium's API for opening a document while it is still downloading
+(``fpdf_dataavail.h``). For a remote file, download it to a temporary file and open that with
+``lazy: true``.
+
+
+.. _fonts:
+
+Fonts
+-----
+
+A PDF either carries its fonts or only names them. For a font it only names, PDFium looks in the
+system's font directories and, when it finds nothing suitable, draws the text with a built-in
+substitute. That is never an error, so a page can render with the wrong letter shapes without any
+sign from the extension, and characters the substitute lacks may not be drawn at all.
+
+The 14 standard fonts (Helvetica, Times, Courier and their styles, Symbol and ZapfDingbats) are
+named rather than carried in most PDFs. PDFium draws Helvetica, Times and Courier with Arial, Times
+New Roman and Courier New when it finds them in the font directories, and with its built-in fonts
+otherwise.
+
+The ini setting ``pdfium.font_paths`` lists the directories PDFium scans, separated by ``:`` like
+``include_path``:
+
+.. code-block:: ini
+
+   pdfium.font_paths = /app/fonts:/usr/share/fonts:/usr/local/share/fonts
+
+- The list **replaces** PDFium's own directories: on Linux, ``/usr/share/fonts``,
+  ``/usr/local/share/fonts``, ``/usr/share/X11/fonts/Type1`` and ``/usr/share/X11/fonts/TTF``. List
+  the ones you still want. Empty, the default, means PDFium's own directories, and so does a value
+  with no directory in it, such as ``:``.
+- It is read once, when PHP starts. Set it in ``php.ini`` or a file in its ``conf.d``
+  directory, or with ``-d`` on the command line, and restart PHP-FPM after changing it.
+  ``ini_set()`` refuses it. A value set later, with ``php_admin_value`` in a PHP-FPM pool or an
+  Apache virtual host, has no effect on PDFium, even though ``ini_get()`` and ``phpinfo()`` show it.
+- A directory that does not exist is ignored, without a warning. Use absolute paths.
+- It is one setting for the whole process: every document sees the same fonts.
+
+This is the usual fix for a container image with no fonts installed: copy the fonts your PDFs name
+into a directory and list it. A copy of Arial, Times New Roman or Courier New there also changes how
+Helvetica, Times or Courier text looks.
 
 
 .. _text-positions:
@@ -227,6 +372,32 @@ Actions PDFium does not read, such as JavaScript, form submission and named acti
 page*, have the type ``"Unsupported"`` and nothing else set.
 
 
+.. _javascript:
+
+JavaScript
+----------
+
+``javaScripts()`` reads only the scripts in the document's script list (its ``/JavaScript`` name
+tree). It leaves out scripts chained after an entry with ``/Next`` and scripts on page actions,
+links, annotations and form fields; those actions still have the type ``"Unsupported"``. It also
+leaves out the document's open action (``/OpenAction``) and document actions (``/AA``, such as
+before closing or printing), which no method reads; ``Page::openAction()`` reads only a page's. So
+an empty result does not mean the file has no JavaScript. An entry that is not JavaScript, or whose
+source is missing or is not a string or stream, is left out. An entry whose source is empty is
+returned with an empty ``script``.
+
+Nothing is ever run: the extension only returns the source. It comes from the file, so treat it as
+untrusted text. NUL bytes in a name or script are kept, so nothing is cut short.
+
+A damaged script list, one that loops or nests too deeply, is read as far as PDFium can follow it.
+A crafted PDF of a few kilobytes can keep ``javaScripts()`` busy for minutes. The extension cannot
+detect such a file, and ``max_execution_time`` cannot interrupt PDFium. On NTS PHP the process is
+killed ``hard_timeout`` seconds (2 by default) after the time limit runs out, without running
+shutdown functions; on ZTS PHP the limit only takes effect when PDFium returns, and other threads
+get ``BusyException`` meanwhile. With PDFs you do not trust, run this work where it can be killed
+from outside, for example under PHP-FPM's ``request_terminate_timeout``.
+
+
 .. _attachments:
 
 Attachments
@@ -277,7 +448,9 @@ nests too deeply.
 A crafted PDF of a few kilobytes can keep ``attachments()``, ``attachment()``, ``addAttachment()``
 and ``deleteAttachment()`` busy for minutes, and ``index()`` of an added file too.
 ``attachmentCount()`` and the other ``Attachment`` methods stay fast. The extension cannot detect
-such a file, and ``max_execution_time`` does not stop PDFium; on ZTS PHP, other threads get
+such a file, and ``max_execution_time`` cannot interrupt PDFium. On NTS PHP the process is killed
+``hard_timeout`` seconds (2 by default) after the time limit runs out, without running shutdown
+functions; on ZTS PHP the limit only takes effect when PDFium returns, and other threads get
 ``BusyException`` meanwhile. With PDFs you do not trust, run this work where it can be killed from
 outside, for example under PHP-FPM's ``request_terminate_timeout``.
 
@@ -568,7 +741,7 @@ Annotations
 Forms
 -----
 
-**A FormField is one widget.**
+**Fields and widgets.**
    A field is drawn by one or more widgets: a radio group has one per button, and a field can be
    repeated on one page or on several. ``Page::formFields()`` gives a
    :php:class:`FormField <Pdfium\\FormField>` for each widget on that page, back to front, and
@@ -576,7 +749,7 @@ Forms
    pages to reach the widgets there. Widgets are listed even when the document has no ``/AcroForm``
    or the field is missing from its ``/Fields``.
 
-**Changes stay in the loaded document.**
+**Changes.**
    ``setValue()``, ``setChecked()``, ``select()`` and ``flatten()`` never touch the file or string
    the document came from; ``save()`` or ``toString()`` writes them out. An encrypted document is
    saved encrypted with the same password, unless you pass ``removeSecurity: true``. Reading a form
@@ -603,17 +776,17 @@ Forms
    - a character above U+FFFF, such as most emoji, is stored wrongly: U+1F600 reads back as U+F600.
      Such characters already in the document read correctly.
 
-**Read-only is not uniformly enforced.**
+**Read-only fields.**
    Forms fill even when ``permissions()->fillForms`` is ``false``. PDFium still changes a
    read-only text field, combo box or list box; check ``flags()->readOnly`` to refuse. It ignores
    a read-only checkbox or radio button, so ``setChecked()`` throws ``PdfiumException`` ending in
    "; it is read-only".
 
-**Scripts do not run.**
+**Scripts.**
    Calculated, formatted and validated fields are not updated when another field changes, and a
    field's own format script does not reshape what ``setValue()`` stores.
 
-**XFA is not supported.**
+**XFA forms.**
    The AcroForm fields of an XFA document are read and filled like any others; the XFA data is
    not. ``Document::formType()`` tells such documents apart.
 
@@ -630,7 +803,7 @@ Forms
    Checkboxes of one field that share an export value change together, and so do radio buttons
    with the same export value in a group with ``RadiosInUnison``.
 
-**Filling shows on every page.**
+**Fields on several pages.**
    Filling rebuilds the appearance of every widget of the field, on every page, so the saved file
    shows the new value with or without ``/NeedAppearances``. One exception while the document is
    loaded: once a second ``Page`` object for a page has drawn or listed its fields, the first one
@@ -685,7 +858,7 @@ setters change the loaded document, never the file or string it came from. ``sav
 ``toString()`` writes the changes out. The edits leave ``metadata()`` as it was, except that
 ``insertPages()`` sets the producer; see ``insertPages()`` in :doc:`php_api`.
 
-**Held pages follow their page.**
+**Held pages.**
    A :php:class:`Page <Pdfium\\Page>` taken before an edit keeps working on the same page, and
    ``index()`` reports where that page is now. So do the
    :php:class:`Annotation <Pdfium\\Annotation>` and :php:class:`FormField <Pdfium\\FormField>`
@@ -764,7 +937,7 @@ setters change the loaded document, never the file or string it came from. ``sav
    setter is called on a ``Page`` at its index. ``Document::page()`` gives a ``Page`` with the
    current size.
 
-**Sizes and sides are floats.**
+**Sizes and box sides.**
    PDFium stores page sizes and box sides as 32-bit floats, so ``addPage()``, ``nUp()`` and the box
    setters round what you pass to the nearest float, and a value beyond the float range becomes the
    largest float of the same sign, about ``±3.4e38``. They check the rounded values: a size that
@@ -812,6 +985,7 @@ first and throws :php:exc:`Pdfium\\MemoryException` instead, so you can catch it
 
 Rough memory needed:
 
+- ``fromFile()``: the size of the file; nothing with ``lazy: true``.
 - ``render()``: about 7 bytes per pixel; 8 with ``transparent``, 5 with ``grayscale`` and 6 with
   both.
 - ``text()``: about 8 bytes per character.
@@ -825,6 +999,7 @@ Rough memory needed:
 - ``bookmarks()``: about 2 KB per entry, 5 bytes per character of its title, and the length of
   its URI or file path.
 - ``openAction()`` and ``closeAction()``: about 1 KB, and the length of the URI or file path.
+- ``javaScripts()``: about 100 bytes per script and 5 bytes per character of each name and script.
 - ``links()``, ``linkAt()`` and ``Annotation::link()``: about 2 KB per link, 256 bytes per quad,
   and the length of its URI or file path.
 - ``attachments()``: about 130 bytes per attachment.

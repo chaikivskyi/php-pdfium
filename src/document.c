@@ -9,6 +9,7 @@
 #include <fpdf_ppo.h>
 #include <fpdf_save.h>
 #include "zend_exceptions.h"
+#include <limits.h>
 
 ZEND_METHOD(Pdfium_Document, __construct)
 {
@@ -55,6 +56,9 @@ static void throw_error_code(unsigned long err, const char *context)
 	zend_throw_exception_ex(ce, 0, "%s: %s", context, reason);
 }
 
+const char pdfium_read_failed_message[] = "The document's file could not be read in full: "
+	"a read failed, or the file changed or was truncated after the document was opened";
+
 static pdfium_doc_handle *doc_handle_create(zend_string *buffer)
 {
 	pdfium_doc_handle *h = ecalloc(1, sizeof(*h));
@@ -92,6 +96,7 @@ void pdfium_doc_handle_release(pdfium_doc_handle *h)
 		FPDF_CloseDocument(h->doc);
 		pdfium_leave();
 	}
+	pdfium_local_close(&h->file);
 	if (h->buffer) {
 		zend_string_release(h->buffer);
 	}
@@ -107,24 +112,43 @@ static zend_object *new_document(pdfium_doc_handle *h)
 	return Z_OBJ(zv);
 }
 
-static void load_document(pdfium_doc_handle *h, zend_string *password, zval *return_value)
+static void load_into(zend_object *obj, zend_string *password, zval *return_value)
 {
-	zend_object *obj = new_document(h);
+	pdfium_doc_handle *h = pdfium_document_from_obj(obj)->h;
+	const char *pw = password ? ZSTR_VAL(password) : NULL;
 
 	if (!pdfium_enter()) {
 		OBJ_RELEASE(obj);
 		RETURN_THROWS();
 	}
-	h->doc = FPDF_LoadMemDocument64(ZSTR_VAL(h->buffer), ZSTR_LEN(h->buffer), password ? ZSTR_VAL(password) : NULL);
+	h->doc = h->buffer ? FPDF_LoadMemDocument64(ZSTR_VAL(h->buffer), ZSTR_LEN(h->buffer), pw) : FPDF_LoadCustomDocument(&h->file.access, pw);
 	unsigned long err = h->doc ? 0 : FPDF_GetLastError();
 
 	pdfium_leave();
-	if (!h->doc) {
+	bool unread = h->file.read_failed;
+
+	if (!h->doc || unread) {
 		OBJ_RELEASE(obj);
-		throw_error_code(err, "Cannot open document");
+		if (unread) {
+			zend_throw_exception(pdfium_ce_file_exception, "Cannot open document: the file could not be read", 0);
+		} else {
+			throw_error_code(err, "Cannot open document");
+		}
 		RETURN_THROWS();
 	}
 	RETURN_OBJ(obj);
+}
+
+static void load_lazily(const char *path, zend_string *password, zval *return_value)
+{
+	pdfium_doc_handle *h = doc_handle_create(NULL);
+	zend_object *obj = new_document(h);
+
+	if (!pdfium_local_open(&h->file, path)) {
+		OBJ_RELEASE(obj);
+		RETURN_THROWS();
+	}
+	load_into(obj, password, return_value);
 }
 
 ZEND_METHOD(Pdfium_Document, fromFile)
@@ -132,22 +156,28 @@ ZEND_METHOD(Pdfium_Document, fromFile)
 	char *path;
 	size_t path_len;
 	zend_string *password = NULL;
+	bool lazy = false;
 
-	ZEND_PARSE_PARAMETERS_START(1, 2)
+	ZEND_PARSE_PARAMETERS_START(1, 3)
 		Z_PARAM_PATH(path, path_len)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_PATH_STR_OR_NULL(password)
+		Z_PARAM_BOOL(lazy)
 	ZEND_PARSE_PARAMETERS_END();
 
 	if (!pdfium_path_given(path_len)) {
 		RETURN_THROWS();
+	}
+	if (lazy) {
+		load_lazily(path, password, return_value);
+		return;
 	}
 
 	zend_string *bytes = pdfium_read_file(path);
 	if (!bytes) {
 		RETURN_THROWS();
 	}
-	load_document(doc_handle_create(bytes), password, return_value);
+	load_into(new_document(doc_handle_create(bytes)), password, return_value);
 }
 
 ZEND_METHOD(Pdfium_Document, fromString)
@@ -165,7 +195,7 @@ ZEND_METHOD(Pdfium_Document, fromString)
 		RETURN_THROWS();
 	}
 
-	load_document(doc_handle_create(zend_string_copy(bytes)), password, return_value);
+	load_into(new_document(doc_handle_create(zend_string_copy(bytes))), password, return_value);
 }
 
 ZEND_METHOD(Pdfium_Document, pageCount)
@@ -404,23 +434,39 @@ ZEND_METHOD(Pdfium_Document, pages)
 	RETURN_OBJ(pdfium_page_iterator_create(pdfium_this_document(ZEND_THIS)));
 }
 
-typedef enum { ASSEMBLED, CANNOT_CREATE, CANNOT_IMPORT } assemble_status;
+typedef enum { ASSEMBLED, CANNOT_CREATE, CANNOT_IMPORT, SOURCE_UNREADABLE } assemble_status;
+
+static bool any_read_failed(pdfium_doc_handle **sources, uint32_t nsources)
+{
+	for (uint32_t i = 0; i < nsources; i++) {
+		if (sources[i]->file.read_failed) {
+			return true;
+		}
+	}
+	return false;
+}
 
 static assemble_status assemble(pdfium_doc_handle **sources, uint32_t nsources, const int *indexes, unsigned long count,
 	pdfium_doc_handle *h)
 {
 	FPDF_DOCUMENT doc = FPDF_CreateNewDocument();
+	bool imported = true;
 
 	if (!doc) {
 		return CANNOT_CREATE;
 	}
-	for (uint32_t i = 0; i < nsources; i++) {
-		if (!FPDF_ImportPagesByIndex(doc, sources[i]->doc, indexes, count, FPDF_GetPageCount(doc))) {
-			FPDF_CloseDocument(doc);
-			return CANNOT_IMPORT;
-		}
+	for (uint32_t i = 0; imported && i < nsources; i++) {
+		imported = FPDF_ImportPagesByIndex(doc, sources[i]->doc, indexes, count, FPDF_GetPageCount(doc));
 	}
-	FPDF_CopyViewerPreferences(doc, sources[0]->doc);
+	if (imported) {
+		FPDF_CopyViewerPreferences(doc, sources[0]->doc);
+	}
+	assemble_status status = any_read_failed(sources, nsources) ? SOURCE_UNREADABLE : imported ? ASSEMBLED : CANNOT_IMPORT;
+
+	if (status != ASSEMBLED) {
+		FPDF_CloseDocument(doc);
+		return status;
+	}
 	h->doc = doc;
 	return ASSEMBLED;
 }
@@ -429,6 +475,8 @@ static void throw_assemble_error(assemble_status status)
 {
 	if (status == CANNOT_CREATE) {
 		zend_throw_exception(pdfium_ce_memory_exception, "Cannot create a new document", 0);
+	} else if (status == SOURCE_UNREADABLE) {
+		zend_throw_exception(pdfium_ce_format_exception, pdfium_read_failed_message, 0);
 	} else {
 		zend_throw_exception(pdfium_ce_exception, "Cannot import pages", 0);
 	}
@@ -715,10 +763,20 @@ ZEND_METHOD(Pdfium_Document, nUp)
 		RETURN_THROWS();
 	}
 	out->doc = FPDF_ImportNPagesToOne(h->doc, sides[0], sides[1], (size_t) columns, (size_t) rows);
+	bool unread = h->file.read_failed;
+
+	if (unread && out->doc) {
+		FPDF_CloseDocument(out->doc);
+		out->doc = NULL;
+	}
 	pdfium_leave();
 	if (!out->doc) {
 		OBJ_RELEASE(obj);
-		zend_throw_exception(pdfium_ce_exception, "Cannot put the pages on sheets", 0);
+		if (unread) {
+			zend_throw_exception(pdfium_ce_format_exception, pdfium_read_failed_message, 0);
+		} else {
+			zend_throw_exception(pdfium_ce_exception, "Cannot put the pages on sheets", 0);
+		}
 		RETURN_THROWS();
 	}
 	RETURN_OBJ(obj);
@@ -734,16 +792,31 @@ static int string_writer_write(FPDF_FILEWRITE *self, const void *data, unsigned 
 	return pdfium_buf_append(&((string_writer *) self)->out, data, size);
 }
 
-static zend_string *serialise(pdfium_doc_handle *h, bool remove_security)
+static bool version_fits(zend_long version, uint32_t arg)
+{
+	if (version < INT_MIN || version > INT_MAX) {
+		zend_argument_value_error(arg, "must be between %d and %d", INT_MIN, INT_MAX);
+		return false;
+	}
+	return true;
+}
+
+static zend_string *serialise(pdfium_doc_handle *h, bool remove_security, bool incremental, bool has_version, zend_long version)
 {
 	string_writer w = {.fw = {.version = 1, .WriteBlock = string_writer_write}};
+	FPDF_DWORD flags = (incremental ? FPDF_INCREMENTAL : FPDF_NO_INCREMENTAL) | (remove_security ? FPDF_REMOVE_SECURITY : 0);
 
 	if (!pdfium_enter()) {
 		return NULL;
 	}
-	bool saved = FPDF_SaveAsCopy(h->doc, &w.fw, FPDF_NO_INCREMENTAL | (remove_security ? FPDF_REMOVE_SECURITY : 0));
+	bool saved = has_version ? FPDF_SaveWithVersion(h->doc, &w.fw, flags, (int) version) : FPDF_SaveAsCopy(h->doc, &w.fw, flags);
 
 	pdfium_leave();
+	if (!w.out.oom && h->file.read_failed) {
+		smart_str_free(&w.out.s);
+		zend_throw_exception(pdfium_ce_format_exception, pdfium_read_failed_message, 0);
+		return NULL;
+	}
 	if (!saved || w.out.oom) {
 		smart_str_free(&w.out.s);
 		zend_throw_exception(w.out.oom ? pdfium_ce_memory_exception : pdfium_ce_exception, w.out.oom
@@ -757,30 +830,39 @@ ZEND_METHOD(Pdfium_Document, save)
 {
 	char *path;
 	size_t path_len;
-	bool remove_security = false;
+	bool remove_security = false, incremental = false, version_is_null = true;
+	zend_long version = 0;
 
-	ZEND_PARSE_PARAMETERS_START(1, 2)
+	ZEND_PARSE_PARAMETERS_START(1, 4)
 		Z_PARAM_PATH(path, path_len)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_BOOL(remove_security)
+		Z_PARAM_BOOL(incremental)
+		Z_PARAM_LONG_OR_NULL(version, version_is_null)
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (!pdfium_path_given(path_len)) {
+	if (!pdfium_path_given(path_len) || !version_fits(version, 4)) {
 		RETURN_THROWS();
 	}
-	pdfium_write_and_release(serialise(pdfium_this_document(ZEND_THIS), remove_security), path);
+	pdfium_write_and_release(serialise(pdfium_this_document(ZEND_THIS), remove_security, incremental, !version_is_null, version), path);
 }
 
 ZEND_METHOD(Pdfium_Document, toString)
 {
-	bool remove_security = false;
+	bool remove_security = false, incremental = false, version_is_null = true;
+	zend_long version = 0;
 
-	ZEND_PARSE_PARAMETERS_START(0, 1)
+	ZEND_PARSE_PARAMETERS_START(0, 3)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_BOOL(remove_security)
+		Z_PARAM_BOOL(incremental)
+		Z_PARAM_LONG_OR_NULL(version, version_is_null)
 	ZEND_PARSE_PARAMETERS_END();
 
-	zend_string *bytes = serialise(pdfium_this_document(ZEND_THIS), remove_security);
+	if (!version_fits(version, 3)) {
+		RETURN_THROWS();
+	}
+	zend_string *bytes = serialise(pdfium_this_document(ZEND_THIS), remove_security, incremental, !version_is_null, version);
 	if (!bytes) {
 		RETURN_THROWS();
 	}

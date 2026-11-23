@@ -33,19 +33,25 @@ final class Document implements \Countable, \IteratorAggregate
     private function __construct() {}
 
     /**
-     * Reads the whole file through PHP streams, so stream wrappers and open_basedir apply. The
-     * document keeps the bytes in PHP memory and does not touch the file again.
+     * By default reads the whole file through PHP streams, so stream wrappers and open_basedir
+     * apply. The document keeps the bytes in PHP memory and does not touch the file again.
      *
+     * With $lazy true, the document keeps the file open and PDFium reads the parts it needs, when
+     * it needs them. The file must not change while the document exists. Only local files can be
+     * opened this way.
+     *
+     * @param bool $lazy read the file on demand instead of loading it whole
      * @throws \ValueError when $path is empty
      * @throws FileException when the path cannot be read, is a local path of MAXPATHLEN or longer, or is outside open_basedir;
-     *         the PHP warning saying why is its previous exception
+     *         the PHP warning saying why, if there is one, is its previous exception
      * @throws MemoryException when the file would not fit under memory_limit
      * @throws FormatException when the file is not a PDF or is corrupted
      * @throws PasswordException when the password is missing or wrong
-     * @throws UnsupportedException when the document uses a security handler PDFium does not support
+     * @throws UnsupportedException when the document uses a security handler PDFium does not support,
+     *         or when $lazy is true and the path goes through a stream wrapper
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public static function fromFile(string $path, ?string $password = null): Document {}
+    public static function fromFile(string $path, ?string $password = null, bool $lazy = false): Document {}
 
     /**
      * A new document with no pages, and no metadata beyond the creator and creation date PDFium
@@ -153,6 +159,19 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function bookmarks(): array {}
+
+    /**
+     * The scripts in the document's /JavaScript name tree, in the order PDFium lists them; empty
+     * when there are none. The document's open action and document actions, and scripts on pages,
+     * links, annotations and form fields, are not included, so an empty result does not mean the
+     * file has no JavaScript. Nothing is run. A crafted script list can keep this call busy for
+     * minutes.
+     *
+     * @return JavaScript[]
+     * @throws MemoryException when the scripts would not fit under memory_limit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function javaScripts(): array {}
 
     /**
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -283,6 +302,8 @@ final class Document implements \Countable, \IteratorAggregate
      *         $source's pages, or $index is outside 0..pageCount()
      * @throws \TypeError when an element of $indexes is not an int
      * @throws UnsupportedException when $source is another, encrypted document and $removeSecurity is false
+     * @throws FormatException when $source or this document was opened lazily and its file could not
+     *         be read in full; a target that was not is left as it was
      * @throws MemoryException when the indexes would not fit under memory_limit, or PDFium cannot make the
      *         temporary copy that copying within this document needs
      * @throws PdfiumException when PDFium cannot copy the pages; held pages may then throw, see
@@ -333,6 +354,7 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when $indexes is empty or an index is outside 0..pageCount()-1
      * @throws \TypeError when an element is not an int
      * @throws UnsupportedException when this document is encrypted and $removeSecurity is false
+     * @throws FormatException when this document was opened lazily and its file could not be read in full
      * @throws MemoryException when the indexes would not fit under memory_limit, or PDFium cannot create
      *         the new document
      * @throws PdfiumException when PDFium cannot import the pages
@@ -354,6 +376,8 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when a size is not finite or not above 0 once rounded to a float, or a count
      *         is below 1
      * @throws UnsupportedException when this document is encrypted and $removeSecurity is false
+     * @throws FormatException when this document was opened lazily and its file could not be read in
+     *         full
      * @throws PdfiumException when this document has no pages, or $columns and $rows are too large to
      *         lay out
      * @throws BusyException on ZTS PHP when another thread is using PDFium
@@ -372,6 +396,7 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when $documents is empty
      * @throws \TypeError when an element is not a Document
      * @throws UnsupportedException when a document is encrypted and $removeSecurity is false
+     * @throws FormatException when a document was opened lazily and its file could not be read in full
      * @throws PdfiumException when PDFium cannot import the pages
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -382,22 +407,41 @@ final class Document implements \Countable, \IteratorAggregate
      * wrappers apply. A new file at a plain local path left partly written by a failed write is
      * removed; an existing one is replaced by renaming a complete copy over it where possible.
      *
-     * @throws \ValueError when $path is empty
-     * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
+     * @param bool $incremental true keeps the original file from its %PDF header on and appends
+     *        the changes, with copies of the objects PDFium has read. PDFium writes a full copy
+     *        instead when $removeSecurity is true, or when the document came from create(),
+     *        extractPages(), merge() or nUp() and has no original bytes.
+     * @param int|null $version the PDF version for the header, from 10 for 1.0 to 17 for 1.7;
+     *        PDFium ignores other values. null lets PDFium choose. An incremental save keeps the
+     *        original header unless it falls back to a full copy.
+     * @throws \ValueError when $path is empty or $version does not fit a 32-bit integer
+     * @throws FileException when $path cannot be written, or could only be overwritten in place while a
+     *         lazily opened document reads it; the PHP warning saying why is its previous exception
      * @throws MemoryException when the serialised document would not fit under memory_limit
+     * @throws FormatException when the document was opened lazily and its file could not be read in full
      * @throws PdfiumException when PDFium cannot serialise the document
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public function save(string $path, bool $removeSecurity = false): void {}
+    public function save(string $path, bool $removeSecurity = false, bool $incremental = false, ?int $version = null): void {}
 
     /**
-     * A full, non-incremental copy. Encryption is kept unless $removeSecurity is true.
+     * The document as a PDF file: a full copy unless $incremental is true. Encryption is kept
+     * unless $removeSecurity is true.
      *
+     * @param bool $incremental true keeps the original file from its %PDF header on and appends
+     *        the changes, with copies of the objects PDFium has read. PDFium writes a full copy
+     *        instead when $removeSecurity is true, or when the document came from create(),
+     *        extractPages(), merge() or nUp() and has no original bytes.
+     * @param int|null $version the PDF version for the header, from 10 for 1.0 to 17 for 1.7;
+     *        PDFium ignores other values. null lets PDFium choose. An incremental save keeps the
+     *        original header unless it falls back to a full copy.
+     * @throws \ValueError when $version does not fit a 32-bit integer
      * @throws MemoryException when the serialised document would not fit under memory_limit
+     * @throws FormatException when the document was opened lazily and its file could not be read in full
      * @throws PdfiumException when PDFium cannot serialise the document
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
-    public function toString(bool $removeSecurity = false): string {}
+    public function toString(bool $removeSecurity = false, bool $incremental = false, ?int $version = null): string {}
 }
 
 /**
@@ -868,6 +912,23 @@ final readonly class Action
      * Where a GoTo action leads; null for every other type.
      */
     public ?Destination $destination;
+
+    private function __construct() {}
+}
+
+/**
+ * One script, as Document::javaScripts() returns it.
+ */
+final readonly class JavaScript
+{
+    /**
+     * The name the document gives the script, as UTF-8.
+     */
+    public string $name;
+    /**
+     * The source, as UTF-8.
+     */
+    public string $script;
 
     private function __construct() {}
 }
@@ -2067,7 +2128,8 @@ final class Bitmap
      * Writes through PHP streams, so open_basedir and stream wrappers apply.
      *
      * @throws \ValueError when $path is empty
-     * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
+     * @throws FileException when $path cannot be written, or could only be overwritten in place while a
+     *         lazily opened document reads it; the PHP warning saying why is its previous exception
      * @throws MemoryException when the PNG would not fit under memory_limit
      * @throws PdfiumException when encoding fails
      */
@@ -2077,7 +2139,8 @@ final class Bitmap
      * Writes through PHP streams, so open_basedir and stream wrappers apply.
      *
      * @throws \ValueError when $path is empty or $quality is outside 1..100
-     * @throws FileException when $path cannot be written; the PHP warning saying why is its previous exception
+     * @throws FileException when $path cannot be written, or could only be overwritten in place while a
+     *         lazily opened document reads it; the PHP warning saying why is its previous exception
      * @throws MemoryException when the JPEG would not fit under memory_limit
      * @throws PdfiumException when encoding fails
      */

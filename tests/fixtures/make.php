@@ -209,6 +209,9 @@ if (!file_exists("$dir/encrypted-form-locked.pdf")) {
     sh("qpdf --encrypt '' owner 256 --modify=none -- " . escapeshellarg("$tmp/form-source.pdf") . ' ' . escapeshellarg("$dir/encrypted-form-locked.pdf"));
 }
 
+sh('qpdf --deterministic-id --object-streams=generate ' . escapeshellarg("$dir/tiny.pdf") . ' '
+    . escapeshellarg("$dir/xref-stream.pdf"));
+
 // Written raw: qpdf refuses a security handler it does not know.
 file_put_contents("$dir/unsupported-security.pdf", build([
     1 => '<< /Type /Catalog /Pages 2 0 R >>',

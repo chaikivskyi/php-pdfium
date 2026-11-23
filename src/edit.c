@@ -8,15 +8,20 @@
 #include <fpdf_transformpage.h>
 #include "zend_exceptions.h"
 
-static void edit_failed(pdfium_doc_handle *h, bool order_lost, const char *failure)
+static void edit_failed_as(pdfium_doc_handle *h, bool order_lost, zend_class_entry *ce, const char *failure)
 {
 	if (!order_lost) {
-		zend_throw_exception(pdfium_ce_exception, failure, 0);
+		zend_throw_exception(ce, failure, 0);
 	} else {
 		pdfium_pages_lost(h);
-		zend_throw_exception_ex(pdfium_ce_exception, 0,
+		zend_throw_exception_ex(ce, 0,
 			"%s: the document's page order is now undefined; load the document again", failure);
 	}
+}
+
+static void edit_failed(pdfium_doc_handle *h, bool order_lost, const char *failure)
+{
+	edit_failed_as(h, order_lost, pdfium_ce_exception, failure);
 }
 
 static bool in_range(zend_long value, int max)
@@ -183,12 +188,23 @@ ZEND_METHOD(Pdfium_Document, insertPages)
 	}
 	int after = FPDF_GetPageCount(h->doc);
 	int wanted = ht ? (int) n : source_count;
+	bool unread = src->file.read_failed || h->file.read_failed;
 
+	if (unread && !h->file.read_failed) {
+		for (int k = after - before; k > 0; k--) {
+			FPDFPage_Delete(h->doc, (int) index);
+		}
+		after = FPDF_GetPageCount(h->doc);
+	}
 	pdfium_leave();
 	efree(indexes);
 	if (no_temporary) {
 		zend_throw_exception(pdfium_ce_memory_exception,
 			"Cannot create the temporary document for copying pages within this document", 0);
+		RETURN_THROWS();
+	}
+	if (unread) {
+		edit_failed_as(h, after != before, pdfium_ce_format_exception, pdfium_read_failed_message);
 		RETURN_THROWS();
 	}
 	if (imported && after - before == wanted) {

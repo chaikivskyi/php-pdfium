@@ -1,5 +1,5 @@
 --TEST--
-While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), signatures(), signatureCount(), isTagged(), language(), setLanguage(), every form method and the page edits included; Bitmap methods, an iterator's already loaded page and releasing objects never do
+While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), javaScripts(), a lazy document, signatures(), signatureCount(), isTagged(), language(), setLanguage(), every form method and the page edits included; Bitmap methods, an iterator's already loaded page and releasing objects never do
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -17,6 +17,7 @@ $it = $doc->pages();
 $page = $it->current();
 $adoc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $held = $adoc->addAttachment('held', 'h');
+$lazy = Pdfium\Document::fromFile(__DIR__ . '/fixtures/text-3pages.pdf', lazy: true);
 $efixture = __DIR__ . '/fixtures/text-3pages.pdf';
 $edoc = Pdfium\Document::fromFile($efixture);
 $epage = $edoc->page(2);
@@ -68,10 +69,20 @@ $formUnchanged = $flattenUnchanged = true;
 
 $renderer = renderer_start();
 
-$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $sigBusy = $sigCountBusy = $langBusy = $langBusyChangedNothing = $tagBusy = $readBusy = false;
+$busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $sigBusy = $sigCountBusy = $langBusy = $langBusyChangedNothing = $tagBusy = $readBusy = $jsBusy = $lazyBusy = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
-while ((!$busyMessage || !$saveBusy || !$addBusy || in_array(false, $editBusy, true) || !$sigBusy || !$sigCountBusy || !$langBusy || !$tagBusy || !$readBusy || count($formBusy) < count($formOps) || !$flattenBusy) && microtime(true) < $end) {
+while ((!$busyMessage || !$saveBusy || !$addBusy || in_array(false, $editBusy, true) || !$sigBusy || !$sigCountBusy || !$langBusy || !$tagBusy || !$readBusy || count($formBusy) < count($formOps) || !$flattenBusy || !$jsBusy || !$lazyBusy) && microtime(true) < $end) {
+    try {
+        $lazy->pageCount();
+    } catch (Pdfium\BusyException $e) {
+        $lazyBusy = true;
+    }
+    try {
+        $doc->javaScripts();
+    } catch (Pdfium\BusyException $e) {
+        $jsBusy = true;
+    }
     try {
         $it->next();
         unset($page);
@@ -212,6 +223,8 @@ var_dump($renders > 0);
 echo 'busy: ', $busyMessage ? 'yes' : 'no', "\n";
 echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no', "\n";
 echo 'busy add changed nothing: ', $addBusy && $addBusyChangedNothing ? 'yes' : 'no', "\n";
+echo 'javaScripts busy, then an array: ', $jsBusy && $doc->javaScripts() === [] ? 'yes' : 'no', "\n";
+echo 'lazy busy, then 3: ', $lazyBusy && $lazy->pageCount() === 3 ? 'yes' : 'no', "\n";
 echo 'busy edits changed nothing: ', !in_array(false, $editBusy, true) && $editBusyChangedNothing ? 'yes' : 'no', "\n";
 echo 'signatures busy, then listed: ', $sigBusy && with_retry(fn () => $sdoc->signatures())[0]->contents === "\x01" ? 'yes' : 'no', "\n";
 echo 'signature count busy, then counted: ', $sigCountBusy && with_retry(fn () => $sdoc->signatureCount()) === 1 ? 'yes' : 'no', "\n";
@@ -234,6 +247,8 @@ bool(true)
 busy: yes
 save busy left no file: yes
 busy add changed nothing: yes
+javaScripts busy, then an array: yes
+lazy busy, then 3: yes
 busy edits changed nothing: yes
 signatures busy, then listed: yes
 signature count busy, then counted: yes

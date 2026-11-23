@@ -57,6 +57,16 @@ Features:
   leaves its position unknown, the ``Page`` and every ``TextPage``, ``Annotation`` and
   ``FormField`` made from it throw ``PdfiumException`` from every method.
   ``PageIterator::current()`` gives the page at ``key()`` after the edit.
+- ``Document::javaScripts()``: the scripts in the document's JavaScript name tree, as ``JavaScript``
+  values with a name and the source. Nothing is run.
+- ``Document::save()`` and ``toString()`` options ``incremental: true`` (keep the original file
+  and append the changes) and ``version`` (the PDF version written in the header).
+- Ini setting ``pdfium.font_paths``: the directories PDFium scans for fonts that a PDF does not
+  embed.
+- ``Document::fromFile()`` option ``lazy: true``: read a local file as PDFium needs it instead of
+  loading it whole. While such a document reads a file, ``Document::save()``, ``Bitmap::savePng()``
+  and ``saveJpeg()`` throw ``FileException`` instead of overwriting it in place; replacing it with a
+  new copy still works.
 
 Fixes:
 

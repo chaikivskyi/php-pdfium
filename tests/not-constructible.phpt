@@ -4,7 +4,7 @@ Document, Page, PageIterator, Bitmap, Attachment, Annotation and FormField canno
 pdfium
 --FILE--
 <?php
-foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'Annotation', 'FormField', 'Metadata', 'AttachmentMetadata', 'Signature', 'FormFieldOption', 'FormFieldFlags', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'Border', 'Rect', 'Point'] as $c) {
+foreach (['Document', 'Page', 'PageIterator', 'TextPage', 'Bitmap', 'Attachment', 'Annotation', 'FormField', 'Metadata', 'AttachmentMetadata', 'Signature', 'FormFieldOption', 'FormFieldFlags', 'Permissions', 'Color', 'Matrix', 'Char', 'TextMatch', 'WebLink', 'Bookmark', 'Link', 'Quad', 'Destination', 'Action', 'JavaScript', 'Border', 'Rect', 'Point'] as $c) {
     $fq = "Pdfium\\$c";
     $r = new ReflectionClass($fq);
     echo $c, ' final=', var_export($r->isFinal(), true), ' cloneable=', var_export($r->isCloneable(), true),
@@ -112,6 +112,10 @@ Destination final=true cloneable=true instantiable=false abstract=false
   created
   created
 Action final=true cloneable=true instantiable=false abstract=false
+  Error
+  created
+  created
+JavaScript final=true cloneable=true instantiable=false abstract=false
   Error
   created
   created
