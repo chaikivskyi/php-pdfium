@@ -56,8 +56,8 @@ The extension follows PDFium and adds no rules of its own, except that ``setLang
 
 **Split, merge and nUp() output keeps little but the pages.**
    ``extractPages()`` keeps its document's viewer preferences and ``merge()`` the first document's,
-   so a right-to-left document still reads right to left; ``nUp()`` keeps none. The result has no
-   bookmarks, attachments or language, is not tagged, and has none of the sources' metadata:
+   so a right-to-left document still reads right to left; ``nUp()`` keeps none of them. The result
+   has no bookmarks, attachments or language, is not tagged, and has none of the sources' metadata:
    ``metadata()`` reports only ``creator`` and ``producer`` "PDFium" and ``creationDate``, the
    creation date of the new document. ``extractPages()``, ``merge()`` and ``nUp()`` with one page
    per sheet copy form fields: they still draw and can be filled in, but the result has no
