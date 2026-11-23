@@ -121,7 +121,7 @@ split, merged, copied from with ``insertPages()`` or laid out with ``nUp()``; se
    result, but other tools, qpdf for one, cannot, and a signature validator may not get as far as
    the signature.
 
-**The version option only changes the header.**
+**The version option.**
    ``version`` sets the PDF version in the file header, from ``10`` for 1.0 to ``17`` for 1.7.
    Nothing in the document is converted to suit an older version. PDFium ignores any other value
    without an error, as if ``version`` were not given, and writes the source's 1.x version, or 1.7
@@ -132,7 +132,7 @@ split, merged, copied from with ``insertPages()`` or laid out with ``nUp()``; se
    A full save of a PDF 2.0 file writes a ``%PDF-1.0`` header unless you pass a ``version`` from 10
    to 17; ``version: 20`` is outside the range and ignored like any other value.
 
-**Saves of one document usually differ.**
+**File identifiers.**
    Every save, full or incremental, writes a new changing identifier (see ``changingId()``), so two
    saves of the same document are normally not byte-identical. An incremental save keeps the
    permanent identifier. Compare documents by their content, not their bytes.
