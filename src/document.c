@@ -323,8 +323,9 @@ ZEND_METHOD(Pdfium_Document, permissions)
 	if (!pdfium_enter()) {
 		RETURN_THROWS();
 	}
-	unsigned long perms = FPDF_GetDocUserPermissions(doc);
-	bool r2 = FPDF_GetSecurityHandlerRevision(doc) == 2;
+	int revision = FPDF_GetSecurityHandlerRevision(doc);
+	unsigned long perms = revision == -1 ? 0xFFFFFFFFUL : FPDF_GetDocUserPermissions(doc);
+	bool r2 = revision == 2;
 	pdfium_leave();
 
 	object_init_ex(return_value, pdfium_ce_permissions);
@@ -433,35 +434,71 @@ static void throw_assemble_error(assemble_status status)
 	}
 }
 
-typedef enum { INDEXES_OK, INDEXES_NO_PAGES, INDEXES_OUT_OF_RANGE } indexes_status;
-
-static indexes_status indexes_from(HashTable *ht, int page_count, int *out)
+pdfium_indexes_status pdfium_indexes_from(HashTable *ht, int page_count, int *out)
 {
 	zval *zv;
 
 	if (!page_count) {
-		return INDEXES_NO_PAGES;
+		return PDFIUM_INDEXES_NO_PAGES;
 	}
 	ZEND_HASH_FOREACH_VAL(ht, zv) {
 		ZVAL_DEREF(zv);
 		if (Z_LVAL_P(zv) < 0 || Z_LVAL_P(zv) >= page_count) {
-			return INDEXES_OUT_OF_RANGE;
+			return PDFIUM_INDEXES_OUT_OF_RANGE;
 		}
 		*out++ = (int) Z_LVAL_P(zv);
 	} ZEND_HASH_FOREACH_END();
-	return INDEXES_OK;
+	return PDFIUM_INDEXES_OK;
 }
 
-static void throw_indexes_error(indexes_status status, int page_count)
+void pdfium_throw_indexes_error(pdfium_indexes_status status, int page_count, uint32_t arg)
 {
-	if (status == INDEXES_NO_PAGES) {
-		zend_argument_value_error(1, "must contain only page indexes, but the document has no pages");
+	if (status == PDFIUM_INDEXES_NO_PAGES) {
+		zend_argument_value_error(arg, "must contain only page indexes, but the document has no pages");
 	} else {
-		zend_argument_value_error(1, "must contain only indexes between 0 and %d", page_count - 1);
+		zend_argument_value_error(arg, "must contain only indexes between 0 and %d", page_count - 1);
 	}
 }
 
-static bool is_encrypted(pdfium_doc_handle *h)
+static bool indexes_are_ints(HashTable *ht, uint32_t arg)
+{
+	zval *zv;
+
+	ZEND_HASH_FOREACH_VAL(ht, zv) {
+		ZVAL_DEREF(zv);
+		if (Z_TYPE_P(zv) != IS_LONG) {
+			zend_argument_type_error(arg, "must contain only int, %s given", zend_zval_type_name(zv));
+			return false;
+		}
+	} ZEND_HASH_FOREACH_END();
+	return true;
+}
+
+void pdfium_indexes_memory_error(void)
+{
+	zend_throw_exception(pdfium_ce_memory_exception, "The page indexes need more memory than memory_limit leaves", 0);
+}
+
+int *pdfium_indexes_checked(HashTable *ht, uint32_t arg, uint32_t *count)
+{
+	uint32_t n = zend_hash_num_elements(ht);
+
+	if (!n) {
+		zend_argument_value_error(arg, "must not be empty");
+		return NULL;
+	}
+	if (!indexes_are_ints(ht, arg)) {
+		return NULL;
+	}
+	if (!pdfium_memory_fits((size_t) n * sizeof(int))) {
+		pdfium_indexes_memory_error();
+		return NULL;
+	}
+	*count = n;
+	return safe_emalloc(n, sizeof(int), 0);
+}
+
+bool pdfium_is_encrypted(pdfium_doc_handle *h)
 {
 	return FPDF_GetSecurityHandlerRevision(h->doc) != -1;
 }
@@ -469,7 +506,6 @@ static bool is_encrypted(pdfium_doc_handle *h)
 ZEND_METHOD(Pdfium_Document, extractPages)
 {
 	HashTable *ht;
-	zval *zv;
 	bool remove_security = false;
 	pdfium_doc_handle *h = pdfium_this_document(ZEND_THIS);
 
@@ -479,19 +515,12 @@ ZEND_METHOD(Pdfium_Document, extractPages)
 		Z_PARAM_BOOL(remove_security)
 	ZEND_PARSE_PARAMETERS_END();
 
-	uint32_t n = zend_hash_num_elements(ht);
-	if (!n) {
-		zend_argument_value_error(1, "must not be empty");
+	uint32_t n;
+	int *indexes = pdfium_indexes_checked(ht, 1, &n);
+
+	if (!indexes) {
 		RETURN_THROWS();
 	}
-	ZEND_HASH_FOREACH_VAL(ht, zv) {
-		ZVAL_DEREF(zv);
-		if (Z_TYPE_P(zv) != IS_LONG) {
-			zend_argument_type_error(1, "must contain only int, %s given", zend_zval_type_name(zv));
-			RETURN_THROWS();
-		}
-	} ZEND_HASH_FOREACH_END();
-	int *indexes = safe_emalloc(n, sizeof(int), 0);
 	pdfium_doc_handle *out = doc_handle_create(NULL);
 	zend_object *obj = new_document(out);
 
@@ -501,10 +530,10 @@ ZEND_METHOD(Pdfium_Document, extractPages)
 		RETURN_THROWS();
 	}
 	int page_count = FPDF_GetPageCount(h->doc);
-	indexes_status valid = indexes_from(ht, page_count, indexes);
-	bool refused = valid == INDEXES_OK && !remove_security && is_encrypted(h);
+	pdfium_indexes_status valid = pdfium_indexes_from(ht, page_count, indexes);
+	bool refused = valid == PDFIUM_INDEXES_OK && !remove_security && pdfium_is_encrypted(h);
 
-	if (valid != INDEXES_OK || refused) {
+	if (valid != PDFIUM_INDEXES_OK || refused) {
 		pdfium_leave();
 		OBJ_RELEASE(obj);
 		efree(indexes);
@@ -512,7 +541,7 @@ ZEND_METHOD(Pdfium_Document, extractPages)
 			zend_throw_exception(pdfium_ce_unsupported_exception, "The document is encrypted and PDFium cannot "
 				"encrypt the result; pass removeSecurity: true to extract its pages unencrypted", 0);
 		} else {
-			throw_indexes_error(valid, page_count);
+			pdfium_throw_indexes_error(valid, page_count, 1);
 		}
 		RETURN_THROWS();
 	}
@@ -587,7 +616,7 @@ ZEND_METHOD(Pdfium_Document, merge)
 	uint32_t encrypted = n;
 
 	for (uint32_t i = 0; !remove_security && i < n && encrypted == n; i++) {
-		if (is_encrypted(sources[i])) {
+		if (pdfium_is_encrypted(sources[i])) {
 			encrypted = i;
 		}
 	}
@@ -605,6 +634,91 @@ ZEND_METHOD(Pdfium_Document, merge)
 	if (status != ASSEMBLED) {
 		OBJ_RELEASE(obj);
 		throw_assemble_error(status);
+		RETURN_THROWS();
+	}
+	RETURN_OBJ(obj);
+}
+
+ZEND_METHOD(Pdfium_Document, create)
+{
+	ZEND_PARSE_PARAMETERS_NONE();
+
+	pdfium_doc_handle *out = doc_handle_create(NULL);
+	zend_object *obj = new_document(out);
+
+	if (!pdfium_enter()) {
+		OBJ_RELEASE(obj);
+		RETURN_THROWS();
+	}
+	out->doc = FPDF_CreateNewDocument();
+	pdfium_leave();
+	if (!out->doc) {
+		OBJ_RELEASE(obj);
+		zend_throw_exception(pdfium_ce_memory_exception, "Cannot create a document", 0);
+		RETURN_THROWS();
+	}
+	RETURN_OBJ(obj);
+}
+
+bool pdfium_page_size_args(const double *size, float *sides)
+{
+	for (uint32_t k = 0; k < 2; k++) {
+		sides[k] = pdfium_float_side(size[k]);
+		if (!zend_finite(size[k]) || sides[k] <= 0) {
+			zend_argument_value_error(k + 1, "must be finite and greater than 0");
+			return false;
+		}
+	}
+	return true;
+}
+
+ZEND_METHOD(Pdfium_Document, nUp)
+{
+	pdfium_doc_handle *h = pdfium_this_document(ZEND_THIS);
+	double size[2];
+	float sides[2];
+	zend_long columns, rows;
+	bool remove_security = false;
+
+	ZEND_PARSE_PARAMETERS_START(4, 5)
+		Z_PARAM_DOUBLE(size[0])
+		Z_PARAM_DOUBLE(size[1])
+		Z_PARAM_LONG(columns)
+		Z_PARAM_LONG(rows)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_BOOL(remove_security)
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!pdfium_page_size_args(size, sides)) {
+		RETURN_THROWS();
+	}
+	if (columns < 1) {
+		zend_argument_value_error(3, "must be at least 1");
+		RETURN_THROWS();
+	}
+	if (rows < 1) {
+		zend_argument_value_error(4, "must be at least 1");
+		RETURN_THROWS();
+	}
+	pdfium_doc_handle *out = doc_handle_create(NULL);
+	zend_object *obj = new_document(out);
+
+	if (!pdfium_enter()) {
+		OBJ_RELEASE(obj);
+		RETURN_THROWS();
+	}
+	if (!remove_security && pdfium_is_encrypted(h)) {
+		pdfium_leave();
+		OBJ_RELEASE(obj);
+		zend_throw_exception(pdfium_ce_unsupported_exception, "The document is encrypted and PDFium cannot "
+			"encrypt the result; pass removeSecurity: true to put its pages on sheets unencrypted", 0);
+		RETURN_THROWS();
+	}
+	out->doc = FPDF_ImportNPagesToOne(h->doc, sides[0], sides[1], (size_t) columns, (size_t) rows);
+	pdfium_leave();
+	if (!out->doc) {
+		OBJ_RELEASE(obj);
+		zend_throw_exception(pdfium_ce_exception, "Cannot put the pages on sheets", 0);
 		RETURN_THROWS();
 	}
 	RETURN_OBJ(obj);

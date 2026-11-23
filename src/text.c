@@ -471,6 +471,11 @@ static FPDF_TEXTPAGE this_text_page(zval *self)
 	return pdfium_text_page_from_obj(Z_OBJ_P(self))->tp;
 }
 
+static bool text_page_live(zval *self)
+{
+	return pdfium_page_live(pdfium_text_page_from_obj(Z_OBJ_P(self))->ph);
+}
+
 static const char *text_of(FPDF_TEXTPAGE tp, zval *return_value)
 {
 	int count = FPDFText_CountChars(tp);
@@ -953,7 +958,7 @@ ZEND_METHOD(Pdfium_Page, text)
 ZEND_METHOD(Pdfium_TextPage, text)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!text_page_live(ZEND_THIS) || !pdfium_enter()) {
 		RETURN_THROWS();
 	}
 	pdfium_leave_or_throw(return_value, text_of(this_text_page(ZEND_THIS), return_value));
@@ -962,7 +967,7 @@ ZEND_METHOD(Pdfium_TextPage, text)
 ZEND_METHOD(Pdfium_TextPage, charCount)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!text_page_live(ZEND_THIS) || !pdfium_enter()) {
 		RETURN_THROWS();
 	}
 	int count = FPDFText_CountChars(this_text_page(ZEND_THIS));
@@ -982,6 +987,9 @@ ZEND_METHOD(Pdfium_TextPage, chars)
 		Z_PARAM_LONG_OR_NULL(length, rest)
 	ZEND_PARSE_PARAMETERS_END();
 
+	if (!text_page_live(ZEND_THIS)) {
+		RETURN_THROWS();
+	}
 	if (!rest && length < 0) {
 		zend_argument_value_error(2, "must not be negative");
 		RETURN_THROWS();
@@ -1014,6 +1022,9 @@ ZEND_METHOD(Pdfium_TextPage, charIndexAt)
 		Z_PARAM_DOUBLE(point[3])
 	ZEND_PARSE_PARAMETERS_END();
 
+	if (!text_page_live(ZEND_THIS)) {
+		RETURN_THROWS();
+	}
 	for (uint32_t i = 0; i < 4; i++) {
 		if (!zend_finite(point[i]) || (i >= 2 && point[i] < 0)) {
 			zend_argument_value_error(i + 1, i < 2 ? "must be finite" : "must be finite and not negative");
@@ -1031,6 +1042,20 @@ ZEND_METHOD(Pdfium_TextPage, charIndexAt)
 		RETURN_NULL();
 	}
 	RETURN_LONG(index);
+}
+
+bool pdfium_rect_sides(const zval *zr, double *sides)
+{
+	for (int i = 0; i < RECT_SLOTS; i++) {
+		zval *side = OBJ_PROP_NUM(Z_OBJ_P(zr), i);
+
+		ZVAL_DEREF(side);
+		if (Z_TYPE_P(side) != IS_DOUBLE) {
+			return false;
+		}
+		sides[i] = Z_DVAL_P(side);
+	}
+	return true;
 }
 
 const char *pdfium_rect_fault(const zval *zr, double *sides)
@@ -1053,6 +1078,9 @@ ZEND_METHOD(Pdfium_TextPage, textIn)
 		Z_PARAM_OBJECT_OF_CLASS(zr, pdfium_ce_rect)
 	ZEND_PARSE_PARAMETERS_END();
 
+	if (!text_page_live(ZEND_THIS)) {
+		RETURN_THROWS();
+	}
 	const char *fault = pdfium_rect_fault(zr, sides);
 
 	if (fault) {
@@ -1077,6 +1105,9 @@ ZEND_METHOD(Pdfium_TextPage, textInEach)
 		Z_PARAM_ARRAY_HT(rects)
 	ZEND_PARSE_PARAMETERS_END();
 
+	if (!text_page_live(ZEND_THIS)) {
+		RETURN_THROWS();
+	}
 	uint32_t count = zend_hash_num_elements(rects);
 
 	if (!pdfium_fits_or_throw((size_t) count * (RECT_SLOTS * sizeof(double) + 2 * sizeof(zval) + SPAN_BYTES),
@@ -1139,6 +1170,9 @@ ZEND_METHOD(Pdfium_TextPage, search)
 		Z_PARAM_BOOL(overlapping)
 	ZEND_PARSE_PARAMETERS_END();
 
+	if (!text_page_live(ZEND_THIS)) {
+		RETURN_THROWS();
+	}
 	if (!ZSTR_LEN(needle)) {
 		zend_argument_value_error(1, "must not be empty");
 		RETURN_THROWS();
@@ -1161,7 +1195,7 @@ ZEND_METHOD(Pdfium_TextPage, search)
 ZEND_METHOD(Pdfium_TextPage, webLinks)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!text_page_live(ZEND_THIS) || !pdfium_enter()) {
 		RETURN_THROWS();
 	}
 	pdfium_leave_or_throw(return_value, web_links_of(this_text_page(ZEND_THIS), return_value));
@@ -1174,9 +1208,9 @@ ZEND_METHOD(Pdfium_TextPage, __construct)
 
 ZEND_METHOD(Pdfium_Page, textPage)
 {
-	ZEND_PARSE_PARAMETERS_NONE();
 	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
 
+	ZEND_PARSE_PARAMETERS_NONE();
 	object_init_ex(return_value, pdfium_ce_text_page);
 	pdfium_text_page *t = pdfium_text_page_from_obj(Z_OBJ_P(return_value));
 

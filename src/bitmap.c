@@ -99,6 +99,9 @@ ZEND_METHOD(Pdfium_Page, render)
 		Z_PARAM_BOOL(grayscale)
 	ZEND_PARSE_PARAMETERS_END();
 
+	if (!pdfium_page_live(p)) {
+		RETURN_THROWS();
+	}
 	if (dpi < 1 || dpi > 2400) {
 		zend_argument_value_error(1, "must be between 1 and 2400");
 		RETURN_THROWS();

@@ -34,9 +34,12 @@ typedef struct pdfium_doc_handle {
 	zend_string *buffer;
 	uint32_t refs;
 	uint64_t attachment_changes;
+	struct pdfium_page_handle *pages;
 	uint64_t annotation_removals;
 	uint64_t form_changes;
 } pdfium_doc_handle;
+
+typedef enum { PDFIUM_PAGE_PLACED, PDFIUM_PAGE_DELETED, PDFIUM_PAGE_LOST } pdfium_page_state;
 
 typedef struct pdfium_page_handle {
 	pdfium_doc_handle *h;
@@ -44,10 +47,13 @@ typedef struct pdfium_page_handle {
 	bool form_loaded;
 	uint64_t form_changes;
 	uint32_t refs;
+	int index;
+	pdfium_page_state state;
+	struct pdfium_page_handle *prev, *next;
 } pdfium_page_handle;
 
 typedef struct { pdfium_doc_handle *h; zend_object std; } pdfium_document;
-typedef struct { pdfium_page_handle *ph; int index; zend_object std; } pdfium_page;
+typedef struct { pdfium_page_handle *ph; zend_object std; } pdfium_page;
 typedef struct { pdfium_doc_handle *h; int index; zval current; zend_object std; } pdfium_page_iterator;
 typedef struct { unsigned char *pixels; int width, height; bool alpha, gray; zend_object std; } pdfium_bitmap;
 typedef struct { pdfium_page_handle *ph; FPDF_TEXTPAGE tp; zend_object std; } pdfium_text_page;
@@ -62,7 +68,6 @@ typedef struct {
 typedef struct { pdfium_page_handle *ph; FPDF_ANNOTATION annot; uint64_t removals; bool removed; zend_object std; } pdfium_annotation;
 typedef struct {
 	pdfium_page_handle *ph;
-	int page_index;
 	FPDF_ANNOTATION annot;
 	uint64_t removals;
 	bool gone;
@@ -70,6 +75,7 @@ typedef struct {
 } pdfium_form_field;
 
 typedef struct { smart_str s; bool oom; } pdfium_buf;
+typedef struct { int index; int order; } pdfium_moved_page;
 
 enum { RECT_LEFT, RECT_BOTTOM, RECT_RIGHT, RECT_TOP, RECT_SLOTS };
 enum { COLOR_SLOTS = 4 };
@@ -177,20 +183,31 @@ void pdfium_doc_handle_addref(pdfium_doc_handle *h);
 void pdfium_doc_handle_release(pdfium_doc_handle *h);
 FPDF_FORMHANDLE pdfium_doc_handle_form(pdfium_doc_handle *h);
 void pdfium_document_free_obj(zend_object *obj);
+bool pdfium_page_size_args(const double *size, float *sides);
 
 void pdfium_page_handle_addref(pdfium_page_handle *ph);
 FPDF_FORMHANDLE pdfium_page_form(pdfium_page_handle *ph);
 void pdfium_page_handle_release(pdfium_page_handle *ph);
 void pdfium_page_swap_handle(pdfium_page *p, FPDF_PAGE fresh);
+bool pdfium_page_usable(pdfium_page_handle *ph);
+bool pdfium_page_handle_enter(pdfium_page_handle *ph);
 bool pdfium_page_enter(zval *self);
 void pdfium_text_page_free_obj(zend_object *obj);
 bool pdfium_text_slots_match(void);
+zend_object *pdfium_page_new(pdfium_doc_handle *h);
+zend_object *pdfium_page_attach(zend_object *obj, FPDF_PAGE page, int index);
 zend_object *pdfium_page_load(pdfium_doc_handle *h, zend_long index, int *page_count);
+bool pdfium_page_live(pdfium_page_handle *ph);
+void pdfium_pages_deleted(pdfium_doc_handle *h, int index);
+void pdfium_pages_inserted(pdfium_doc_handle *h, int index, int count);
+void pdfium_pages_moved(pdfium_doc_handle *h, const pdfium_moved_page *sorted, int count, int to);
+void pdfium_pages_lost(pdfium_doc_handle *h);
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h);
 void pdfium_page_free_obj(zend_object *obj);
 void pdfium_page_iterator_free_obj(zend_object *obj);
 double pdfium_points(float value);
 float pdfium_float_side(double value);
+bool pdfium_rect_sides(const zval *zr, double *sides);
 const char *pdfium_rect_fault(const zval *zr, double *sides);
 bool pdfium_coords_construct(zval *self, zend_class_entry *ce, const char *const *names, const double *coords, uint32_t count);
 const char *pdfium_coords_fault(const zval *zv, double *coords, int count);
@@ -200,6 +217,13 @@ void pdfium_color_init(zval *zv, const zend_long *rgba);
 bool pdfium_slots_named(zend_class_entry *ce, const char *names);
 void pdfium_leave_or_throw(zval *return_value, const char *oom);
 void pdfium_index_error(uint32_t arg, int count, const char *one, const char *none);
+
+typedef enum { PDFIUM_INDEXES_OK, PDFIUM_INDEXES_NO_PAGES, PDFIUM_INDEXES_OUT_OF_RANGE } pdfium_indexes_status;
+pdfium_indexes_status pdfium_indexes_from(HashTable *ht, int page_count, int *out);
+void pdfium_throw_indexes_error(pdfium_indexes_status status, int page_count, uint32_t arg);
+void pdfium_indexes_memory_error(void);
+int *pdfium_indexes_checked(HashTable *ht, uint32_t arg, uint32_t *count);
+bool pdfium_is_encrypted(pdfium_doc_handle *h);
 
 bool pdfium_navigation_slots_match(void);
 void pdfium_quad_init(zval *zv, const FS_QUADPOINTSF *q);

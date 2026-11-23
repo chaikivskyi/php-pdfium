@@ -6,11 +6,13 @@ PHP API
 All classes are in the ``Pdfium`` namespace. The exact signatures are in ``pdfium.stub.php``.
 
 Except for :php:class:`Rect`, :php:class:`Quad` and :php:class:`Point`, you cannot create these
-classes with ``new``. Get a :php:class:`Document` from :php:meth:`Document::fromFile` or
-:php:meth:`Document::fromString`, and everything else from the document. You create a
-:php:class:`Rect` to pass to :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach`,
-:php:meth:`Page::render`, :php:meth:`Page::addAnnotation` or :php:meth:`Annotation::setRect`. A
-:php:class:`Quad` goes to :php:meth:`Annotation::addQuadPoints` and
+classes with ``new``. Get a :php:class:`Document` from :php:meth:`Document::fromFile`,
+:php:meth:`Document::fromString` or :php:meth:`Document::create`, or from
+:php:meth:`Document::extractPages`, :php:meth:`Document::merge` or :php:meth:`Document::nUp`, which
+return a new one; get everything else from the document. You create a :php:class:`Rect` to pass to
+:php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach`, :php:meth:`Page::render`,
+:php:meth:`Page::addAnnotation`, :php:meth:`Annotation::setRect` or a box setter such as
+:php:meth:`Page::setCropBox`. A :php:class:`Quad` goes to :php:meth:`Annotation::addQuadPoints` and
 :php:meth:`Annotation::setQuadPoints`, and a :php:class:`Point` to
 :php:meth:`Annotation::addInkStroke`.
 
@@ -30,7 +32,9 @@ Document
 .. php:class:: Document
 
    A PDF document. Implements ``\Countable`` and ``\IteratorAggregate``, so ``count($doc)`` and
-   ``foreach ($doc as $index => $page)`` both work.
+   ``foreach ($doc as $index => $page)`` both work. It can be edited: pages deleted, added, copied
+   in, moved, rotated and given new boxes. The edits are written out only by :php:meth:`save` or
+   :php:meth:`toString`; see :ref:`page-editing`.
 
    .. rubric:: Opening
 
@@ -50,6 +54,16 @@ Document
       :throws FormatException: The file is not a PDF or is corrupted.
       :throws PasswordException: A password is needed, or the password is wrong.
       :throws UnsupportedException: The document uses an encryption PDFium does not support.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:staticmethod:: create() -> Document
+
+      A new document with no pages, and no metadata beyond what PDFium writes. Add pages with
+      :php:meth:`addPage`; :php:meth:`save` and :php:meth:`toString` write it out, and a document
+      with no pages opens again with ``pageCount()`` of ``0``.
+
+      :rtype: Document
+      :throws MemoryException: PDFium cannot create a document.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:staticmethod:: fromString(string $bytes, ?string $password = null) -> Document
@@ -312,6 +326,90 @@ Document
       :throws FormatException: PDFium cannot load the page.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
+   .. php:method:: deletePage(int $index) -> void
+
+      Removes a page from this document. Deleting the only page leaves a document with no
+      pages, which :php:meth:`save` and :php:meth:`toString` can write.
+
+      Deleting inside ``foreach`` can make the loop skip a page; see :ref:`page-editing`.
+
+      :param int $index: Page number, starting at 0.
+      :throws \\ValueError: The index is out of range.
+      :throws PdfiumException: PDFium did not remove the page; held pages may then throw, see
+         :ref:`failed edits <failed-edits>`.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: addPage(float $width, float $height, ?int $index = null) -> Page
+
+      Adds a blank page of ``$width`` by ``$height`` points and returns it.
+
+      The page is unrotated and exactly this size, whatever rotation or crop box its place in the page
+      tree would give it. Adding inside ``foreach`` can make the loop see a page again. See :ref:`page-editing`.
+
+      :param float $width: Width in points; finite and greater than 0.
+      :param float $height: Height in points; finite and greater than 0.
+      :param ?int $index: Where the page goes, from 0 to ``pageCount()``; ``null`` puts it after
+         the last page.
+      :rtype: Page
+      :throws \\ValueError: A size is not finite or not above 0 once rounded to a float, or the
+         index is out of range.
+      :throws PdfiumException: PDFium cannot add the page, as can happen on a :ref:`damaged page
+         tree <damaged-page-trees>`; held pages may then throw, see
+         :ref:`failed edits <failed-edits>`.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: insertPages(Document $source, ?array $indexes = null, ?int $index = null, bool $removeSecurity = false) -> void
+
+      Copies pages of ``$source`` into this document at ``$index``. ``$indexes`` are int
+      page indexes of ``$source`` in the order wanted, duplicates kept; ``null`` copies every page.
+      ``$source`` may be this document; the pages then go through a temporary copy, so they are
+      held twice in memory during the call. Bookmarks, attachments and viewer preferences are not
+      copied, and copied form fields can no longer be filled in. It sets the document's producer to
+      ``"PDFium"``, replacing the old one, if the file has document information (what
+      :php:meth:`metadata` reads), as most files do.
+
+      A copy can take its rotation and crop box from where it lands in this document's page tree, so
+      its size and rotation can differ from the source page's. Inserting inside ``foreach`` can make
+      the loop see a page again. See :ref:`page-editing`.
+
+      :param Document $source: The document to copy from.
+      :param ?array $indexes: Page indexes of ``$source``; ``null`` means every page.
+      :param ?int $index: Where the pages go, from 0 to ``pageCount()``; ``null`` puts them after
+         the last page.
+      :param bool $removeSecurity: Needed only when ``$source`` is another, encrypted document:
+         ``true`` lets its pages go without the source's password. They take this document's
+         encryption, if any.
+      :throws \\ValueError: ``$source`` has no pages, ``$indexes`` is empty or holds an index
+         outside ``$source``'s pages, or ``$index`` is out of range.
+      :throws \\TypeError: An element of ``$indexes`` is not an int.
+      :throws UnsupportedException: ``$source`` is another, encrypted document and
+         ``$removeSecurity`` is false.
+      :throws MemoryException: The indexes would not fit under ``memory_limit``, or PDFium cannot
+         make the temporary copy that copying within this document needs.
+      :throws PdfiumException: PDFium cannot copy the pages, as can happen on a :ref:`damaged page
+         tree <damaged-page-trees>`; held pages may then throw, see
+         :ref:`failed edits <failed-edits>`.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: movePages(array $indexes, int $to) -> void
+
+      Moves the pages at ``$indexes`` so that they sit at ``$to``, ``$to + 1``, ... in the order
+      listed.
+
+      A moved page can take its rotation, boxes, fonts and images from its new place in the page
+      tree, so its size, rotation and look can change. Moving pages inside ``foreach`` can make the
+      loop skip or repeat a page. See :ref:`page-editing`.
+
+      :param array $indexes: Distinct int page indexes to move.
+      :param int $to: Where the first listed page goes, from 0 to ``pageCount() - count($indexes)``.
+      :throws \\ValueError: ``$indexes`` is empty, holds an index twice or one outside the pages, or
+         ``$to`` is out of range.
+      :throws \\TypeError: An element of ``$indexes`` is not an int.
+      :throws MemoryException: The indexes would not fit under ``memory_limit``.
+      :throws PdfiumException: PDFium fails, as it can on a :ref:`damaged page tree
+         <damaged-page-trees>`; every held page then throws, see :ref:`failed edits <failed-edits>`.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
    .. php:method:: pages() -> PageIterator
 
       An iterator over all pages. It loads one page at a time.
@@ -341,7 +439,36 @@ Document
       :throws \\ValueError: The list is empty, or an index is out of range.
       :throws \\TypeError: An element is not an ``int``.
       :throws UnsupportedException: This document is encrypted and ``$removeSecurity`` is ``false``.
+      :throws MemoryException: The indexes would not fit under ``memory_limit``, or PDFium cannot
+         create the new document.
       :throws PdfiumException: PDFium cannot copy the pages.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: nUp(float $width, float $height, int $columns, int $rows, bool $removeSecurity = false) -> Document
+
+      A new document with this document's pages scaled onto sheets of ``$width`` by ``$height``
+      points, ``$columns`` across and ``$rows`` down, in page order left to right, then top to
+      bottom. Each page is scaled up or down to fit its cell, keeping its proportions, and centred
+      in it. The last sheet may be partly empty. The sheets show the pages' content only, without
+      links, form fields or other annotations. With one column and one row, PDFium instead copies
+      the pages whole and ignores ``$width`` and ``$height``: links stay, and form fields draw but
+      can no longer be filled in.
+
+      The new document is unencrypted and has no viewer preferences, bookmarks, attachments or
+      metadata beyond what PDFium writes.
+
+      :param float $width: Sheet width in points, finite and greater than 0.
+      :param float $height: Sheet height in points, finite and greater than 0.
+      :param int $columns: Pages across a sheet, at least 1.
+      :param int $rows: Pages down a sheet, at least 1.
+      :param bool $removeSecurity: Must be ``true`` if this document is encrypted, because PDFium
+         cannot encrypt the result.
+      :rtype: Document
+      :throws \\ValueError: A size is not finite or not above 0 once rounded to a float, or a count
+         is below 1.
+      :throws UnsupportedException: This document is encrypted and ``$removeSecurity`` is ``false``.
+      :throws PdfiumException: This document has no pages, or ``$columns`` and ``$rows`` are too
+         large to lay out.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:staticmethod:: merge(array $documents, bool $removeSecurity = false) -> Document
@@ -557,33 +684,92 @@ Page
 
 .. php:class:: Page
 
-   One page of a :php:class:`Document`.
+   One page of a :php:class:`Document`. It follows its page when pages are deleted, added, copied
+   in or moved, and :php:meth:`index` reports where the page is now. Once its page is deleted, or a
+   failed edit leaves its position unknown, every method throws ``PdfiumException``; see
+   :ref:`page-editing`.
 
    .. php:method:: index() -> int
 
       The page's position in its document, starting at 0.
 
       :rtype: int
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
 
    .. php:method:: width() -> float
 
-      Width of the crop box, clipped to the media box, in points (1/72 inch), after rotation. For example, ``595.28`` for A4.
+      Width of the area where the media box and crop box overlap, in points (1/72 inch), after
+      rotation. For example, ``595.28`` for A4.
 
       :rtype: float
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: height() -> float
 
-      Height of the crop box, clipped to the media box, in points, after rotation. For example, ``841.89`` for A4.
+      Height of the area where the media box and crop box overlap, in points, after rotation. For
+      example, ``841.89`` for A4.
 
       :rtype: float
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: rotation() -> int
 
-      Rotation in degrees: ``0``, ``90``, ``180`` or ``270``.
+      Rotation in degrees: ``0``, ``90``, ``180`` or ``270``. Unlike the box getters, it includes a
+      rotation the page takes from its page tree; see :ref:`page-editing`.
 
       :rtype: int
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setRotation(int $degrees) -> void
+
+      Sets the rotation, clockwise and absolute, not added to the current one.
+      :php:meth:`width` and :php:meth:`height` follow, also on every other :php:class:`Page`
+      object at the same index.
+
+      :param int $degrees: ``0``, ``90``, ``180`` or ``270``.
+      :throws \\ValueError: ``$degrees`` is another value.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: mediaBox() -> ?Rect
+                   cropBox() -> ?Rect
+                   bleedBox() -> ?Rect
+                   trimBox() -> ?Rect
+                   artBox() -> ?Rect
+
+      The media box is the paper size, and the crop box the part of it that is shown and printed.
+      The bleed, trim and art boxes are used in print production; most files leave them unset.
+
+      The page's own box, in points, as stored, with the corners ordered so that ``left <= right``
+      and ``bottom <= top``; a box other than the media box is not clipped to it. ``null`` when
+      the page has none of its own, also when it takes one from its page tree; see
+      :ref:`page-editing`.
+
+      :rtype: ?Rect
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
+      :throws BusyException: ZTS only: another thread is using PDFium.
+
+   .. php:method:: setMediaBox(Rect $box) -> void
+                   setCropBox(Rect $box) -> void
+                   setBleedBox(Rect $box) -> void
+                   setTrimBox(Rect $box) -> void
+                   setArtBox(Rect $box) -> void
+
+      Writes the page's own box as given. A box other than the media box is not checked against
+      it; viewers clip it to the media box. Every other :php:class:`Page` object at the same index
+      reports the new box too. After :php:meth:`setMediaBox` or :php:meth:`setCropBox`,
+      :php:meth:`width` and :php:meth:`height` follow, on every such object; the bleed, trim and
+      art boxes do not affect them. A crop box and media box that do not overlap leave the page
+      with zero width and height, and :php:meth:`render` then returns a 1 × 1 image of just the
+      background.
+
+      :param Rect $box: The box, in points.
+      :throws \\ValueError: A side is unset or not finite, or ``left`` is not less than ``right``
+         or ``bottom`` not less than ``top`` once rounded to floats.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: text() -> string
@@ -596,6 +782,7 @@ Page
       :rtype: string
       :throws FormatException: PDFium cannot read the page's text.
       :throws MemoryException: The text would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: render(int $dpi = 150, ?Rect $region = null, bool $transparent = false, bool $annotations = true, bool $grayscale = false) -> Bitmap
@@ -617,6 +804,7 @@ Page
          region has no width or height, does not overlap the page, or has a side unset or one its
          constructor refuses, as in one made without its constructor.
       :throws MemoryException: The bitmap would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: textPage() -> TextPage
@@ -633,6 +821,7 @@ Page
 
       :rtype: TextPage
       :throws FormatException: PDFium cannot read the page's text.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Navigation
@@ -643,6 +832,7 @@ Page
 
       :rtype: ?Action
       :throws MemoryException: The action would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: closeAction() -> ?Action
@@ -651,6 +841,7 @@ Page
 
       :rtype: ?Action
       :throws MemoryException: The action would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: links() -> array
@@ -671,6 +862,7 @@ Page
 
       :rtype: Link[]
       :throws MemoryException: The links would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: linkAt(float $x, float $y) -> ?Link
@@ -688,6 +880,7 @@ Page
       :rtype: ?Link
       :throws \\ValueError: ``$x`` or ``$y`` is not finite.
       :throws MemoryException: The link would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. rubric:: Annotations
@@ -895,6 +1088,9 @@ Annotation
    changes, but they are not ``==``; compare :php:meth:`index` instead. Once the annotation is
    removed from its page, by :php:meth:`remove` or :php:meth:`Page::removeAnnotation`, or its page
    is flattened with :php:meth:`Page::flatten`, every method throws :php:class:`PdfiumException`.
+   It follows its page when pages are moved, added or deleted, and throws as the
+   :php:class:`Page`'s methods do once the page is deleted or its position is unknown; see
+   :ref:`page-editing`.
 
    The setters change the loaded document, in place: :php:meth:`Document::save` or
    :php:meth:`Document::toString` writes the change out. What :php:meth:`Page::render` draws for an
@@ -1462,7 +1658,9 @@ FormField
    field's current state on every call. Every method throws :php:class:`PdfiumException` once its
    widget is removed from the page, by :php:meth:`Page::removeAnnotation` or
    :php:meth:`Annotation::remove`, or its page is flattened, because the field is gone. Removing
-   other annotations of the page does not affect it.
+   other annotations of the page does not affect it. It follows its page when pages are moved,
+   added or deleted, and throws as the :php:class:`Page`'s methods do once the page is deleted or
+   its position is unknown; see :ref:`page-editing`.
 
    .. php:method:: name() -> string
 
@@ -1702,7 +1900,9 @@ TextPage
 
    A page's text as PDFium read it once, returned by :php:meth:`Page::textPage`. It keeps its page
    and document alive. Its methods never throw ``FormatException``, because the text is already
-   read. See :ref:`text-positions`.
+   read. Once its page is removed with :php:meth:`Document::deletePage`, or a failed edit leaves
+   the page's position unknown, every method throws ``PdfiumException`` with the same message as
+   the :php:class:`Page`'s methods. See :ref:`text-positions`.
 
    .. php:method:: text() -> string
 
@@ -1710,6 +1910,7 @@ TextPage
 
       :rtype: string
       :throws MemoryException: The text would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: charCount() -> int
@@ -1717,6 +1918,7 @@ TextPage
       The number of characters: the size of :php:meth:`chars`.
 
       :rtype: int
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: chars(int $start = 0, ?int $length = null) -> array
@@ -1743,6 +1945,7 @@ TextPage
       :returns: A list that starts at 0 for the character at ``$start``.
       :throws \\ValueError: ``$start`` is outside ``0..charCount()``, or ``$length`` is negative.
       :throws MemoryException: The characters would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: charIndexAt(float $x, float $y, float $xTolerance = 0.0, float $yTolerance = 0.0) -> ?int
@@ -1757,6 +1960,7 @@ TextPage
       :param float $yTolerance: Height of the area to look in, in points.
       :rtype: ?int
       :throws \\ValueError: A value is not finite, or a tolerance is negative.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: textIn(Rect $rect) -> string
@@ -1775,6 +1979,7 @@ TextPage
       :throws \\ValueError: A side of the rectangle is unset or one its constructor refuses, as in
          one made without its constructor.
       :throws MemoryException: The text would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: textInEach(array $rects) -> array
@@ -1797,6 +2002,7 @@ TextPage
       :throws \\ValueError: A side of a rectangle is unset or one its constructor refuses, as in one
          made without its constructor.
       :throws MemoryException: The texts would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: search(string $needle, bool $matchCase = false, bool $wholeWord = false, bool $overlapping = false) -> array
@@ -1825,6 +2031,7 @@ TextPage
       :rtype: TextMatch[]
       :throws \\ValueError: The needle is empty, is not valid UTF-8 or contains a NUL byte.
       :throws MemoryException: The matches would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: webLinks() -> array
@@ -1836,6 +2043,7 @@ TextPage
 
       :rtype: WebLink[]
       :throws MemoryException: The links would not fit under ``memory_limit``.
+      :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
 
@@ -1852,6 +2060,10 @@ PageIterator
       foreach ($doc->pages() as $index => $page) { /* ... */ }
 
    .. php:method:: current() -> Page
+
+      The page at :php:meth:`key`, loaded on the first call and again when an edit has deleted it,
+      moved it away from :php:meth:`key` or left its position unknown. A :php:class:`Page` returned
+      earlier keeps following its own page.
 
       :rtype: Page
       :throws PdfiumException: The iterator is past the last page.
@@ -1948,10 +2160,12 @@ Rect
 
    A rectangle in points, with ``y`` growing upwards: a final, read-only value. See
    :ref:`text-positions`. :php:meth:`TextPage::chars`, :php:meth:`TextPage::search`,
-   :php:meth:`TextPage::webLinks` and :php:meth:`Annotation::rect` return them, as does
-   :php:attr:`Link::rect`, and you create one to pass to :php:meth:`TextPage::textIn`,
-   :php:meth:`TextPage::textInEach`, :php:meth:`Page::render`, :php:meth:`Page::addAnnotation` or
-   :php:meth:`Annotation::setRect`.
+   :php:meth:`TextPage::webLinks` and :php:meth:`Annotation::rect` return them, as do
+   :php:attr:`Link::rect` and the box getters such as :php:meth:`Page::cropBox`. You create one to
+   pass to :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach`, :php:meth:`Page::render`,
+   :php:meth:`Page::addAnnotation`, :php:meth:`Annotation::setRect` or a box setter such as
+   :php:meth:`Page::setCropBox`. The box setters need ``left`` less than ``right`` and ``bottom``
+   less than ``top``; the constructor also accepts them equal.
 
    .. php:method:: __construct(float $left, float $bottom, float $right, float $top)
 
@@ -2418,10 +2632,13 @@ these:
 
    Base class for all exceptions below. Extends ``\RuntimeException``.
 
-   Also thrown on its own when PDFium cannot copy pages, write a document, encode a bitmap or
-   flatten a page, or refuses a change to an annotation; when a :php:class:`FormField` cannot be
-   read or changed; by an :php:class:`Annotation` once its annotation is removed from its page; by a
-   stale :php:class:`Attachment`; and by :php:meth:`Attachment::index` for an annotation's file.
+   Also thrown on its own when PDFium cannot copy pages, edit pages, write a document, encode a
+   bitmap or flatten a page, or refuses a change to an annotation; when :php:meth:`Document::nUp`
+   cannot lay out the pages; when a :php:class:`FormField` cannot be read or changed; by a
+   :php:class:`Page`, :php:class:`TextPage`, :php:class:`Annotation` or :php:class:`FormField` whose
+   page was deleted or whose position is unknown after a failed edit; by an :php:class:`Annotation`
+   once its annotation is removed from its page; by a stale :php:class:`Attachment`; and by
+   :php:meth:`Attachment::index` for an annotation's file.
 
 .. php:exception:: FileException
 
@@ -2443,14 +2660,20 @@ these:
 
 .. php:exception:: UnsupportedException
 
-   The document uses an encryption PDFium does not support, or :php:meth:`Document::extractPages` or
-   :php:meth:`Document::merge` was given an encrypted document without ``removeSecurity: true``,
-   or :php:meth:`Page::addAnnotation` was given a type PDFium cannot create.
+   The document uses an encryption PDFium does not support, or :php:meth:`Document::extractPages`,
+   :php:meth:`Document::insertPages`, :php:meth:`Document::merge` or :php:meth:`Document::nUp` was
+   given an encrypted document without ``removeSecurity: true``, or :php:meth:`Page::addAnnotation`
+   was given a type PDFium cannot create.
 
 .. php:exception:: MemoryException
 
    The operation would go over ``memory_limit``. Thrown instead of PHP's fatal out-of-memory error.
    See :ref:`memory-limit`.
+
+   Also thrown when PDFium cannot create a document; raising ``memory_limit`` does not help then.
+   Thrown this way by :php:meth:`Document::create`, :php:meth:`Document::extractPages`,
+   :php:meth:`Document::merge`, and :php:meth:`Document::insertPages` when it copies pages within
+   one document.
 
 .. php:exception:: BusyException
 

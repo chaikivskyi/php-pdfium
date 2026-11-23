@@ -129,7 +129,7 @@ static pdfium_annotation *annotation_enter_at(zend_object *obj, int *index)
 {
 	pdfium_annotation *a = pdfium_annotation_from_obj(obj);
 
-	if (!pdfium_enter()) {
+	if (!pdfium_page_handle_enter(a->ph)) {
 		return NULL;
 	}
 	if (!a->removed && (index || a->removals != a->ph->h->annotation_removals)) {
@@ -185,7 +185,7 @@ static void annotation_index_error(int count)
 ZEND_METHOD(Pdfium_Page, annotationCount)
 {
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	int count = annotation_count(pdfium_this_page(ZEND_THIS)->page);
@@ -200,7 +200,7 @@ ZEND_METHOD(Pdfium_Page, annotations)
 	const char *oom = NULL;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	int count = annotation_count(ph->page);
@@ -232,7 +232,7 @@ ZEND_METHOD(Pdfium_Page, annotation)
 		Z_PARAM_LONG(index)
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	int count = annotation_count(ph->page);
@@ -321,7 +321,7 @@ ZEND_METHOD(Pdfium_Page, addAnnotation)
 		zend_argument_value_error(2, "must have %s", fault);
 		RETURN_THROWS();
 	}
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	if (!FPDFAnnot_IsSupportedSubtype(subtype)) {
@@ -359,7 +359,7 @@ ZEND_METHOD(Pdfium_Page, removeAnnotation)
 		Z_PARAM_LONG(index)
 	ZEND_PARSE_PARAMETERS_END();
 
-	if (!pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	int count = annotation_count(ph->page);

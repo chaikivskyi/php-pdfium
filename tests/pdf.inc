@@ -120,6 +120,101 @@ function file_spec(string $name, int $stream, string $more = ''): string
     return "<< /Type /Filespec /F ($name) /UF ($name) /EF << /F $stream 0 R >> $more >>";
 }
 
+function letters_pdf(int $n = 4): string
+{
+    $kids = [];
+    for ($i = 0; $i < $n; $i++) {
+        $kids[] = (4 + 2 * $i) . ' 0 R';
+    }
+    return tree_pdf($n, implode(' ', $kids), $n);
+}
+
+function tree_pdf(int $letters, string $kids, int $count, array $extra = []): string
+{
+    $objs = [
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        "<< /Type /Pages /Kids [$kids] /Count $count >>",
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    ];
+    for ($i = 0; $i < $letters; $i++) {
+        $objs[] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents '
+            . (5 + 2 * $i) . ' 0 R >>';
+        $objs[] = stream_obj('BT /F1 24 Tf 72 700 Td (' . chr(65 + $i) . ') Tj ET');
+    }
+    return build_pdf(array_merge($objs, $extra));
+}
+
+/** @param array<array{string, int}> $nodes */
+function nodes_pdf(array $nodes, string $root = '', bool $pageResources = true, string $font = 'Helvetica'): string
+{
+    $objs = ['<< /Type /Catalog /Pages 2 0 R >>', '', "<< /Type /Font /Subtype /Type1 /BaseFont /$font >>"];
+    $kids = [];
+    $letter = 0;
+    foreach ($nodes as [$attributes, $count]) {
+        $node = count($objs) + 1;
+        $kids[] = "$node 0 R";
+        $objs[] = '';
+        $pages = [];
+        for ($i = 0; $i < $count; $i++) {
+            $pages[] = (count($objs) + 1) . ' 0 R';
+            $objs[] = "<< /Type /Page /Parent $node 0 R " . ($pageResources ? '/Resources << /Font << /F1 3 0 R >> >> ' : '')
+                . '/Contents ' . (count($objs) + 2) . ' 0 R >>';
+            $objs[] = stream_obj('BT /F1 24 Tf 10 10 Td (' . chr(65 + $letter++) . ') Tj ET');
+        }
+        $objs[$node - 1] = '<< /Type /Pages /Parent 2 0 R /Kids [' . implode(' ', $pages) . "] /Count $count $attributes >>";
+    }
+    $objs[1] = '<< /Type /Pages /Kids [' . implode(' ', $kids) . "] /Count $letter $root >>";
+    return build_pdf($objs);
+}
+
+function untyped_pdf(string $type = ''): string
+{
+    return build_pdf([
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 /MediaBox [0 0 300 400] /Rotate 90 >>',
+        "<< $type /Parent 2 0 R /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>",
+        '<< /Parent 2 0 R /Rotate 180 /Resources << /Font << /F1 5 0 R >> >> /Contents 7 0 R >>',
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+        stream_obj('BT /F1 24 Tf 10 10 Td (A) Tj ET'),
+        stream_obj('BT /F1 24 Tf 10 10 Td (B) Tj ET'),
+    ]);
+}
+
+function order(Pdfium\Document $doc): string
+{
+    $s = '';
+    for ($i = 0; $i < $doc->pageCount(); $i++) {
+        try { $s .= trim($doc->page($i)->text()) ?: '_'; } catch (Pdfium\FormatException) { $s .= '!'; }
+    }
+    return $s;
+}
+
+function twice_pdf(): string
+{
+    return tree_pdf(3, '4 0 R 6 0 R 4 0 R', 3);
+}
+
+function loop_pdf(): string
+{
+    return tree_pdf(3, '4 0 R 10 0 R', 5, ['<< /Type /Pages /Parent 2 0 R /Kids [6 0 R 2 0 R 8 0 R] /Count 3 >>']);
+}
+
+function liar_pdf(int $count): string
+{
+    return tree_pdf(3, '4 0 R 6 0 R 8 0 R', $count);
+}
+
+function boxes_pdf(): string
+{
+    return build_pdf([
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R 4 0 R 5 0 R] /Count 3 /MediaBox [0 0 612 792] /CropBox [10 10 600 780] /Rotate 90 >>',
+        '<< /Type /Page /Parent 2 0 R >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /CropBox [20 30 280 370] /BleedBox [1 2 3 4] /TrimBox [5 6 7 8] /ArtBox [9 10 11 12] >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 400] /CropBox [110 60 10 10] >>',
+    ]);
+}
+
 function sig_pdf(string $fields, array $extra = []): string
 {
     return nav_pdf("/AcroForm << /Fields [$fields] /SigFlags 3 >>", $extra);

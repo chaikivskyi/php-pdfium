@@ -24,8 +24,9 @@ A document opened with ``fromString()`` also keeps its string in memory.
 These do **not** keep a document alive:
 
 - a :php:class:`Bitmap <Pdfium\\Bitmap>` rendered from one of its pages;
-- a document made from it with ``extractPages()`` or ``merge()``. The pages are copied, so you can
-  free the source right away.
+- a document made from it with ``extractPages()``, ``merge()`` or ``nUp()``, or a document its
+  pages were copied into with ``insertPages()``. The pages are copied, so you can free the source
+  right away.
 
 To free a document, ``unset()`` it and every page, text page, iterator, attachment, annotation and
 form field taken from it.
@@ -41,22 +42,28 @@ The extension follows PDFium and adds no rules of its own, except that ``setLang
 
 **Permissions are not enforced.**
    ``permissions()`` tells you what the document allows, but nothing stops you. For example, you can
-   read the text of a document that forbids copying.
+   read the text of a document that forbids copying. Page edits work whatever ``permissions()`` says
+   about modifying or assembling the document, and do not change what it reports.
 
 **Removing encryption is always explicit.**
    ``save()`` and ``toString()`` keep the encryption. Pass ``removeSecurity: true`` to save without
-   it. PDFium cannot encrypt a new document, so ``extractPages()`` and ``merge()`` throw
+   it. PDFium cannot encrypt a new document, so ``extractPages()``, ``merge()`` and ``nUp()`` throw
    :php:exc:`Pdfium\\UnsupportedException` for an encrypted source, whether it was opened with a user
    password or only has an owner password, unless you pass ``removeSecurity: true``. Then the result
-   is an ordinary unencrypted document.
+   is an ordinary unencrypted document. ``insertPages()`` does the same when the source is another,
+   encrypted document, because the copied pages are no longer protected by the source's password.
+   They take the encryption of the document they are copied into, if it has any.
 
-**Split and merge output keeps the pages and the viewer preferences.**
+**Split, merge and nUp() output keeps little but the pages.**
    ``extractPages()`` keeps its document's viewer preferences and ``merge()`` the first document's,
-   so a right-to-left document still reads right to left. The result has no bookmarks, attachments
-   or language, is not tagged, and has none of the sources' metadata: ``metadata()`` reports only
-   ``creator`` and ``producer`` "PDFium" and the ``creationDate`` of the split or merge. Form fields
-   still draw and can be filled in, but the result has no ``/AcroForm``, so ``formType()`` is
-   ``None``. PDFium has no API to set metadata, add encryption or create bookmarks.
+   so a right-to-left document still reads right to left; ``nUp()`` keeps none of them. The result
+   has no bookmarks, attachments or language, is not tagged, and has none of the sources' metadata:
+   ``metadata()`` reports only ``creator`` and ``producer`` "PDFium" and ``creationDate``, the
+   creation date of the new document. ``extractPages()``, ``merge()`` and ``nUp()`` with one page
+   per sheet copy form fields: they still draw and can be filled in, but the result has no
+   ``/AcroForm``, so ``formType()`` is ``None``. ``nUp()`` with several pages per sheet leaves out
+   links, form fields and other annotations. PDFium has no API to set metadata, add encryption or
+   create bookmarks.
 
 **Reading and writing files work differently.**
    Both go through PHP streams, so stream wrappers and ``open_basedir`` work. ``fromFile()`` reads the
@@ -94,7 +101,7 @@ Rendering
 
 - on a white background, with no transparency;
 - with annotations and form fields;
-- the crop box, clipped to the media box, at its size after rotation.
+- the area where the media box and crop box overlap, at its size after rotation.
 
 Options change that:
 
@@ -163,8 +170,10 @@ To mark a character on an image from ``render()``, convert its position to pixel
    $across = $char->x * $dpi / 72;
    $down = ($page->height() - $char->y) * $dpi / 72;
 
-This holds for a page with no rotation whose crop box starts at 0, 0. For a ``region`` image,
-measure from the region's top left corner instead, which works on any page with no rotation:
+This holds for a page with no rotation whose visible area, where the media box and crop box
+overlap, starts at 0, 0. ``mediaBox()`` and ``cropBox()`` show where it starts, unless the page
+takes its boxes from its page tree. For a ``region`` image, measure from the region's top left
+corner instead, which works on any page with no rotation:
 
 .. code-block:: php
 
@@ -279,8 +288,9 @@ An ``Attachment`` from a FileAttachment annotation is separate from this list: `
 lists only the files the document's list names. When the list names the same file, it shows up in
 both, and only the ``Attachment`` from ``attachments()`` has an index. See :ref:`annotations`.
 
-``extractPages()`` and ``merge()`` copy pages only, so their results have no attachment list; a
-copied page keeps its annotations, and a FileAttachment annotation keeps its file.
+``extractPages()``, ``merge()``, ``nUp()`` and ``insertPages()`` copy pages only, not the attachment
+list. A copied page keeps its annotations, and a FileAttachment annotation keeps its file, except
+in ``nUp()`` with several pages per sheet, which leaves annotations out.
 
 .. _accessibility:
 
@@ -665,6 +675,133 @@ Forms
    - a ``/Rect`` with fewer than four numbers gives a rectangle of ``0, 0, 0, 0``.
 
 
+.. _page-editing:
+
+Page editing
+------------
+
+``deletePage()``, ``addPage()``, ``insertPages()``, ``movePages()``, ``setRotation()`` and the box
+setters change the loaded document, never the file or string it came from. ``save()`` or
+``toString()`` writes the changes out. The edits leave ``metadata()`` as it was, except that
+``insertPages()`` sets the producer; see ``insertPages()`` in :doc:`php_api`.
+
+**Held pages follow their page.**
+   A :php:class:`Page <Pdfium\\Page>` taken before an edit keeps working on the same page, and
+   ``index()`` reports where that page is now. So do the
+   :php:class:`Annotation <Pdfium\\Annotation>` and :php:class:`FormField <Pdfium\\FormField>`
+   objects of the page: a fill, for one, reaches the page where it is now. Once the page is deleted,
+   the ``Page`` and every :php:class:`TextPage <Pdfium\\TextPage>`, ``Annotation`` and
+   ``FormField`` made from it throw ``PdfiumException`` ("The page was deleted from its document")
+   from every method, ``index()`` included, and so does an ``Attachment`` from one of its
+   annotations. After a failed edit that leaves the page order undefined (see below), they throw
+   ``PdfiumException`` saying their position is unknown instead. A page deleted before that still
+   says it was deleted.
+
+   Bookmarks, links and destinations are read from the document on each call. Most destinations
+   follow their page, and become ``null`` once it is deleted. In some files a destination names a
+   page number instead. That number stays the same after an edit, so it can then lead to another
+   page, or be ``null``.
+
+**Iterating while editing.**
+   A ``PageIterator``, and so ``foreach ($doc as $page)``, continues by index, like a loop over an
+   array that changes under it. Deleting the current page or one before it makes the loop skip the
+   next page; adding or inserting pages before the current one makes it see a page again. Moving a
+   page from one side of the current position to the other can do both. To delete several pages, go
+   from the highest index down:
+
+   .. code-block:: php
+
+      for ($i = $doc->pageCount() - 1; $i >= 0; $i--) {
+          if ($i % 2) { $doc->deletePage($i); }
+      }
+
+**Inherited page attributes.**
+   A PDF keeps its pages in a page tree, which can group pages and give a group a rotation, a media
+   box, a crop box, or resources such as fonts and images. The pages in a group take these on
+   unless they have their own. ``rotation()``, ``width()`` and ``height()`` include what a page
+   takes on; a box getter returns ``null`` for a box the page takes on.
+
+   ``addPage()`` gives the new page its own rotation of 0 and, where the group's crop box would
+   clip it, its own crop box the size of the page.
+
+   ``insertPages()`` copies what the source page has or takes from its own document's page tree. A
+   copy without a rotation or crop box then takes the ones of the group it lands in. A copy that
+   still has no media box gets its crop box as its media box, or US Letter without one.
+
+   ``movePages()`` can put a page in another group. A page that took its rotation, boxes or
+   resources from its old group then takes the new group's instead. A page moved to the end of the
+   document takes what is set for the whole tree.
+
+   The size and rotation can then differ from before. To keep them, read them before the move and
+   set them afterwards, with the media box and crop box. ``width()`` and ``height()`` are measured
+   after rotation, hence the swap:
+
+   .. code-block:: php
+
+      $page = $doc->page($i);
+      $r = $page->rotation();
+      $media = $page->mediaBox();
+      $crop = $page->cropBox();
+      [$w, $h] = $r % 180 ? [$page->height(), $page->width()] : [$page->width(), $page->height()];
+      $c = $crop ?? $media ?? new Pdfium\Rect(0, 0, 0, 0);
+      $shown = new Pdfium\Rect($c->left, $c->bottom, $c->left + $w, $c->bottom + $h);
+      $doc->movePages([$i], $to);
+      $moved = $doc->page($to);
+      $moved->setRotation($r);
+      $moved->setMediaBox($media ?? $shown);
+      $moved->setCropBox($crop ?? $shown);
+
+   ``$shown`` is the visible area. The recipe puts it at the corner of the page's own crop box, else
+   of its own media box, else at the point 0, 0, which is right in most files. Where a box the page
+   takes from its group starts cannot be read, so if the visible area started elsewhere, the content
+   shifts.
+
+   Fonts and images cannot be set at all, so a moved page that took them from its old group can draw
+   and extract its text differently.
+
+   A ``Page`` held from before a move reports the new ``rotation()`` but keeps its old ``width()``
+   and ``height()``, and ``render()`` draws it at the old size, until ``setRotation()`` or a box
+   setter is called on a ``Page`` at its index. ``Document::page()`` gives a ``Page`` with the
+   current size.
+
+**Sizes and sides are floats.**
+   PDFium stores page sizes and box sides as 32-bit floats, so ``addPage()``, ``nUp()`` and the box
+   setters round what you pass to the nearest float, and a value beyond the float range becomes the
+   largest float of the same sign, about ``±3.4e38``. They check the rounded values: a size that
+   rounds to 0 is refused, and so is a box whose left and right, or bottom and top, become equal.
+
+.. _failed-edits:
+
+**Failed edits.**
+   ``\ValueError``, ``\TypeError``, ``UnsupportedException``, ``MemoryException`` and
+   ``BusyException`` are thrown before PDFium changes anything, so the document stays as it was.
+   When PDFium itself fails, the edit method throws ``PdfiumException``.
+
+   The message tells what happened to held pages. A short one, "Cannot delete the page at index 2",
+   "Cannot add a page" or "Cannot import pages", means they keep working. A message that ends in
+   "the document's page order is now undefined; load the document again", as every failed
+   ``movePages()`` message does, means pages may have moved. Every held page then throws.
+
+.. _damaged-page-trees:
+
+**Damaged page trees.**
+   When a file's list of pages is damaged, an edit can throw, and the saved file can differ from
+   what the document showed (fewer or other pages, or pages that cannot be loaded), even when no
+   edit threw. Check the saved file, load the document again after an error, or repair the file
+   with another tool first. A held ``Page`` is never left on another page: the edit throws instead.
+
+   A file can say it has more pages than it has. ``pageCount()`` then reports the larger number,
+   ``page()`` throws ``FormatException`` for the missing pages, and deleting, moving or copying a
+   missing page throws.
+
+   A file can list one page twice, so the page shows up at two indexes. ``setRotation()`` and the
+   box setters then change it at both, but a ``Page`` held at the other index keeps its old size,
+   as after a move.
+
+   A file's page list can point back into itself, so PDFium shows the same pages again. Moving
+   pages, ``addPage()`` and ``insertPages()`` can throw there.
+
+
 .. _memory-limit:
 
 Memory limit
@@ -695,6 +832,8 @@ Rough memory needed:
 - ``Attachment::contents()``: the size of the file. See :ref:`attachments` for PDFium's own copy.
 - ``addAttachment()`` and ``Annotation::setAttachment()``: 2 bytes per character of the name and
   description.
+- ``extractPages()`` and ``insertPages()``: 4 bytes per index given.
+- ``movePages()``: 12 bytes per index moved.
 - ``annotations()``: about 120 bytes per annotation.
 - ``Annotation::quadPoints()``: about 256 bytes per quad.
 - ``Annotation::vertices()`` and ``inkStrokes()``: about 140 bytes per point, and for

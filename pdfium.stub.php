@@ -22,6 +22,9 @@ class MemoryException extends PdfiumException {}
 class BusyException extends PdfiumException {}
 
 /**
+ * A PDF document. It can be edited: pages deleted, added, copied in, moved, rotated and given new
+ * boxes. The edits are written out only by save() and toString().
+ *
  * @strict-properties
  * @not-serializable
  */
@@ -43,6 +46,15 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public static function fromFile(string $path, ?string $password = null): Document {}
+
+    /**
+     * A new document with no pages, and no metadata beyond the creator and creation date PDFium
+     * sets.
+     *
+     * @throws MemoryException when PDFium cannot create a document
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public static function create(): Document {}
 
     /**
      * The document keeps $bytes alive for its whole life.
@@ -225,6 +237,79 @@ final class Document implements \Countable, \IteratorAggregate
     public function page(int $index): Page {}
 
     /**
+     * Removes the page at $index from this document. The change is written by save() and toString().
+     * Pages held from before keep working and report their new index(); a Page or TextPage of the
+     * deleted page throws from every method. Deleting the only page leaves a document with no
+     * pages. Deleting inside foreach can make the loop skip a page.
+     *
+     * @throws \ValueError when $index is outside 0..pageCount()-1
+     * @throws PdfiumException when PDFium does not remove the page; held pages may then throw, see
+     *         "Failed edits" in the behaviour documentation
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function deletePage(int $index): void {}
+
+    /**
+     * Adds a blank page of $width by $height points and returns it. $index is where it goes, between 0
+     * and pageCount(); null means after the last page. Pages held from before report their new index().
+     * The page is unrotated and exactly this size, whatever rotation or crop box its place in the page tree
+     * would give it.
+     * Adding inside foreach can make the loop see a page again. The change is written by save() and
+     * toString().
+     *
+     * @throws \ValueError when a size is not finite or not above 0 once rounded to a float, or $index
+     *         is outside 0..pageCount()
+     * @throws PdfiumException when PDFium cannot add the page; held pages may then throw, see "Failed
+     *         edits" in the behaviour documentation
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function addPage(float $width, float $height, ?int $index = null): Page {}
+
+    /**
+     * Copies pages of $source into this document at $index (between 0 and pageCount(); null means
+     * after the last page). $indexes are int page indexes of $source in the order wanted, duplicates
+     * kept; null means every page. $source may be this document; the copied pages are then held twice
+     * in memory during the call. Pages held from before report their new index(). Bookmarks, attachments
+     * and viewer preferences are not copied, and copied form fields can no longer be filled in. A copy
+     * can take its rotation and crop box from where it lands in the page tree; see "Inherited page
+     * attributes" in the behaviour documentation. It sets the producer to "PDFium" if the file has
+     * document information (what metadata() reads), as most files do. Inserting inside foreach can
+     * make the loop see a page again. The change is written by save() and toString().
+     *
+     * @param null|int[] $indexes
+     * @param bool $removeSecurity needed only when $source is another, encrypted document: true lets its
+     *        pages go without the source's password; they take this document's encryption, if any
+     * @throws \ValueError when $source has no pages, $indexes is empty or holds an index outside
+     *         $source's pages, or $index is outside 0..pageCount()
+     * @throws \TypeError when an element of $indexes is not an int
+     * @throws UnsupportedException when $source is another, encrypted document and $removeSecurity is false
+     * @throws MemoryException when the indexes would not fit under memory_limit, or PDFium cannot make the
+     *         temporary copy that copying within this document needs
+     * @throws PdfiumException when PDFium cannot copy the pages; held pages may then throw, see
+     *         "Failed edits" in the behaviour documentation
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function insertPages(Document $source, ?array $indexes = null, ?int $index = null, bool $removeSecurity = false): void {}
+
+    /**
+     * Moves the pages at $indexes so that they sit at $to, $to+1, ... in the order listed. Pages held
+     * from before report their new index(). A moved page can take its rotation, boxes, fonts and images
+     * from its new place in the page tree; see "Inherited page attributes" in the behaviour
+     * documentation. Moving pages inside foreach can make the loop skip or repeat a page. The change
+     * is written by save() and toString().
+     *
+     * @param int[] $indexes
+     * @throws \ValueError when $indexes is empty, holds an index twice or one outside
+     *         0..pageCount()-1, or $to is outside 0..pageCount()-count($indexes)
+     * @throws \TypeError when an element of $indexes is not an int
+     * @throws MemoryException when the indexes would not fit under memory_limit
+     * @throws PdfiumException when PDFium fails, as it can on a damaged page tree; every held page then
+     *         throws. See "Damaged page trees" and "Failed edits" in the behaviour documentation
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function movePages(array $indexes, int $to): void {}
+
+    /**
      * Loads each page on demand and holds only the current one; rewind() restarts at 0.
      */
     public function pages(): PageIterator {}
@@ -248,10 +333,32 @@ final class Document implements \Countable, \IteratorAggregate
      * @throws \ValueError when $indexes is empty or an index is outside 0..pageCount()-1
      * @throws \TypeError when an element is not an int
      * @throws UnsupportedException when this document is encrypted and $removeSecurity is false
+     * @throws MemoryException when the indexes would not fit under memory_limit, or PDFium cannot create
+     *         the new document
      * @throws PdfiumException when PDFium cannot import the pages
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function extractPages(array $indexes, bool $removeSecurity = false): Document {}
+
+    /**
+     * A new document with this document's pages scaled onto sheets of $width by $height points,
+     * $columns across and $rows down, in page order left to right, then top to bottom. Each page is
+     * scaled up or down to fit its cell, keeping its proportions, and centred in it. The sheets have
+     * no links, form fields or other annotations. With one column and one row, PDFium instead copies
+     * the pages whole, annotations included, and ignores $width and $height. The new document is
+     * unencrypted, has no viewer preferences, bookmarks, attachments or metadata beyond the creator, producer and
+     * creation date PDFium sets, and does not keep this document alive.
+     *
+     * @param bool $removeSecurity must be true for an encrypted document, because PDFium cannot
+     *        encrypt the result
+     * @throws \ValueError when a size is not finite or not above 0 once rounded to a float, or a count
+     *         is below 1
+     * @throws UnsupportedException when this document is encrypted and $removeSecurity is false
+     * @throws PdfiumException when this document has no pages, or $columns and $rows are too large to
+     *         lay out
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function nUp(float $width, float $height, int $columns, int $rows, bool $removeSecurity = false): Document {}
 
     /**
      * A new document with every page of each Document in turn, duplicates kept, and the first one's
@@ -766,6 +873,11 @@ final readonly class Action
 }
 
 /**
+ * One page of a Document. It follows its page when pages are deleted, added, copied in or moved,
+ * and index() reports where the page is now. Once its page is deleted, or a failed edit leaves its
+ * position unknown, every method throws PdfiumException saying so; after a failed edit, load the
+ * document again.
+ *
  * @strict-properties
  * @not-serializable
  */
@@ -775,35 +887,164 @@ final class Page
 
     /**
      * The page's 0-based position in its document.
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      */
     public function index(): int {}
 
     /**
-     * Crop box width in points, after rotation, as the shortest decimal PDFium's float holds (595.28).
+     * Width in points of the area where the media box and crop box overlap, after rotation, as the
+     * shortest decimal PDFium's float holds (595.28).
      *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function width(): float {}
 
     /**
-     * Crop box height in points, after rotation, as the shortest decimal PDFium's float holds (841.89).
+     * Height in points of the area where the media box and crop box overlap, after rotation, as the
+     * shortest decimal PDFium's float holds (841.89).
      *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function height(): float {}
 
     /**
-     * Page rotation in degrees: 0, 90, 180 or 270.
+     * Page rotation in degrees: 0, 90, 180 or 270, including a rotation the page takes from its page
+     * tree.
      *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function rotation(): int {}
+
+    /**
+     * Sets the page's rotation to $degrees clockwise, absolute and not added to the current one:
+     * 0, 90, 180 or 270. width() and height() follow, also on other Page objects at the same
+     * index. The change is written by save() and toString().
+     *
+     * @throws \ValueError when $degrees is not 0, 90, 180 or 270
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setRotation(int $degrees): void {}
+
+    /**
+     * The page's own media box, the paper size, in points, with left <= right and bottom <= top.
+     * Returns null when the page has none of its own, also when it takes one from its page tree; see
+     * "Inherited page attributes" in the behaviour documentation.
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function mediaBox(): ?Rect {}
+
+    /**
+     * Writes the page's own media box as given; other Page objects at the same index report it too.
+     * width() and height() follow; a media box that does not overlap the crop box leaves them 0.
+     * The change is written by save() and toString().
+     *
+     * @throws \ValueError when a side is unset or not finite, or left is not less than right or bottom
+     *         not less than top once rounded to floats
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setMediaBox(Rect $box): void {}
+
+    /**
+     * The page's own crop box, the part of the page shown and printed, in points, with left <= right
+     * and bottom <= top. Returns null when the page has none of its own, also when it takes one from
+     * its page tree; see "Inherited page attributes" in the behaviour documentation.
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function cropBox(): ?Rect {}
+
+    /**
+     * Writes the page's own crop box as given, without checking that it lies inside the media box;
+     * other Page objects at the same index report it too. width() and height() follow; a crop box
+     * that does not overlap the media box leaves them 0. The change is written by save() and
+     * toString().
+     *
+     * @throws \ValueError when a side is unset or not finite, or left is not less than right or bottom
+     *         not less than top once rounded to floats
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setCropBox(Rect $box): void {}
+
+    /**
+     * The page's own bleed box in points, with left <= right and bottom <= top: for print, the
+     * finished page plus the margin printed past it so that colour reaches the cut edge; unset in
+     * most files. Returns null when the page has none of its own. It does not affect width() and
+     * height().
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function bleedBox(): ?Rect {}
+
+    /**
+     * Writes the page's own bleed box as given; other Page objects at the same index report it too.
+     * It does not affect width() and height(). The change is written by save() and toString().
+     *
+     * @throws \ValueError when a side is unset or not finite, or left is not less than right or bottom
+     *         not less than top once rounded to floats
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setBleedBox(Rect $box): void {}
+
+    /**
+     * The page's own trim box in points, with left <= right and bottom <= top: for print, the
+     * finished page after cutting; unset in most files. Returns null when the page has none of its
+     * own. It does not affect width() and height().
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function trimBox(): ?Rect {}
+
+    /**
+     * Writes the page's own trim box as given; other Page objects at the same index report it too.
+     * It does not affect width() and height(). The change is written by save() and toString().
+     *
+     * @throws \ValueError when a side is unset or not finite, or left is not less than right or bottom
+     *         not less than top once rounded to floats
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setTrimBox(Rect $box): void {}
+
+    /**
+     * The page's own art box in points, with left <= right and bottom <= top: the page's meaningful
+     * content, as its creator marked it; unset in most files. Returns null when the page has none of
+     * its own. It does not affect width() and height().
+     *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function artBox(): ?Rect {}
+
+    /**
+     * Writes the page's own art box as given; other Page objects at the same index report it too.
+     * It does not affect width() and height(). The change is written by save() and toString().
+     *
+     * @throws \ValueError when a side is unset or not finite, or left is not less than right or bottom
+     *         not less than top once rounded to floats
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
+     * @throws BusyException on ZTS PHP when another thread is using PDFium
+     */
+    public function setArtBox(Rect $box): void {}
 
     /**
      * The whole page as UTF-8, with PDFium's line breaks kept as they are.
      *
      * @throws FormatException when PDFium cannot load the page's text
      * @throws MemoryException when the text would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function text(): string {}
@@ -831,6 +1072,7 @@ final class Page
      * @throws MemoryException when the bitmap and its encoding would not fit under memory_limit; the
      *         bitmap (4 bytes a pixel, 1 in grayscale, 2 in transparent grayscale) counts against
      *         memory_limit for as long as the Bitmap lives
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function render(
@@ -845,6 +1087,7 @@ final class Page
      * Reads the page's text once and keeps it, for chars(), search() and the other text methods.
      *
      * @throws FormatException when PDFium cannot load the page's text
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function textPage(): TextPage {}
@@ -853,6 +1096,7 @@ final class Page
      * The action run when the page is opened; null when there is none.
      *
      * @throws MemoryException when the action would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function openAction(): ?Action {}
@@ -861,6 +1105,7 @@ final class Page
      * The action run when the page is closed; null when there is none.
      *
      * @throws MemoryException when the action would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function closeAction(): ?Action {}
@@ -870,6 +1115,7 @@ final class Page
      *
      * @return Link[]
      * @throws MemoryException when the links would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function links(): array {}
@@ -882,6 +1128,7 @@ final class Page
      *
      * @throws \ValueError when $x or $y is not finite
      * @throws MemoryException when the link would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function linkAt(float $x, float $y): ?Link {}
@@ -970,7 +1217,9 @@ final class Page
 /**
  * An annotation on a page. It keeps its page and document alive. Two objects for the same
  * annotation see each other's changes, but are not ==; compare index(). Once the annotation is
- * removed from its page, or its page is flattened, every method throws.
+ * removed from its page, or its page is flattened, every method throws. It follows its page when
+ * pages are moved, added or deleted, and throws as the Page's methods do once the page is deleted
+ * or its position unknown.
  *
  * @strict-properties
  * @not-serializable
@@ -1496,7 +1745,9 @@ enum FormFieldType
 /**
  * One widget of a form field, from Page::formFields() or Page::formFieldAt(). It keeps its page and
  * document alive. Every method throws PdfiumException once its widget is removed from the page or its
- * page is flattened; removing other annotations does not affect it.
+ * page is flattened; removing other annotations does not affect it. It follows its page when pages
+ * are moved, added or deleted, and throws as the Page's methods do once the page is deleted or its
+ * position unknown.
  *
  * @strict-properties
  * @not-serializable
@@ -1643,7 +1894,8 @@ final class FormField
 }
 
 /**
- * The page's text as PDFium read it once. It keeps its page and document alive.
+ * The page's text as PDFium read it once. It keeps its page and document alive, and its methods
+ * throw as the Page's do once the page is deleted or its position unknown.
  *
  * @strict-properties
  * @not-serializable
@@ -1656,6 +1908,7 @@ final class TextPage
      * The same as Page::text().
      *
      * @throws MemoryException when the text would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function text(): string {}
@@ -1663,6 +1916,7 @@ final class TextPage
     /**
      * The number of characters: the size of chars().
      *
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function charCount(): int {}
@@ -1677,6 +1931,7 @@ final class TextPage
      * @return Char[]
      * @throws \ValueError when $start is outside 0..charCount() or $length is negative
      * @throws MemoryException when the characters would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function chars(int $start = 0, ?int $length = null): array {}
@@ -1686,6 +1941,7 @@ final class TextPage
      * an area centred on the point, so a character up to half a tolerance away also counts.
      *
      * @throws \ValueError when a coordinate or tolerance is not finite, or a tolerance is negative
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function charIndexAt(float $x, float $y, float $xTolerance = 0.0, float $yTolerance = 0.0): ?int {}
@@ -1695,6 +1951,7 @@ final class TextPage
      *
      * @throws \ValueError when a side of $rect is unset or one its constructor refuses, as in one made without it
      * @throws MemoryException when the text would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function textIn(Rect $rect): string {}
@@ -1709,6 +1966,7 @@ final class TextPage
      * @throws \ValueError when a side of a rectangle is unset or one its constructor refuses, as in one made
      *         without it
      * @throws MemoryException when the texts would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function textInEach(array $rects): array {}
@@ -1726,6 +1984,7 @@ final class TextPage
      * @return TextMatch[]
      * @throws \ValueError when $needle is empty, not valid UTF-8 or contains a NUL byte
      * @throws MemoryException when the matches would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function search(string $needle, bool $matchCase = false, bool $wholeWord = false, bool $overlapping = false): array {}
@@ -1736,6 +1995,7 @@ final class TextPage
      *
      * @return WebLink[]
      * @throws MemoryException when the links would not fit under memory_limit
+     * @throws PdfiumException when the page was deleted from its document, or its position is unknown after a failed edit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
     public function webLinks(): array {}
@@ -1750,7 +2010,9 @@ final class PageIterator implements \Iterator
     private function __construct() {}
 
     /**
-     * The page at the current position, loaded on the first call.
+     * The page at the current position, loaded on the first call and again when an edit has deleted
+     * it, moved it away from key() or left its position unknown. A Page returned earlier keeps
+     * following its own page.
      *
      * @throws PdfiumException when the iterator is past the last page
      * @throws FormatException when PDFium cannot load the page

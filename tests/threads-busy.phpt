@@ -1,5 +1,5 @@
 --TEST--
-While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), signatures(), signatureCount(), isTagged(), language(), setLanguage() and every form method included; Bitmap methods, an iterator's already loaded page and releasing objects never do
+While another thread is inside PDFium, a method that needs it throws BusyException and does nothing, addAttachment(), signatures(), signatureCount(), isTagged(), language(), setLanguage(), every form method and the page edits included; Bitmap methods, an iterator's already loaded page and releasing objects never do
 --EXTENSIONS--
 pdfium
 --SKIPIF--
@@ -17,6 +17,16 @@ $it = $doc->pages();
 $page = $it->current();
 $adoc = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 $held = $adoc->addAttachment('held', 'h');
+$efixture = __DIR__ . '/fixtures/text-3pages.pdf';
+$edoc = Pdfium\Document::fromFile($efixture);
+$epage = $edoc->page(2);
+$eorder = static fn (Pdfium\Document $doc): string => with_retry(fn () => implode('|', array_map(
+    fn (int $i) => trim($doc->page($i)->text()), range(0, $doc->pageCount() - 1))));
+$order = $eorder($edoc);
+$ecrop = $epage->cropBox();
+$editBusy = ['deletePage' => false, 'movePages' => false, 'addPage' => false, 'insertPages' => false, 'nUp' => false,
+    'create' => false, 'setRotation' => false, 'setCropBox' => false, 'cropBox' => false];
+$editBusyChangedNothing = true;
 $sdoc = Pdfium\Document::fromString(sig_pdf(sig_field('<< /Contents <01> >>')));
 $adoc->setLanguage('held');
 require __DIR__ . '/form.inc';
@@ -61,7 +71,7 @@ $renderer = renderer_start();
 $busyMessage = $saveBusy = $addBusy = $addBusyChangedNothing = $sigBusy = $sigCountBusy = $langBusy = $langBusyChangedNothing = $tagBusy = $readBusy = false;
 $noFileAfterSaveBusy = $bitmapNeverBusy = $releaseNeverBusy = $currentNeverBusy = $typeErrorNeverBusy = true;
 $end = microtime(true) + 10;
-while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy || !$langBusy || !$tagBusy || !$readBusy || count($formBusy) < count($formOps) || !$flattenBusy) && microtime(true) < $end) {
+while ((!$busyMessage || !$saveBusy || !$addBusy || in_array(false, $editBusy, true) || !$sigBusy || !$sigCountBusy || !$langBusy || !$tagBusy || !$readBusy || count($formBusy) < count($formOps) || !$flattenBusy) && microtime(true) < $end) {
     try {
         $it->next();
         unset($page);
@@ -103,6 +113,31 @@ while ((!$busyMessage || !$saveBusy || !$addBusy || !$sigBusy || !$sigCountBusy 
             $addBusy = true;
             $addBusyChangedNothing = with_retry(fn () => $adoc->attachmentCount()) === 1
                 && with_retry(fn () => $held->name()) === 'held';
+        }
+    }
+    foreach ($editBusy as $edit => $seen) {
+        if ($seen) {
+            continue;
+        }
+        try {
+            match ($edit) {
+                'deletePage' => $edoc->deletePage(0),
+                'movePages' => $edoc->movePages([0], 1),
+                'addPage' => $edoc->addPage(1, 1),
+                'insertPages' => $edoc->insertPages($edoc, [0]),
+                'nUp' => $edoc->nUp(100, 100, 1, 1),
+                'create' => Pdfium\Document::create(),
+                'setRotation' => $epage->setRotation(90),
+                'setCropBox' => $epage->setCropBox(new Pdfium\Rect(0, 0, 10, 10)),
+                'cropBox' => $epage->cropBox(),
+            };
+            $edoc = with_retry(fn () => Pdfium\Document::fromFile($efixture));
+            $epage = with_retry(fn () => $edoc->page(2));
+        } catch (Pdfium\BusyException $e) {
+            $editBusy[$edit] = true;
+            $editBusyChangedNothing = $editBusyChangedNothing && with_retry(fn () => $edoc->pageCount()) === 3
+                && $eorder($edoc) === $order && $epage->index() === 2 && with_retry(fn () => $epage->rotation()) === 0
+                && with_retry(fn () => $epage->cropBox()) == $ecrop;
         }
     }
     for ($try = 0; $try < 20 && !($tagBusy && $readBusy); $try++) {
@@ -177,6 +212,7 @@ var_dump($renders > 0);
 echo 'busy: ', $busyMessage ? 'yes' : 'no', "\n";
 echo 'save busy left no file: ', $saveBusy && $noFileAfterSaveBusy ? 'yes' : 'no', "\n";
 echo 'busy add changed nothing: ', $addBusy && $addBusyChangedNothing ? 'yes' : 'no', "\n";
+echo 'busy edits changed nothing: ', !in_array(false, $editBusy, true) && $editBusyChangedNothing ? 'yes' : 'no', "\n";
 echo 'signatures busy, then listed: ', $sigBusy && with_retry(fn () => $sdoc->signatures())[0]->contents === "\x01" ? 'yes' : 'no', "\n";
 echo 'signature count busy, then counted: ', $sigCountBusy && with_retry(fn () => $sdoc->signatureCount()) === 1 ? 'yes' : 'no', "\n";
 echo 'busy setLanguage changed nothing: ', $langBusy && $langBusyChangedNothing ? 'yes' : 'no', "\n";
@@ -198,6 +234,7 @@ bool(true)
 busy: yes
 save busy left no file: yes
 busy add changed nothing: yes
+busy edits changed nothing: yes
 signatures busy, then listed: yes
 signature count busy, then counted: yes
 busy setLanguage changed nothing: yes

@@ -42,6 +42,28 @@ Features:
   annotations) can be changed and removed, and the next render shows the change. Two ``Page``
   objects for one page share its annotations. See the behaviour notes for these and for damaged
   annotation lists.
+- ``Document::deletePage()``: remove a page.
+- ``Document::create()`` and ``Document::addPage()``: start a document with no pages and add blank
+  pages of any size at any position.
+- ``Document::insertPages()``: copy pages of another document, or of the same one, into a document
+  at any position.
+- ``Document::movePages()``: reorder pages.
+- ``Document::nUp()``: a new document with the pages scaled onto sheets of a given size, several
+  to a sheet.
+- ``Page::setRotation()`` and the page boxes: ``mediaBox()``, ``cropBox()``, ``bleedBox()``,
+  ``trimBox()`` and ``artBox()`` with their setters, as ``Rect`` values in points.
+- A ``Page`` held from before an edit follows its page to its new index, and so do the
+  ``Annotation`` and ``FormField`` objects of the page. Once its page is deleted, or a failed edit
+  leaves its position unknown, the ``Page`` and every ``TextPage``, ``Annotation`` and
+  ``FormField`` made from it throw ``PdfiumException`` from every method.
+  ``PageIterator::current()`` gives the page at ``key()`` after the edit.
+
+Fixes:
+
+- ``Document::permissions()`` reports every permission for an unencrypted document PDFium built in
+  memory, such as the result of ``extractPages()`` or ``merge()``; it reported none.
+- ``Document::extractPages()`` throws ``MemoryException``, not a fatal error, when its page indexes
+  would not fit under ``memory_limit``.
 
 v0.3.0 (2026-11-21)
 -------------------

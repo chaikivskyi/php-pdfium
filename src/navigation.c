@@ -342,6 +342,9 @@ ZEND_METHOD(Pdfium_Page, linkAt)
 		Z_PARAM_DOUBLE(y)
 	ZEND_PARSE_PARAMETERS_END();
 
+	if (!pdfium_page_live(ph)) {
+		RETURN_THROWS();
+	}
 	if (!zend_finite(x) || !zend_finite(y)) {
 		zend_argument_value_error(zend_finite(x) ? 2 : 1, "must be finite");
 		RETURN_THROWS();

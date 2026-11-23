@@ -85,7 +85,6 @@ static zend_object *field_new(pdfium_page *p, FPDF_ANNOTATION annot)
 	pdfium_form_field *f = pdfium_form_field_from_obj(Z_OBJ(zv));
 
 	f->ph = p->ph;
-	f->page_index = p->index;
 	f->annot = annot;
 	f->removals = p->ph->h->annotation_removals;
 	pdfium_page_handle_addref(p->ph);
@@ -135,7 +134,7 @@ static bool field_enter(zval *self, field_span *s)
 	pdfium_form_field *f = pdfium_form_field_from_obj(Z_OBJ_P(self));
 
 	s->ph = f->ph;
-	if (!pdfium_enter()) {
+	if (!pdfium_page_handle_enter(f->ph)) {
 		return false;
 	}
 	if (!f->gone && f->removals != f->ph->h->annotation_removals) {
@@ -149,7 +148,7 @@ static bool field_enter(zval *self, field_span *s)
 		zend_throw_exception(pdfium_ce_exception, "The form field is gone: its widget was removed or its page flattened", 0);
 		return false;
 	}
-	f->ph->h->fill = (pdfium_fill) {f->ph->page, f->page_index, NULL, 0, false};
+	f->ph->h->fill = (pdfium_fill) {f->ph->page, f->ph->index, NULL, 0, false};
 	f->ph->h->form_info.FFI_GetPage = fill_get_page;
 	return true;
 }
@@ -360,19 +359,19 @@ ZEND_METHOD(Pdfium_Page, flatten)
 
 	if (result == FLATTEN_SUCCESS) {
 		ph->h->annotation_removals++;
-		fresh = FPDF_LoadPage(ph->h->doc, p->index);
+		fresh = FPDF_LoadPage(ph->h->doc, ph->index);
 	}
 	pdfium_leave();
 	if (result == FLATTEN_NOTHINGTODO) {
 		RETURN_FALSE;
 	}
 	if (result != FLATTEN_SUCCESS) {
-		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot flatten page %d", p->index);
+		zend_throw_exception_ex(pdfium_ce_exception, 0, "Cannot flatten page %d", ph->index);
 		RETURN_THROWS();
 	}
 	pdfium_page_swap_handle(p, fresh);
 	if (!fresh) {
-		zend_throw_exception_ex(pdfium_ce_format_exception, 0, "Cannot load page %d", p->index);
+		zend_throw_exception_ex(pdfium_ce_format_exception, 0, "Cannot load page %d", p->ph->index);
 		RETURN_THROWS();
 	}
 	RETURN_TRUE;
