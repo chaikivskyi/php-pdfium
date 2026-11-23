@@ -12,11 +12,12 @@ document alive:
 
 - the :php:class:`Document <Pdfium\\Document>` object itself;
 - any :php:class:`Page <Pdfium\\Page>`, :php:class:`TextPage <Pdfium\\TextPage>`,
-  :php:class:`PageIterator <Pdfium\\PageIterator>`, :php:class:`Attachment <Pdfium\\Attachment>`
-  or :php:class:`FormField <Pdfium\\FormField>` from it.
+  :php:class:`PageIterator <Pdfium\\PageIterator>`, :php:class:`Attachment <Pdfium\\Attachment>`,
+  :php:class:`Annotation <Pdfium\\Annotation>` or :php:class:`FormField <Pdfium\\FormField>` from it.
 
-A :php:class:`TextPage <Pdfium\\TextPage>` or :php:class:`FormField <Pdfium\\FormField>` also keeps
-its page loaded.
+A :php:class:`TextPage <Pdfium\\TextPage>`, :php:class:`Annotation <Pdfium\\Annotation>` or
+:php:class:`FormField <Pdfium\\FormField>` also keeps its page loaded. An ``Attachment`` from an
+annotation keeps that annotation alive.
 
 A document opened with ``fromString()`` also keeps its string in memory.
 
@@ -26,8 +27,8 @@ These do **not** keep a document alive:
 - a document made from it with ``extractPages()`` or ``merge()``. The pages are copied, so you can
   free the source right away.
 
-To free a document, ``unset()`` it and every page, text page, iterator, attachment and form field
-taken from it.
+To free a document, ``unset()`` it and every page, text page, iterator, attachment, annotation and
+form field taken from it.
 
 
 .. _pdfium-defaults:
@@ -78,7 +79,10 @@ The extension follows PDFium and adds no rules of its own, except that ``setLang
    The first time any page of a document is rendered with annotations (the default), or any form
    method other than ``Document::formType()`` is called, PDFium sets up form support for the
    document. For form fields without an appearance stream, PDFium then generates one, and a later
-   ``save()`` or ``toString()`` includes it. ``annotations: false`` leaves the document unchanged.
+   ``save()`` or ``toString()`` includes it. A render with annotations does the same for annotations
+   of most types. On a form that asks for new appearances (``/NeedAppearances true``), it can
+   replace the streams the fields have. See :ref:`annotations`. ``annotations: false`` leaves the
+   document unchanged.
 
 
 .. _rendering:
@@ -220,14 +224,17 @@ Attachments
 -----------
 
 ``addAttachment()`` and ``deleteAttachment()`` change the loaded document, never the file or
-string it came from; ``save()`` or ``toString()`` writes the change out. A deleted file only leaves
-the list: its bytes stay in the saved PDF, unused.
+string it came from; ``save()`` or ``toString()`` writes the change out. A saved PDF leaves out a
+deleted file that came with the loaded document, unless something else in the document still
+points to it, such as a FileAttachment annotation. A file added since it was loaded and then
+deleted stays in the saved PDF, unused.
 
 The list is kept sorted by name, so adding or deleting a file can shift the indexes of the others.
-After either call, every :php:class:`Attachment <Pdfium\\Attachment>` fetched before it is stale:
-its methods throw ``PdfiumException`` instead of reading a different file. Fetch it again with
-``attachments()`` or ``attachment()``. The one ``addAttachment()`` returns is current. To delete
-several files, see ``deleteAttachment()`` in :doc:`php_api`.
+After either call, every :php:class:`Attachment <Pdfium\\Attachment>` of this list fetched before
+it is stale: its methods throw ``PdfiumException`` instead of reading a different file. To read a
+file again, call ``attachments()`` or ``attachment()`` for a new ``Attachment``, or use the one
+``addAttachment()`` returned: it is not stale. To delete several files, see
+``deleteAttachment()`` in :doc:`php_api`.
 
 Strictly, the list is sorted and checked by a key PDFium does not show. PDFium sets it to the file
 name, but other tools may not, so two entries can have the same ``name()``, and ``addAttachment()``
@@ -268,7 +275,12 @@ outside, for example under PHP-FPM's ``request_terminate_timeout``.
 Ordinary large lists can be slow too: ``attachments()`` takes about two seconds for 20,000 files
 stored as a tree of nested parts of 50 entries each. A flat list stays fast.
 
-``extractPages()`` and ``merge()`` copy pages only, so their results have no attachments.
+An ``Attachment`` from a FileAttachment annotation is separate from this list: ``attachments()``
+lists only the files the document's list names. When the list names the same file, it shows up in
+both, and only the ``Attachment`` from ``attachments()`` has an index. See :ref:`annotations`.
+
+``extractPages()`` and ``merge()`` copy pages only, so their results have no attachment list; a
+copied page keeps its annotations, and a FileAttachment annotation keeps its file.
 
 .. _accessibility:
 
@@ -366,6 +378,181 @@ threads get ``BusyException``.
 ``extractPages()`` and ``merge()`` copy pages only, so their results have no signatures.
 
 
+.. _annotations:
+
+Annotations
+-----------
+
+**Changes.**
+   ``addAnnotation()``, ``removeAnnotation()`` and the setters of
+   :php:class:`Annotation <Pdfium\\Annotation>` change the loaded document, never the file or string
+   it came from; ``save()`` or ``toString()`` writes the change out. Two ``Annotation`` objects for
+   the same annotation see each other's changes.
+
+   So do two :php:class:`Page <Pdfium\\Page>` objects for the same page, from two ``page()`` calls.
+   An annotation added, changed or removed through one is counted, read and drawn by the other. An
+   ``Annotation`` from one throws once its annotation is removed through the other.
+
+**Adding.**
+   ``addAnnotation()`` adds ``"Text"``, ``"Link"``, ``"FreeText"``, ``"Square"``, ``"Circle"``,
+   ``"Highlight"``, ``"Underline"``, ``"Squiggly"``, ``"StrikeOut"``, ``"Stamp"``, ``"Ink"``,
+   ``"Popup"`` and ``"FileAttachment"`` annotations. Other types, such as ``"Line"``, ``"Polygon"``
+   or ``"Widget"``, can be read and changed but not added. A new annotation has only its type and
+   rectangle: give it what its type needs, such as quad points for a Highlight with
+   ``addQuadPoints()``, strokes for an Ink annotation with ``addInkStroke()``, a URI for a Link with
+   ``setUri()`` or a file for a FileAttachment with ``setAttachment()``, and a colour with
+   ``setColor()``.
+
+**Appearance streams.**
+   What a viewer draws for an annotation is its appearance stream, or appearance: a small piece of
+   PDF content that ``appearance()`` reads. An annotation can have one for each mode: normal,
+   rollover (under the pointer) and down (pressed). A new annotation has none.
+
+   The next ``render()`` of a page with annotations, the default, generates a normal appearance for
+   each annotation of these types that has none: ``"Text"``, ``"FreeText"``, ``"Square"``,
+   ``"Circle"``, ``"Highlight"``, ``"Underline"``, ``"Squiggly"``, ``"StrikeOut"`` and ``"Ink"``. It
+   skips one with ``FLAG_HIDDEN``. The appearance is stored in the document, so a later ``save()``
+   includes it. Without such a render the saved PDF has no appearance for them, and a viewer that
+   relies on it shows nothing. Render the page once before saving when other viewers must show the
+   annotation.
+
+   Other types get none: ``"Stamp"``, ``"FileAttachment"``, ``"Link"`` and ``"Popup"`` (even a Popup
+   that belongs to another annotation), and the types PDFium cannot add, such as ``"Line"`` or
+   ``"Polygon"``. Form fields are the exception; see Form fields below. A Stamp draws nothing until
+   ``setAppearance()`` gives it one. PDFium gives that stream the annotation's rectangle as its
+   bounding box, so the stream draws in page coordinates.
+
+   Once an annotation has a normal appearance stream, whether generated, set with
+   ``setAppearance()`` or written by another tool:
+
+   - ``render()`` draws it as it is and does not generate a new one, except for a Widget on a form
+     that asks for new appearances (see below).
+   - ``color()`` and ``interiorColor()`` return ``null``.
+   - ``setColor()`` and ``setInteriorColor()`` throw ``PdfiumException``, saying to call
+     ``clearAppearance()`` first. The extension never drops an appearance by itself.
+   - ``addInkStroke()`` and ``removeInkStrokes()`` change the strokes, but ``render()`` keeps
+     drawing the old ones.
+   - ``setRect()`` is accepted. ``render()`` draws the appearance in the new rectangle, except a
+     Highlight, Underline, Squiggly or StrikeOut whose appearance PDFium generated, which stays at
+     its quad points.
+   - ``addQuadPoints()`` and ``setQuadPoints()`` change the areas, but ``render()`` keeps drawing
+     the old appearance, also in a saved PDF, until ``clearAppearance()``. It stays in place,
+     except one PDFium generated for a Highlight, Underline, Squiggly or StrikeOut: when the box
+     around the new areas no longer holds it, it is moved and stretched to that box.
+   - ``setBorder()`` removes the appearance streams of every mode, including one another tool
+     wrote, with the same result as ``clearAppearance()`` below.
+
+   An empty normal stream counts too: ``appearance()`` then returns ``null``, but ``hasKey('AP')``
+   is ``true``. Rollover and down streams alone do not count.
+
+   ``clearAppearance()`` removes the appearance stream of one mode; for the normal mode, the
+   rollover and down ones too. The next render generates a new one only for the types listed above
+   and for form fields. Any other type, such as ``"Stamp"``, or ``"Line"`` or ``"Polygon"`` from
+   another tool, is left without one and draws nothing.
+
+   An appearance stream is read and written as a PDF text string. ``setAppearance()`` stores it one
+   byte per character, in PDFDocEncoding, when every character has a byte there. Otherwise it
+   stores all of it as UTF-16, which draws nothing. ``appearance()`` decodes a stream the same way.
+   Keep streams to ASCII: bytes above 0x7F that another tool wrote, such as UTF-8 text in a string,
+   do not read back as they are stored.
+
+**Removing.**
+   Removing an annotation moves the annotations after it down one index; ``index()`` always gives
+   the current one. Every ``Annotation`` object for the removed annotation throws
+   ``PdfiumException`` from then on, so none can change an annotation that is no longer on its
+   page. Objects for the other annotations stay usable, and so are ``FormField`` objects for the
+   other widgets; a ``FormField`` for a removed Widget throws. To remove several by index, remove
+   from the highest down.
+
+   A saved PDF leaves out a removed annotation, and anything from the loaded document that only it
+   used, such as its file. Whatever something else still points to stays, such as an annotation
+   that a Popup names as its ``/Parent``, or the form field of a removed Widget.
+
+**Links.**
+   ``linkAt()`` remembers a page's links. The first time it is called for a page, through any
+   ``Page`` object, it reads the page's link annotations and keeps that list while the document is
+   loaded. After ``addAnnotation()``, ``removeAnnotation()`` or ``remove()`` on that page, it still
+   finds a removed link and does not find an added one. It does see a new URI or rectangle of a
+   link it already listed. A document loaded from the saved PDF starts with the current links.
+
+   ``links()`` and ``Annotation::link()`` always read the page as it is, so use them after adding
+   or removing annotations.
+
+**Linked annotations.**
+   ``linkedAnnotation()`` returns only annotations in this page's annotation list, so ``index()``
+   and ``remove()`` always work on what it returns. It returns ``null`` when the key points to an
+   annotation of another page, to a dictionary in no page's list, or to an annotation removed from
+   this page. Take an annotation of another page from that page's ``annotations()``.
+
+   It also returns ``null`` when the dictionary the key points to has no ``/Type /Annot``. PDF
+   makes that entry optional, so some files leave it out. A key that points back to the annotation
+   itself gives a second object for it.
+
+**File attachments.**
+   A FileAttachment annotation holds one file, read with ``attachment()`` and replaced with
+   ``setAttachment()``. The file need not be in the document's attachment list, and the
+   ``Attachment`` from the annotation throws from ``index()`` even when it is. That ``Attachment``
+   keeps the annotation alive and asks the annotation for its file on each call, so it always reads
+   the annotation's current file: after ``setAttachment()`` or ``setStringValue()`` with the key
+   ``FS``, an ``Attachment`` fetched before reads the new file. Adding or deleting a document file
+   does not affect it. Once its annotation is removed from the page, or has no file, the
+   ``Attachment`` throws ``PdfiumException``.
+
+   ``setAttachment()`` replaces the file in steps. When PDFium cannot store the contents or
+   description, it has already dropped the previous file and cannot undo it: the
+   ``PdfiumException`` says so, and the annotation is left with a file entry without that content.
+
+   A saved PDF leaves out a replaced file that came with the loaded document. A file an earlier
+   ``setAttachment()`` set stays in it, unused.
+
+**Encrypted documents.**
+   In an encrypted document, the string values, appearance streams and files you set on
+   annotations are encrypted on save, unless you pass ``removeSecurity: true``.
+
+**Form fields.**
+   Widget annotations, the form fields, are listed, read, changed and removed like the others.
+   Removing a Widget only takes it off its page: its field stays in the document's form, and in a
+   saved PDF.
+
+   After a Widget of the document is changed or removed, the next ``render()`` with annotations of
+   each :php:class:`Page <Pdfium\\Page>` object reloads the page's form fields, as for a newly
+   loaded ``Page``; a change to any other annotation does not.
+
+   That render, and the first render with annotations of each ``Page`` object, generates an
+   appearance stream for every field on the page that has none. On a form that asks for new
+   appearances (``/NeedAppearances true`` in the document's ``/AcroForm``), it generates one for
+   every field on the page, replacing the one the field has. There, a stream that
+   ``setAppearance()`` gives a Widget lasts until the next such render of its page: a ``save()`` or
+   ``toString()`` before that render writes your stream, one after it writes PDFium's. On other
+   forms the stream from ``setAppearance()`` stays. Fields on pages that are not rendered keep the
+   appearance they have.
+
+**Damaged lists.**
+   A damaged annotation list is read as far as PDFium can:
+
+   - An entry that is not a dictionary, such as ``null`` or a reference to a missing object,
+     counts in ``annotationCount()`` but is left out of ``annotations()``. ``annotation()`` throws
+     ``FormatException`` for it.
+   - An ``/Annots`` that is not an array counts as no annotations.
+   - An annotation listed twice gives two objects whose ``index()`` is its first position.
+     ``remove()`` takes out that entry. The object it was called on throws from then on, and the
+     others find the entry that is left. ``removeAnnotation()`` takes out the entry at its index,
+     and every object finds the entry that is left.
+   - Values PDFium cannot use read as missing: quad points with fewer than 8 numbers give none, an
+     ink stroke that is not a list of coordinate pairs is empty, and a border that is not an array
+     is ``null``.
+   - A rectangle that does not have exactly 4 numbers reads as 0, 0, 0, 0, and a colour with 5
+     components as black.
+   - A ``/Popup`` or ``/IRT`` that loops back, to the annotation itself or between two, does not
+     hang ``linkedAnnotation()``: each call follows one step.
+
+**Not covered.**
+   The extension does not reach the page objects inside an annotation, such as the text and images
+   of a Stamp. A Widget is listed with its common properties; its field's value, options and flags
+   come from ``formFields()``, see :ref:`forms`. PDFium has no calls to remove a key, to write a
+   value other than a string, or to remove one area of the quad points.
+
+
 .. _forms:
 
 Forms
@@ -452,7 +639,9 @@ Forms
 
    The ``Page`` you flatten through shows the new content. Objects made before do not:
 
-   - a ``FormField`` throws "The form field is gone; its page may have been flattened";
+   - a ``FormField`` throws "The form field is gone: its widget was removed or its page flattened";
+   - an :php:class:`Annotation <Pdfium\\Annotation>` throws "The annotation was removed from its
+     page";
    - a :php:class:`TextPage <Pdfium\\TextPage>` keeps the old text;
    - another ``Page`` for the same page lacks the flattened content: it renders the old fields or
      none, its ``text()`` lacks the flattened text, its ``formFields()`` and ``links()`` are empty,
@@ -499,12 +688,20 @@ Rough memory needed:
 - ``bookmarks()``: about 2 KB per entry, 5 bytes per character of its title, and the length of
   its URI or file path.
 - ``openAction()`` and ``closeAction()``: about 1 KB, and the length of the URI or file path.
-- ``links()`` and ``linkAt()``: about 2 KB per link, 256 bytes per quad, and the length of its
-  URI or file path.
-- ``attachments()``: about 100 bytes per attachment.
+- ``links()``, ``linkAt()`` and ``Annotation::link()``: about 2 KB per link, 256 bytes per quad,
+  and the length of its URI or file path.
+- ``attachments()``: about 130 bytes per attachment.
 - ``Attachment::name()`` and ``metadata()``: about 5 bytes per character.
 - ``Attachment::contents()``: the size of the file. See :ref:`attachments` for PDFium's own copy.
-- ``addAttachment()``: 2 bytes per character of the name and description.
+- ``addAttachment()`` and ``Annotation::setAttachment()``: 2 bytes per character of the name and
+  description.
+- ``annotations()``: about 120 bytes per annotation.
+- ``Annotation::quadPoints()``: about 256 bytes per quad.
+- ``Annotation::vertices()`` and ``inkStrokes()``: about 140 bytes per point, and for
+  ``inkStrokes()`` 128 bytes per stroke.
+- ``Annotation::stringValue()`` and ``appearance()``: about 5 bytes per character.
+- ``Annotation::setStringValue()`` and ``setAppearance()``: 2 bytes per character;
+  ``addInkStroke()``: 8 bytes per point.
 - ``signatures()``: about 250 bytes per signature field and per byte-range pair, plus the size of
   each contents, time and sub-filter, and about 5 bytes per character of each reason.
 - ``language()``: about 5 bytes per character.
@@ -549,7 +746,7 @@ nothing, so it is safe to retry. To render in parallel, use several processes, f
 workers.
 
 - ``Bitmap`` methods never throw it.
-- Freeing a document, page, text page, page iterator, attachment or form field, and
+- Freeing a document, page, text page, page iterator, attachment, annotation or form field, and
   ``PageIterator::next()`` and ``rewind()``, never throw it, but may wait for the other thread to
   finish.
 - ``fromFile()`` reads the file before it checks. For a stream you cannot read twice, such as

@@ -8,7 +8,6 @@
 
 #define ACTION_BYTES 1024
 #define LINK_BYTES 2048
-#define QUAD_BYTES 256
 #define BOOKMARK_BYTES 2048
 #define BOOKMARK_DEPTH 100
 
@@ -19,7 +18,6 @@ enum {
 enum { LINK_RECT, LINK_QUAD_POINTS, LINK_DESTINATION, LINK_ACTION };
 enum { DEST_PAGE_INDEX, DEST_VIEW, DEST_PARAMS, DEST_X, DEST_Y, DEST_ZOOM };
 enum { ACTION_TYPE, ACTION_URI, ACTION_FILE_PATH, ACTION_DESTINATION };
-enum { COLOR_SLOTS = 4 };
 enum { STYLE_ITALIC = 1, STYLE_BOLD = 2 };
 
 typedef struct {
@@ -51,7 +49,23 @@ ZEND_METHOD(Pdfium_Link, __construct)
 
 ZEND_METHOD(Pdfium_Quad, __construct)
 {
-	ZEND_PARSE_PARAMETERS_NONE();
+	static const char *const names[] = {"x1", "y1", "x2", "y2", "x3", "y3", "x4", "y4"};
+	double corners[8];
+
+	ZEND_PARSE_PARAMETERS_START(8, 8)
+		Z_PARAM_DOUBLE(corners[0])
+		Z_PARAM_DOUBLE(corners[1])
+		Z_PARAM_DOUBLE(corners[2])
+		Z_PARAM_DOUBLE(corners[3])
+		Z_PARAM_DOUBLE(corners[4])
+		Z_PARAM_DOUBLE(corners[5])
+		Z_PARAM_DOUBLE(corners[6])
+		Z_PARAM_DOUBLE(corners[7])
+	ZEND_PARSE_PARAMETERS_END();
+
+	if (!pdfium_coords_construct(ZEND_THIS, pdfium_ce_quad, names, corners, 8)) {
+		RETURN_THROWS();
+	}
 }
 
 ZEND_METHOD(Pdfium_Destination, __construct)
@@ -235,8 +249,18 @@ static link_info link_read(FPDF_DOCUMENT doc, FPDF_LINK link)
 
 static bool link_fits(const link_info *li, uint32_t held)
 {
-	return pdfium_memory_fits(LINK_BYTES + (size_t) li->quads * QUAD_BYTES + 2 * (size_t) held * sizeof(zval)
+	return pdfium_memory_fits(LINK_BYTES + (size_t) li->quads * PDFIUM_QUAD_BYTES + 2 * (size_t) held * sizeof(zval)
 		+ (size_t) li->action.bytes);
+}
+
+void pdfium_quad_init(zval *zv, const FS_QUADPOINTSF *q)
+{
+	float corners[] = {q->x1, q->y1, q->x2, q->y2, q->x3, q->y3, q->x4, q->y4};
+
+	object_init_ex(zv, pdfium_ce_quad);
+	for (int c = 0; c < 8; c++) {
+		ZVAL_DOUBLE(pdfium_slot(Z_OBJ_P(zv), c), pdfium_points(corners[c]));
+	}
 }
 
 static void quad_points_set(zval *zv, FPDF_LINK link, int count)
@@ -249,12 +273,7 @@ static void quad_points_set(zval *zv, FPDF_LINK link, int count)
 		if (!FPDFLink_GetQuadPoints(link, i, &q)) {
 			continue;
 		}
-		float corners[] = {q.x1, q.y1, q.x2, q.y2, q.x3, q.y3, q.x4, q.y4};
-
-		object_init_ex(&zq, pdfium_ce_quad);
-		for (int c = 0; c < 8; c++) {
-			ZVAL_DOUBLE(pdfium_slot(Z_OBJ(zq), c), pdfium_points(corners[c]));
-		}
+		pdfium_quad_init(&zq, &q);
 		add_next_index_zval(zv, &zq);
 	}
 }
@@ -271,6 +290,17 @@ static void link_set(zval *zv, FPDF_DOCUMENT doc, int pages, FPDF_LINK link, con
 	quad_points_set(pdfium_slot(obj, LINK_QUAD_POINTS), link, li->quads);
 	targets_set(pdfium_slot(obj, LINK_DESTINATION), pdfium_slot(obj, LINK_ACTION), pages,
 		li->action.action ? NULL : FPDFLink_GetDest(doc, link), &li->action);
+}
+
+bool pdfium_link_build(zval *zv, FPDF_DOCUMENT doc, FPDF_LINK link)
+{
+	link_info li = link_read(doc, link);
+
+	if (!link_fits(&li, 0)) {
+		return false;
+	}
+	link_set(zv, doc, FPDF_GetPageCount(doc), link, &li);
+	return true;
 }
 
 ZEND_METHOD(Pdfium_Page, links)
@@ -321,14 +351,8 @@ ZEND_METHOD(Pdfium_Page, linkAt)
 	}
 	FPDF_LINK link = FPDFLink_GetLinkAtPoint(ph->page, pdfium_float_side(x), pdfium_float_side(y));
 
-	if (link) {
-		link_info li = link_read(ph->h->doc, link);
-
-		if (link_fits(&li, 0)) {
-			link_set(return_value, ph->h->doc, FPDF_GetPageCount(ph->h->doc), link, &li);
-		} else {
-			oom = "The link needs";
-		}
+	if (link && !pdfium_link_build(return_value, ph->h->doc, link)) {
+		oom = "The link needs";
 	}
 	pdfium_leave_or_throw(return_value, oom);
 }
@@ -343,16 +367,15 @@ static zend_long color_channel(float value)
 
 static void bookmark_color_set(zval *zv, FPDF_BOOKMARK bm)
 {
-	float rgba[COLOR_SLOTS] = {0, 0, 0, 1};
+	float rgb[3];
 
-	if (!FPDFBookmark_GetColor(bm, &rgba[0], &rgba[1], &rgba[2])) {
+	if (!FPDFBookmark_GetColor(bm, &rgb[0], &rgb[1], &rgb[2])) {
 		ZVAL_NULL(zv);
 		return;
 	}
-	object_init_ex(zv, pdfium_ce_color);
-	for (int i = 0; i < COLOR_SLOTS; i++) {
-		ZVAL_LONG(pdfium_slot(Z_OBJ_P(zv), i), color_channel(rgba[i]));
-	}
+	zend_long rgba[COLOR_SLOTS] = {color_channel(rgb[0]), color_channel(rgb[1]), color_channel(rgb[2]), 255};
+
+	pdfium_color_init(zv, rgba);
 }
 
 static unsigned long title_get(void *bm, unsigned short *buf, unsigned long bytes)

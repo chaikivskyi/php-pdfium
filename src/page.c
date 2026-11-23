@@ -130,15 +130,12 @@ void pdfium_page_handle_addref(pdfium_page_handle *ph)
 	ph->refs++;
 }
 
-FPDF_FORMHANDLE pdfium_page_form(pdfium_page_handle *ph)
+static void form_unload(pdfium_page_handle *ph)
 {
-	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
-
-	if (form && !ph->form_loaded) {
-		FORM_OnAfterLoadPage(ph->page, form);
-		ph->form_loaded = true;
+	if (ph->form_loaded) {
+		FORM_OnBeforeClosePage(ph->page, ph->h->form);
+		ph->form_loaded = false;
 	}
-	return form;
 }
 
 void pdfium_page_handle_release(pdfium_page_handle *ph)
@@ -148,14 +145,27 @@ void pdfium_page_handle_release(pdfium_page_handle *ph)
 	}
 	if (ph->page) {
 		pdfium_enter_wait();
-		if (ph->form_loaded) {
-			FORM_OnBeforeClosePage(ph->page, ph->h->form);
-		}
+		form_unload(ph);
 		FPDF_ClosePage(ph->page);
 		pdfium_leave();
 	}
 	pdfium_doc_handle_release(ph->h);
 	efree(ph);
+}
+
+FPDF_FORMHANDLE pdfium_page_form(pdfium_page_handle *ph)
+{
+	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
+
+	if (ph->form_changes != ph->h->form_changes) {
+		form_unload(ph);
+	}
+	if (form && !ph->form_loaded) {
+		FORM_OnAfterLoadPage(ph->page, form);
+		ph->form_loaded = true;
+		ph->form_changes = ph->h->form_changes;
+	}
+	return form;
 }
 
 void pdfium_page_swap_handle(pdfium_page *p, FPDF_PAGE fresh)

@@ -53,3 +53,8 @@ function png_pixel(array $img, int $x, int $y): array
 {
     return array_values(unpack('C*', substr($img['rows'][$y], $x * $img['channels'], $img['channels'])));
 }
+
+function png_md5(Pdfium\Page $page, bool $annotations = true, int $dpi = 72): string
+{
+    return md5($page->render(dpi: $dpi, annotations: $annotations)->toPng());
+}

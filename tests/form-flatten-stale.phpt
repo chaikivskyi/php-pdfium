@@ -108,27 +108,27 @@ foreach ([['f', 'tp', 'a', 'b', 'doc'], ['doc', 'b', 'a', 'tp', 'f'], ['a', 'doc
 --EXPECT--
 -- the flattening Page
 bool(true)
-name: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-alternateName: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-type: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-value: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-exportValue: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-isChecked: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-options: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-flags: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-rect: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-controlIndex: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-controlCount: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-setValue: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-setChecked: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-select: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
+name: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+alternateName: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+type: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+value: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+exportValue: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+isChecked: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+options: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+flags: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+rect: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+controlIndex: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+controlCount: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+setValue: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+setChecked: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+select: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
 bool(true)
 bool(false)
 bool(true)
 -- another Page for the same index
 bool(true)
-name: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
-setValue: Pdfium\PdfiumException: The form field is gone; its page may have been flattened
+name: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
+setValue: Pdfium\PdfiumException: The form field is gone: its widget was removed or its page flattened
 array(0) {
 }
 array(0) {

@@ -15,6 +15,33 @@ Features:
   or for printing, in place.
 - Value classes ``FormFieldOption`` and ``FormFieldFlags``, and the enums ``FormType`` and
   ``FormFieldType``.
+- ``Page::annotationCount()``, ``annotations()`` and ``annotation()``: a page's annotations, as
+  ``Annotation`` objects with ``type()``, ``index()``, ``rect()`` and ``flags()``, and the
+  ``Annotation::FLAG_*`` constants for the flags.
+- ``Annotation::color()``, ``interiorColor()``, ``border()``, ``quadPoints()``, ``vertices()``,
+  ``line()`` and ``inkStrokes()``: an annotation's colours, border and geometry. ``hasKey()``,
+  ``valueType()``, ``stringValue()`` and ``numberValue()``: its dictionary, by key.
+  ``appearance()``: its appearance stream for one of the ``Annotation::APPEARANCE_*`` modes.
+- Value classes ``Point`` and ``Border``. ``Point`` and ``Quad`` can be created with ``new``.
+- ``Page::addAnnotation()``: add an annotation of one of the 13 types PDFium creates.
+  ``Page::removeAnnotation()`` and ``Annotation::remove()``: take one off its page, after which
+  every ``Annotation`` for it throws.
+- ``Annotation::setRect()``, ``setFlags()``, ``setColor()``, ``setInteriorColor()``,
+  ``setBorder()``, ``addQuadPoints()``, ``setQuadPoints()``, ``addInkStroke()``,
+  ``removeInkStrokes()`` and ``setStringValue()``: change an annotation in place.
+  ``setAppearance()`` and ``clearAppearance()``: write and remove its appearance stream.
+  ``setColor()`` and ``setInteriorColor()`` throw while a normal appearance stream exists instead
+  of dropping it.
+- ``Annotation::linkedAnnotation()``: the annotation of the same page that a key such as ``Popup``
+  or ``IRT`` points to. ``Annotation::link()``: a link annotation's ``Link``. ``setUri()``: make it
+  open a URI.
+- ``Annotation::attachment()`` and ``setAttachment()``: read and replace the file of a
+  FileAttachment annotation, as an ``Attachment`` that keeps the annotation alive. It is separate
+  from the document's attachment list, so its ``index()`` throws.
+- What you set on annotations of an encrypted document is encrypted on save. Form fields (Widget
+  annotations) can be changed and removed, and the next render shows the change. Two ``Page``
+  objects for one page share its annotations. See the behaviour notes for these and for damaged
+  annotation lists.
 
 v0.3.0 (2026-11-21)
 -------------------

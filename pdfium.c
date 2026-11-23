@@ -17,6 +17,7 @@ zend_class_entry *pdfium_ce_bitmap;
 zend_class_entry *pdfium_ce_attachment;
 zend_class_entry *pdfium_ce_attachment_metadata;
 zend_class_entry *pdfium_ce_signature;
+zend_class_entry *pdfium_ce_annotation;
 zend_class_entry *pdfium_ce_form_field;
 zend_class_entry *pdfium_ce_form_type;
 zend_class_entry *pdfium_ce_form_field_type;
@@ -33,6 +34,8 @@ zend_class_entry *pdfium_ce_web_link;
 zend_class_entry *pdfium_ce_bookmark;
 zend_class_entry *pdfium_ce_link;
 zend_class_entry *pdfium_ce_quad;
+zend_class_entry *pdfium_ce_point;
+zend_class_entry *pdfium_ce_border;
 zend_class_entry *pdfium_ce_destination;
 zend_class_entry *pdfium_ce_action;
 zend_class_entry *pdfium_ce_exception;
@@ -49,6 +52,7 @@ static zend_object_handlers page_iterator_handlers;
 static zend_object_handlers text_page_handlers;
 static zend_object_handlers bitmap_handlers;
 static zend_object_handlers attachment_handlers;
+static zend_object_handlers annotation_handlers;
 static zend_object_handlers form_field_handlers;
 
 static zend_object *object_create(zend_class_entry *ce, size_t size, const zend_object_handlers *handlers)
@@ -89,6 +93,11 @@ static zend_object *bitmap_create(zend_class_entry *ce)
 static zend_object *attachment_create(zend_class_entry *ce)
 {
 	return object_create(ce, sizeof(pdfium_attachment), &attachment_handlers);
+}
+
+static zend_object *annotation_create(zend_class_entry *ce)
+{
+	return object_create(ce, sizeof(pdfium_annotation), &annotation_handlers);
 }
 
 static zend_object *form_field_create(zend_class_entry *ce)
@@ -137,6 +146,8 @@ PHP_MINIT_FUNCTION(pdfium)
 	pdfium_ce_bookmark = register_class_Pdfium_Bookmark();
 	pdfium_ce_link = register_class_Pdfium_Link();
 	pdfium_ce_quad = register_class_Pdfium_Quad();
+	pdfium_ce_point = register_class_Pdfium_Point();
+	pdfium_ce_border = register_class_Pdfium_Border();
 	pdfium_ce_destination = register_class_Pdfium_Destination();
 	pdfium_ce_action = register_class_Pdfium_Action();
 	pdfium_ce_attachment_metadata = register_class_Pdfium_AttachmentMetadata();
@@ -167,6 +178,10 @@ PHP_MINIT_FUNCTION(pdfium)
 	pdfium_ce_attachment = register_class_Pdfium_Attachment();
 	pdfium_ce_attachment->create_object = attachment_create;
 
+	init_handlers(&annotation_handlers, XtOffsetOf(pdfium_annotation, std), pdfium_annotation_free_obj);
+	pdfium_ce_annotation = register_class_Pdfium_Annotation();
+	pdfium_ce_annotation->create_object = annotation_create;
+
 	pdfium_ce_form_type = register_class_Pdfium_FormType();
 	pdfium_ce_form_field_type = register_class_Pdfium_FormFieldType();
 	pdfium_ce_form_field_option = register_class_Pdfium_FormFieldOption();
@@ -189,6 +204,10 @@ PHP_MINIT_FUNCTION(pdfium)
 	}
 	if (!pdfium_signature_slots_match()) {
 		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/signature.c do not match pdfium.stub.php");
+		return FAILURE;
+	}
+	if (!pdfium_annotation_slots_match()) {
+		zend_error(E_CORE_WARNING, "pdfium: the property slots in src/annotation.c do not match pdfium.stub.php");
 		return FAILURE;
 	}
 	if (!pdfium_form_slots_match()) {

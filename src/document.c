@@ -294,7 +294,7 @@ ZEND_METHOD(Pdfium_Document, setLanguage)
 		zend_throw_exception(pdfium_ce_memory_exception, "The language needs more memory than memory_limit leaves", 0);
 		RETURN_THROWS();
 	}
-	unsigned short *wide = pdfium_utf8_to_utf16le_alloc(language);
+	unsigned short *wide = pdfium_utf8_to_utf16le_sized(language, units);
 	bool entered = pdfium_enter(), set = false;
 
 	if (entered) {
@@ -392,7 +392,7 @@ ZEND_METHOD(Pdfium_Document, page)
 		RETURN_OBJ(obj);
 	}
 	if (!EG(exception)) {
-		pdfium_index_error(1, page_count, "a page", "pages");
+		pdfium_index_error(1, page_count, "a page index", "the document has no pages");
 	}
 	RETURN_THROWS();
 }

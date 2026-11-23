@@ -36,6 +36,20 @@ bool pdfium_memory_fits(size_t bytes)
 	return PG(memory_limit) == -1 || zend_memory_usage(true) + bytes + ZEND_MM_CHUNK_SIZE <= (size_t) PG(memory_limit);
 }
 
+void pdfium_memory_throw(const char *what)
+{
+	zend_throw_exception_ex(pdfium_ce_memory_exception, 0, "%s more memory than memory_limit leaves", what);
+}
+
+bool pdfium_fits_or_throw(size_t bytes, const char *what)
+{
+	if (!pdfium_memory_fits(bytes)) {
+		pdfium_memory_throw(what);
+		return false;
+	}
+	return true;
+}
+
 static bool buf_grow(pdfium_buf *b, size_t need)
 {
 	size_t used = smart_str_get_len(&b->s);
