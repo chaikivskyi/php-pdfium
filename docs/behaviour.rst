@@ -228,9 +228,10 @@ deleted stays in the saved PDF, unused.
 
 The list is kept sorted by name, so adding or deleting a file can shift the indexes of the others.
 After either call, every :php:class:`Attachment <Pdfium\\Attachment>` of this list fetched before
-it is stale: its methods throw ``PdfiumException`` instead of reading a different file. Fetch it
-again with ``attachments()`` or ``attachment()``. The one ``addAttachment()`` returns is current.
-To delete several files, see ``deleteAttachment()`` in :doc:`php_api`.
+it is stale: its methods throw ``PdfiumException`` instead of reading a different file. To read a
+file again, call ``attachments()`` or ``attachment()`` for a new ``Attachment``, or use the one
+``addAttachment()`` returned: it is not stale. To delete several files, see
+``deleteAttachment()`` in :doc:`php_api`.
 
 Strictly, the list is sorted and checked by a key PDFium does not show. PDFium sets it to the file
 name, but other tools may not, so two entries can have the same ``name()``, and ``addAttachment()``
@@ -389,30 +390,34 @@ Annotations
    An annotation added, changed or removed through one is counted, read and drawn by the other. An
    ``Annotation`` from one throws once its annotation is removed through the other.
 
-**Types you can add.**
-   PDFium adds Text, Link, FreeText, Square, Circle, Highlight, Underline, Squiggly, StrikeOut,
-   Stamp, Ink, Popup and FileAttachment annotations. Other types, such as Line, Polygon or Widget,
-   can be read and changed but not added. A new annotation has only its type and rectangle: give it
-   what its type needs, such as quad points for a Highlight or strokes for an Ink annotation, and a
-   colour.
+**Adding.**
+   ``addAnnotation()`` adds ``"Text"``, ``"Link"``, ``"FreeText"``, ``"Square"``, ``"Circle"``,
+   ``"Highlight"``, ``"Underline"``, ``"Squiggly"``, ``"StrikeOut"``, ``"Stamp"``, ``"Ink"``,
+   ``"Popup"`` and ``"FileAttachment"`` annotations. Other types, such as ``"Line"``, ``"Polygon"``
+   or ``"Widget"``, can be read and changed but not added. A new annotation has only its type and
+   rectangle: give it what its type needs, such as quad points for a Highlight with
+   ``addQuadPoints()``, strokes for an Ink annotation with ``addInkStroke()``, a URI for a Link with
+   ``setUri()`` or a file for a FileAttachment with ``setAttachment()``, and a colour with
+   ``setColor()``.
 
 **Appearance streams.**
    What a viewer draws for an annotation is its appearance stream, or appearance: a small piece of
    PDF content that ``appearance()`` reads. An annotation can have one for each mode: normal,
    rollover (under the pointer) and down (pressed). A new annotation has none.
 
-   The next ``render()`` of a page with annotations, the default, generates a normal appearance
-   for each annotation of these types that has none: Text, FreeText, Square, Circle, Highlight,
-   Underline, Squiggly, StrikeOut and Ink. It skips one with ``FLAG_HIDDEN``. The appearance is
-   stored in the document, so a later ``save()`` includes it. Without such a render the saved PDF
-   has no appearance for them, and a viewer that relies on it shows nothing. Render the page once
-   before saving when other viewers must show the annotation.
+   The next ``render()`` of a page with annotations, the default, generates a normal appearance for
+   each annotation of these types that has none: ``"Text"``, ``"FreeText"``, ``"Square"``,
+   ``"Circle"``, ``"Highlight"``, ``"Underline"``, ``"Squiggly"``, ``"StrikeOut"`` and ``"Ink"``. It
+   skips one with ``FLAG_HIDDEN``. The appearance is stored in the document, so a later ``save()``
+   includes it. Without such a render the saved PDF has no appearance for them, and a viewer that
+   relies on it shows nothing. Render the page once before saving when other viewers must show the
+   annotation.
 
-   Other types get none: Stamp, FileAttachment, Link and Popup (even a Popup that belongs to
-   another annotation), and the types PDFium cannot add, such as Line or Polygon. Form fields are
-   the exception; see Form fields below. A Stamp draws nothing until ``setAppearance()`` gives it
-   one. PDFium gives that stream the annotation's rectangle as its bounding box, so the stream
-   draws in page coordinates.
+   Other types get none: ``"Stamp"``, ``"FileAttachment"``, ``"Link"`` and ``"Popup"`` (even a Popup
+   that belongs to another annotation), and the types PDFium cannot add, such as ``"Line"`` or
+   ``"Polygon"``. Form fields are the exception; see Form fields below. A Stamp draws nothing until
+   ``setAppearance()`` gives it one. PDFium gives that stream the annotation's rectangle as its
+   bounding box, so the stream draws in page coordinates.
 
    Once an annotation has a normal appearance stream, whether generated, set with
    ``setAppearance()`` or written by another tool:
@@ -439,8 +444,8 @@ Annotations
 
    ``clearAppearance()`` removes the appearance stream of one mode; for the normal mode, the
    rollover and down ones too. The next render generates a new one only for the types listed above
-   and for form fields. Any other type, such as a Stamp, or a Line or Polygon from another tool, is
-   left without one and draws nothing.
+   and for form fields. Any other type, such as ``"Stamp"``, or ``"Line"`` or ``"Polygon"`` from
+   another tool, is left without one and draws nothing.
 
    An appearance stream is read and written as a PDF text string. ``setAppearance()`` stores it one
    byte per character, in PDFDocEncoding, when every character has a byte there. Otherwise it
