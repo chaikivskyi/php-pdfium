@@ -89,7 +89,7 @@ split, merged, copied from with ``insertPages()`` or laid out with ``nUp()``; se
    write: the extension cannot tell reliably whether the target existed, and the wrapper knows best
    how to clean up.
 
-**An incremental save falls back to a full copy without saying so.**
+**Incremental saves.**
    ``incremental: true`` writes the original file as it was, from its ``%PDF`` header on, and
    appends a section after it; bytes before the header, which some files have, are dropped. The
    appended section holds the changes and also unchanged copies of the objects PDFium has read, such
