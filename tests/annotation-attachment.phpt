@@ -1,5 +1,5 @@
 --TEST--
-Annotation::attachment() and setAttachment() read and replace the file of a FileAttachment annotation; its Attachment keeps the annotation alive, has no index, is separate from the document's list even when that names the same file, and throws once the annotation's file is replaced or the annotation is removed; extractPages() and merge() keep the annotations and the file
+Annotation::attachment() and setAttachment() read and replace the file of a FileAttachment annotation; its Attachment keeps the annotation alive, has no index, is separate from the document's list even when that names the same file, reads the annotation's current file after setAttachment() or setStringValue('FS') on it, is not affected by a change to another annotation's file, and throws once the annotation is removed or has no file; extractPages() and merge() keep the annotations and the file
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -17,7 +17,7 @@ var_dump($doc->attachmentCount(), $doc->attachments());
 $docFile = $doc->addAttachment('d.txt', 'd');
 var_dump($f->contents(), $a->attachment()->name());
 $g = $a->setAttachment('other.txt', 'bye');
-try { $f->contents(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
+var_dump($f->name(), $f->contents(), $f->metadata()->description);
 try { $f->index(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
 var_dump($docFile->contents(), $g->contents(), $g->metadata()->description, $a->attachment()->name());
 var_dump($doc->attachmentCount(), $doc->attachment(0)->name());
@@ -30,7 +30,7 @@ var_dump($re->name(), $re->contents());
 $b = $page->addAnnotation('FileAttachment', $rect);
 $h = $b->setAttachment('b.txt', 'b');
 $a->setAttachment('third.txt', '3');
-try { $h->name(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
+var_dump($h->name(), $h->contents());
 var_dump($b->attachment()->contents());
 $t = $a->attachment();
 var_dump($t->name());
@@ -83,8 +83,7 @@ try { $text->setAttachment('x.txt', 'x'); } catch (Pdfium\PdfiumException $e) { 
 var_dump($text->hasKey('FS'), $r->name());
 $d = $direct->attachment();
 $direct->setAttachment('new.txt', 'new');
-try { $d->name(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
-try { $d->metadata(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
+var_dump($d->name(), $d->contents());
 var_dump($direct->attachment()->name(), $direct->attachment()->contents(), $byRef->attachment()->contents());
 $n = $none->setAttachment('none.txt', '');
 var_dump($n->name(), $n->contents());
@@ -94,7 +93,7 @@ foreach ([$plain, $number] as $x) {
 }
 $s = $none->attachment();
 $none->setStringValue('FS', 'string.txt');
-try { $s->name(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
+var_dump($s->name(), $s->contents());
 var_dump($none->attachment()->name(), $none->attachment()->contents());
 $x = $byRef->attachment();
 $byRef->setStringValue('Subtype', 'X');
@@ -133,7 +132,7 @@ foreach ([$source->extractPages([0]), Pdfium\Document::merge([$source])] as $cop
 }
 $held = $sourcePage->annotation(1)->attachment();
 $sourcePage->annotation(0)->setStringValue('FS', 'text.txt');
-try { $held->name(); } catch (Pdfium\PdfiumException $e) { echo $e->getMessage(), "\n"; }
+var_dump($held->name(), $held->contents());
 ?>
 --EXPECT--
 NULL
@@ -147,7 +146,9 @@ array(0) {
 }
 string(5) "hello"
 string(8) "note.txt"
-An annotation's file in this document changed since this Attachment was fetched; fetch it again
+string(9) "other.txt"
+string(3) "bye"
+NULL
 The file belongs to an annotation and has no index
 string(1) "d"
 string(3) "bye"
@@ -158,7 +159,8 @@ string(5) "d.txt"
 string(9) "other.txt"
 string(9) "other.txt"
 string(3) "bye"
-An annotation's file in this document changed since this Attachment was fetched; fetch it again
+string(5) "b.txt"
+string(1) "b"
 string(1) "b"
 string(9) "third.txt"
 The annotation was removed from its page
@@ -181,8 +183,8 @@ int(0)
 Cannot attach a file to a Text annotation
 bool(false)
 string(7) "fix.txt"
-An annotation's file in this document changed since this Attachment was fetched; fetch it again
-An annotation's file in this document changed since this Attachment was fetched; fetch it again
+string(7) "new.txt"
+string(3) "new"
 string(7) "new.txt"
 string(3) "new"
 string(7) "fixture"
@@ -194,7 +196,8 @@ NULL
 string(0) ""
 NULL
 NULL
-An annotation's file in this document changed since this Attachment was fetched; fetch it again
+string(10) "string.txt"
+NULL
 string(10) "string.txt"
 NULL
 Cannot read the annotation's file
@@ -223,4 +226,5 @@ int(0)
 string(5) "added"
 string(10) "copied.txt"
 string(6) "copied"
-An annotation's file in this document changed since this Attachment was fetched; fetch it again
+string(10) "copied.txt"
+string(6) "copied"

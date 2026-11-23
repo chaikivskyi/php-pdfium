@@ -483,19 +483,11 @@ Annotations
    A FileAttachment annotation holds one file, read with ``attachment()`` and replaced with
    ``setAttachment()``. The file need not be in the document's attachment list, and the
    ``Attachment`` from the annotation throws from ``index()`` even when it is. That ``Attachment``
-   keeps the annotation alive and asks the annotation for its file on each call.
-
-   Every ``Attachment`` fetched from an annotation goes stale, and its methods throw
-   ``PdfiumException`` instead of reading another file, after either of these on any annotation of
-   the document:
-
-   - ``setAttachment()``;
-   - ``setStringValue()`` with the key ``FS``.
-
-   Fetch it again with ``attachment()``; the one ``setAttachment()`` returns is current. Nothing
-   goes stale when PDFium refuses a ``setAttachment()`` because the annotation is not a
-   FileAttachment, or when a document file is added or deleted. Once its annotation is removed from
-   the page, the ``Attachment`` throws too.
+   keeps the annotation alive and asks the annotation for its file on each call, so it always reads
+   the annotation's current file: after ``setAttachment()`` or ``setStringValue()`` with the key
+   ``FS``, an ``Attachment`` fetched before reads the new file. Adding or deleting a document file
+   does not affect it. Once its annotation is removed from the page, or has no file, the
+   ``Attachment`` throws ``PdfiumException``.
 
    ``setAttachment()`` replaces the file in steps. When PDFium cannot store the contents or
    description, it has already dropped the previous file and cannot undo it: the

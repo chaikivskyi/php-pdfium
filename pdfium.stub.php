@@ -1217,9 +1217,9 @@ final class Annotation
     /**
      * Sets the key, such as "Contents" or "T" (the author), to a string, replacing its value. PDFium
      * cannot remove a key or write another type, so a name key such as "Subtype" then holds a string
-     * PDFium ignores (type() gives "Unknown"). "FS" replaces a FileAttachment's file and makes
-     * Attachments stale, as setAttachment() does. Text starting with þÿ, ÿþ or ï»¿ (read as a byte
-     * order mark) or holding U+001B is stored as given but does not read back as written.
+     * PDFium ignores (type() gives "Unknown"). "FS" replaces a FileAttachment's file, as
+     * setAttachment() does. Text starting with þÿ, ÿþ or ï»¿ (read as a byte order mark) or holding
+     * U+001B is stored as given but does not read back as written.
      *
      * @throws \ValueError when $key is empty or contains a null byte, or $value is not valid UTF-8
      *         or contains a null byte
@@ -1300,9 +1300,8 @@ final class Annotation
 
     /**
      * Embeds a file in a FileAttachment annotation, in place, replacing its file; PDFium sets the
-     * size, creation date and checksum. Every Attachment fetched earlier from this document's
-     * annotations goes stale; a call refused because the annotation is not a FileAttachment changes
-     * nothing.
+     * size, creation date and checksum. An Attachment fetched earlier from this annotation reads
+     * the new file.
      *
      * @throws \ValueError when $name is empty; $name or $description is not valid UTF-8, contains a
      *         null byte or the escape character, or starts with what a PDF reader would take for a
@@ -1332,9 +1331,10 @@ final class Annotation
  * from the document, it is stale: every method throws; fetch it again.
  *
  * One from Annotation::attachment() or setAttachment() is that annotation's own file, separate from
- * the document's list; it keeps the annotation alive and its index() throws. It goes stale after
- * setAttachment() on any FileAttachment annotation of the document, setStringValue("FS", ...) on any
- * annotation of it, or removal of its annotation, but not when a document file is added or deleted.
+ * the document's list; it keeps the annotation alive and its index() throws. It reads the
+ * annotation's current file on every call, also after setAttachment() or setStringValue("FS", ...),
+ * and throws once its annotation is removed or has no file. Adding or deleting a document file does
+ * not affect it.
  *
  * @strict-properties
  * @not-serializable
@@ -1358,8 +1358,8 @@ final class Attachment
      * the list is sorted by, which PDFium does not show.
      *
      * @throws PdfiumException when the document's attachments changed since it was fetched; for an
-     *         annotation's file, when it went stale or its annotation was removed, or PDFium cannot
-     *         find the file
+     *         annotation's file, when its annotation was removed or PDFium cannot find the
+     *         file
      * @throws MemoryException when the name would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -1371,8 +1371,8 @@ final class Attachment
      * outside the PDF.
      *
      * @throws PdfiumException when the document's attachments changed since it was fetched, or
-     *         reading the file fails partway; for an annotation's file, also when it went stale or
-     *         its annotation was removed, or PDFium cannot find the file
+     *         reading the file fails partway; for an annotation's file, also when its annotation
+     *         was removed or PDFium cannot find the file
      * @throws MemoryException when the file would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */
@@ -1380,8 +1380,8 @@ final class Attachment
 
     /**
      * @throws PdfiumException when the document's attachments changed since it was fetched; for an
-     *         annotation's file, when it went stale or its annotation was removed, or PDFium cannot
-     *         find the file
+     *         annotation's file, when its annotation was removed or PDFium cannot find the
+     *         file
      * @throws MemoryException when an entry would not fit under memory_limit
      * @throws BusyException on ZTS PHP when another thread is using PDFium
      */

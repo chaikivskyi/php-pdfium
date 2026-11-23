@@ -765,11 +765,11 @@ Attachment
 
    One from :php:meth:`Annotation::attachment` or :php:meth:`Annotation::setAttachment` is the file
    of a FileAttachment annotation instead. It keeps its annotation alive, is separate from the
-   document's list, and its :php:meth:`index` always throws. It goes stale after
-   :php:meth:`Annotation::setAttachment` on any FileAttachment annotation of the document, or after
-   :php:meth:`Annotation::setStringValue` with the key ``FS`` on any of its annotations, of any type.
-   Adding or deleting a document file does not make it stale. Every method throws once the
-   annotation is removed from its page. See :ref:`annotations`.
+   document's list, and its :php:meth:`index` always throws. It reads the annotation's current
+   file on every call, also after :php:meth:`Annotation::setAttachment` or
+   :php:meth:`Annotation::setStringValue` with the key ``FS`` replaces it. Adding or deleting a
+   document file does not affect it. Every method throws once the annotation is removed from its
+   page or has no file. See :ref:`annotations`.
 
    .. php:method:: index() -> int
 
@@ -788,8 +788,8 @@ Attachment
 
       :rtype: string
       :throws PdfiumException: The document's attachments changed since this one was fetched.
-         For an annotation's file: it went stale or its annotation was removed (see above), or
-         PDFium cannot find the file.
+         For an annotation's file: its annotation was removed (see above), or PDFium cannot find
+         the file.
       :throws MemoryException: The name would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -802,8 +802,8 @@ Attachment
       :rtype: ?string
       :throws PdfiumException: The document's attachments changed since this one was fetched, or
          reading the file fails partway.
-         For an annotation's file: it went stale or its annotation was removed (see above), or
-         PDFium cannot find the file.
+         For an annotation's file: its annotation was removed (see above), or PDFium cannot find
+         the file.
       :throws MemoryException: The file would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -813,8 +813,8 @@ Attachment
 
       :rtype: AttachmentMetadata
       :throws PdfiumException: The document's attachments changed since this one was fetched.
-         For an annotation's file: it went stale or its annotation was removed (see above), or
-         PDFium cannot find the file.
+         For an annotation's file: its annotation was removed (see above), or PDFium cannot find
+         the file.
       :throws MemoryException: An entry would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
@@ -1216,8 +1216,7 @@ Annotation
       write another type. A key whose value must be a name, such as ``Subtype`` or ``AS``, then
       holds a string that PDFium and other viewers ignore: ``setStringValue('Subtype', 'Square')``
       makes :php:meth:`type` return ``"Unknown"``. Setting ``FS`` replaces the file of a
-      FileAttachment annotation, so it makes the :php:class:`Attachment` objects of the document's
-      annotations stale, as :php:meth:`setAttachment` does.
+      FileAttachment annotation, as :php:meth:`setAttachment` does.
 
       The value is stored as given, so text that a PDF reader decodes differently does not read
       back as written. A value that starts with ``þÿ`` or ``ÿþ``, which a reader takes for a UTF-16
@@ -1348,10 +1347,9 @@ Annotation
          $file = $clip->setAttachment('data.csv', "a,b\n1,2\n", 'Data for the figure');
          echo $clip->attachment()->name();   // data.csv
 
-      From then on, every :php:class:`Attachment` fetched earlier from any annotation of this
-      document is stale; the document's own attachments stay usable. Nothing goes stale when PDFium
-      refuses because the annotation is not a FileAttachment. When PDFium cannot store the contents
-      or description, the annotation's previous file is already gone, and PDFium has no undo.
+      An :php:class:`Attachment` fetched earlier from this annotation reads the new file. When
+      PDFium cannot store the contents or description, the annotation's previous file is already
+      gone, and PDFium has no undo.
 
       :param string $name: The file name, as UTF-8.
       :param string $contents: The file's bytes.

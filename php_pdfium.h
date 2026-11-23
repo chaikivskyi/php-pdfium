@@ -26,7 +26,6 @@ typedef struct pdfium_doc_handle {
 	uint32_t refs;
 	uint64_t attachment_changes;
 	uint64_t annotation_removals;
-	uint64_t annotation_file_changes;
 	uint64_t form_changes;
 } pdfium_doc_handle;
 
@@ -189,7 +188,7 @@ bool pdfium_attachment_fill(FPDF_ATTACHMENT att, FPDF_DOCUMENT doc, zend_string 
 
 bool pdfium_signature_slots_match(void);
 void pdfium_annotation_free_obj(zend_object *obj);
-FPDF_ATTACHMENT pdfium_annotation_file_enter(zend_object *annotation, uint64_t fetched);
+FPDF_ATTACHMENT pdfium_annotation_file_enter(zend_object *annotation);
 bool pdfium_annotation_slots_match(void);
 
 bool pdfium_memory_fits(size_t bytes);

@@ -90,7 +90,6 @@ zend_object *pdfium_attachment_for_annotation(zend_object *annotation)
 	object_init_ex(&zv, pdfium_ce_attachment);
 	pdfium_attachment *a = pdfium_attachment_from_obj(Z_OBJ(zv));
 	a->owner = annotation;
-	a->changes = pdfium_annotation_from_obj(annotation)->ph->h->annotation_file_changes;
 	GC_ADDREF(annotation);
 	return Z_OBJ(zv);
 }
@@ -112,7 +111,7 @@ static FPDF_ATTACHMENT attachment_enter(zval *self)
 	pdfium_attachment *a = pdfium_attachment_from_obj(Z_OBJ_P(self));
 
 	if (a->owner) {
-		return pdfium_annotation_file_enter(a->owner, a->changes);
+		return pdfium_annotation_file_enter(a->owner);
 	}
 	a = attachment_current(self);
 	return a && pdfium_enter() ? a->att : NULL;

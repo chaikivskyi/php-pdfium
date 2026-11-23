@@ -154,17 +154,11 @@ static pdfium_annotation *annotation_enter(zend_object *obj)
 	return annotation_enter_at(obj, NULL);
 }
 
-FPDF_ATTACHMENT pdfium_annotation_file_enter(zend_object *annotation, uint64_t fetched)
+FPDF_ATTACHMENT pdfium_annotation_file_enter(zend_object *annotation)
 {
 	pdfium_annotation *a = annotation_enter(annotation);
 
 	if (!a) {
-		return NULL;
-	}
-	if (fetched != a->ph->h->annotation_file_changes) {
-		pdfium_leave();
-		zend_throw_exception(pdfium_ce_exception,
-			"An annotation's file in this document changed since this Attachment was fetched; fetch it again", 0);
 		return NULL;
 	}
 	FPDF_ATTACHMENT att = FPDFAnnot_GetFileAttachment(a->annot);
@@ -1064,12 +1058,8 @@ ZEND_METHOD(Pdfium_Annotation, setStringValue)
 	bool done = false;
 
 	if (a) {
-		bool set = FPDFAnnot_SetStringValue(a->annot, ZSTR_VAL(key), wvalue);
-
-		if (set && zend_string_equals_literal(key, "FS")) {
-			a->ph->h->annotation_file_changes++;
-		}
-		done = edit_done(a, before, set, "Cannot set the value of a %s annotation");
+		done = edit_done(a, before, FPDFAnnot_SetStringValue(a->annot, ZSTR_VAL(key), wvalue),
+			"Cannot set the value of a %s annotation");
 	}
 	efree(wvalue);
 	if (!done) {
@@ -1187,7 +1177,6 @@ ZEND_METHOD(Pdfium_Annotation, setAttachment)
 		FPDF_ATTACHMENT att = FPDFAnnot_AddFileAttachment(a->annot, wname);
 
 		if (att) {
-			a->ph->h->annotation_file_changes++;
 			stored = pdfium_attachment_fill(att, a->ph->h->doc, contents, wdesc);
 		}
 		added = edit_done(a, before, att != NULL, "Cannot attach a file to a %s annotation");
