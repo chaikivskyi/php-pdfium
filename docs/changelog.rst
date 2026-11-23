@@ -19,29 +19,30 @@ Features:
   ``Annotation`` objects with ``type()``, ``index()``, ``rect()`` and ``flags()``, and the
   ``Annotation::FLAG_*`` constants for the flags.
 - ``Annotation::color()``, ``interiorColor()``, ``border()``, ``quadPoints()``, ``vertices()``,
-  ``line()`` and ``inkStrokes()``: an annotation's colours, border and geometry. ``hasKey()``,
-  ``valueType()``, ``stringValue()`` and ``numberValue()``: its dictionary, by key.
-  ``appearance()``: its appearance stream for one of the ``Annotation::APPEARANCE_*`` modes.
-- Value classes ``Point`` and ``Border``. ``Point`` and ``Quad`` can be created with ``new``.
+  ``line()`` and ``inkStrokes()``: an annotation's colours, border and geometry.
+- ``Annotation::hasKey()``, ``valueType()``, ``stringValue()`` and ``numberValue()``: read its
+  dictionary by key. ``appearance()``: read its appearance stream for one of the
+  ``Annotation::APPEARANCE_*`` modes.
+- Value classes ``Point`` and ``Border``. Create ``Point`` and ``Quad`` with ``new``.
 - ``Page::addAnnotation()``: add an annotation of one of the 13 types PDFium creates.
-  ``Page::removeAnnotation()`` and ``Annotation::remove()``: take one off its page, after which
-  every ``Annotation`` for it throws.
+- ``Page::removeAnnotation()`` and ``Annotation::remove()``: take an annotation off its page. Every
+  ``Annotation`` for it throws afterwards.
 - ``Annotation::setRect()``, ``setFlags()``, ``setColor()``, ``setInteriorColor()``,
   ``setBorder()``, ``addQuadPoints()``, ``setQuadPoints()``, ``addInkStroke()``,
   ``removeInkStrokes()`` and ``setStringValue()``: change an annotation in place.
-  ``setAppearance()`` and ``clearAppearance()``: write and remove its appearance stream.
-  ``setColor()`` and ``setInteriorColor()`` throw while a normal appearance stream exists instead
+- ``Annotation::setAppearance()`` and ``clearAppearance()``: write and remove its appearance stream.
+  ``setColor()`` and ``setInteriorColor()`` throw while a normal appearance stream exists, instead
   of dropping it.
-- ``Annotation::linkedAnnotation()``: the annotation of the same page that a key such as ``Popup``
+- ``Annotation::linkedAnnotation()``: the annotation on the same page that a key such as ``Popup``
   or ``IRT`` points to. ``Annotation::link()``: a link annotation's ``Link``. ``setUri()``: make it
   open a URI.
 - ``Annotation::attachment()`` and ``setAttachment()``: read and replace the file of a
-  FileAttachment annotation, as an ``Attachment`` that keeps the annotation alive. It is separate
-  from the document's attachment list, so its ``index()`` throws.
-- What you set on annotations of an encrypted document is encrypted on save. Form fields (Widget
-  annotations) can be changed and removed, and the next render shows the change. Two ``Page``
-  objects for one page share its annotations. See the behaviour notes for these and for damaged
-  annotation lists.
+  FileAttachment annotation, as an ``Attachment`` that keeps the annotation alive. It sits outside
+  the document's attachment list, so its ``index()`` throws.
+- Saving an encrypted document encrypts what you set on its annotations.
+- Change and remove form fields (Widget annotations); the next ``render()`` shows the change.
+- Two ``Page`` objects for one page share its annotations. See the behaviour notes for these and
+  for damaged annotation lists.
 - ``Document::deletePage()``: remove a page.
 - ``Document::create()`` and ``Document::addPage()``: start a document with no pages and add blank
   pages of any size at any position.
@@ -53,25 +54,26 @@ Features:
 - ``Page::setRotation()`` and the page boxes: ``mediaBox()``, ``cropBox()``, ``bleedBox()``,
   ``trimBox()`` and ``artBox()`` with their setters, as ``Rect`` values in points.
 - A ``Page`` held from before an edit follows its page to its new index, and so do the
-  ``Annotation`` and ``FormField`` objects of the page. Once its page is deleted, or a failed edit
-  leaves its position unknown, the ``Page`` and every ``TextPage``, ``Annotation`` and
-  ``FormField`` made from it throw ``PdfiumException`` from every method.
-  ``PageIterator::current()`` gives the page at ``key()`` after the edit.
+  ``Annotation`` and ``FormField`` objects of the page.
+- Once you delete a page, or a failed edit leaves its position unknown, the ``Page`` and every
+  ``TextPage``, ``Annotation`` and ``FormField`` made from it throw ``PdfiumException`` from every
+  method. ``PageIterator::current()`` gives the page at ``key()`` after the edit.
 - ``Document::javaScripts()``: the scripts in the document's JavaScript name tree, as ``JavaScript``
-  values with a name and the source. Nothing is run.
+  values with a name and the source. Runs nothing.
 - ``Document::save()`` and ``toString()`` options ``incremental: true`` (keep the original file
   and append the changes) and ``version`` (the PDF version written in the header).
 - Ini setting ``pdfium.font_paths``: the directories PDFium scans for fonts that a PDF does not
   embed.
 - ``Document::fromFile()`` option ``lazy: true``: read a local file as PDFium needs it instead of
-  loading it whole. While such a document reads a file, ``Document::save()``, ``Bitmap::savePng()``
-  and ``saveJpeg()`` throw ``FileException`` instead of overwriting it in place; replacing it with a
-  new copy still works.
+  loading it whole.
+- While a lazy document reads a file, ``Document::save()``, ``Bitmap::savePng()`` and
+  ``saveJpeg()`` throw ``FileException`` instead of overwriting that file in place. Replacing it
+  with a new copy still works.
 
 Fixes:
 
 - ``Document::permissions()`` reports every permission for an unencrypted document PDFium built in
-  memory, such as the result of ``extractPages()`` or ``merge()``; it reported none.
+  memory, such as the result of ``extractPages()`` or ``merge()``. It used to report none.
 - ``Document::extractPages()`` throws ``MemoryException``, not a fatal error, when its page indexes
   would not fit under ``memory_limit``.
 
@@ -80,15 +82,16 @@ v0.3.0 (2026-11-21)
 
 Features:
 
-- ``Page::render()`` option ``region``: only a rectangle of the page, given as a ``Rect`` in points,
-  as for ``TextPage::textIn()``.
-- ``Page::render()`` option ``annotations: false``: the page without annotations or form fields.
-- ``Page::render()`` option ``transparent: true``: a transparent background, with alpha in PNG
-  output; JPEG is drawn on white.
-- ``Page::render()`` option ``grayscale: true``: a gray image, with one-channel PNG and JPEG output
-  (two channels, gray and alpha, in a transparent PNG).
-- ``Document::permanentId()`` and ``Document::changingId()``: the file's identifiers, one set when it
-  was created and one that changes with each save.
+- ``Page::render()`` option ``region``: render only a rectangle of the page, given as a ``Rect`` in
+  points, as for ``TextPage::textIn()``.
+- ``Page::render()`` option ``annotations: false``: render the page without annotations or form
+  fields.
+- ``Page::render()`` option ``transparent: true``: render on a transparent background, with alpha
+  in PNG output. JPEG output is drawn on white.
+- ``Page::render()`` option ``grayscale: true``: render a gray image, with one-channel PNG and JPEG
+  output (two channels, gray and alpha, in a transparent PNG).
+- ``Document::permanentId()`` and ``Document::changingId()``: the file's identifiers. The first is
+  set when the file is created; the second changes with each save.
 - ``Document::bookmarks()``: the outline, as a tree of ``Bookmark`` values with their titles,
   colours, styles and where they lead.
 - ``Page::openAction()`` and ``Page::closeAction()``: the actions a viewer runs when it opens or
@@ -97,17 +100,17 @@ Features:
 - Value classes ``Bookmark``, ``Link``, ``Quad``, ``Destination`` (a page in this document and how
   to show it) and ``Action`` (what a link, bookmark or page event does: go to a page, open a URI or
   another file).
-- ``Document::attachmentCount()``, ``attachments()`` and ``attachment()`` list embedded files as
-  ``Attachment`` objects with a name, contents and ``metadata()``, which gives the description,
-  MIME type, relationship, dates and checksum.
+- ``Document::attachmentCount()``, ``attachments()`` and ``attachment()``: list embedded files as
+  ``Attachment`` objects with a name, contents and ``metadata()``. The metadata gives the
+  description, MIME type, relationship, dates and checksum.
 - ``Document::addAttachment()`` and ``deleteAttachment()``: embed a file in the document or remove
-  one, written out by ``save()`` and ``toString()``.
-- ``Document::signatureCount()`` and ``signatures()`` list the document's signature fields as
+  one. ``save()`` and ``toString()`` write the change out.
+- ``Document::signatureCount()`` and ``signatures()``: list the document's signature fields as
   ``Signature`` values with the contents, byte range, sub-filter, reason, time and certification
   level.
 - ``Document::isTagged()``: whether the document says it is a tagged PDF.
-- ``Document::language()`` and ``Document::setLanguage()``: read and set the document's language,
-  written out by ``save()`` and ``toString()``.
+- ``Document::language()`` and ``Document::setLanguage()``: read and set the document's language.
+  ``save()`` and ``toString()`` write the change out.
 
 v0.2.0 (2026-11-15)
 -------------------
@@ -130,7 +133,7 @@ Features:
 Changes:
 
 - ``Page::text()`` gives a hyphen that PDFium joins across a line break as ``-``, not U+FFFE.
-- ``Page::text()`` leaves out a character PDFium cannot map to Unicode, not U+FFFE.
+- ``Page::text()`` leaves out a character PDFium cannot map to Unicode, instead of U+FFFE.
 
 v0.1.0 (2026-11-07)
 -------------------

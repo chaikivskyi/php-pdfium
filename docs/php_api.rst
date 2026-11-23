@@ -3,28 +3,52 @@ PHP API
 
 .. php:namespace:: Pdfium
 
-All classes are in the ``Pdfium`` namespace. The exact signatures are in ``pdfium.stub.php``.
+All classes live in the ``Pdfium`` namespace. ``pdfium.stub.php`` has the exact signatures.
 
-Except for :php:class:`Rect`, :php:class:`Quad` and :php:class:`Point`, you cannot create these
-classes with ``new``. Get a :php:class:`Document` from :php:meth:`Document::fromFile`,
-:php:meth:`Document::fromString` or :php:meth:`Document::create`, or from
-:php:meth:`Document::extractPages`, :php:meth:`Document::merge` or :php:meth:`Document::nUp`, which
-return a new one; get everything else from the document. You create a :php:class:`Rect` to pass to
-:php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach`, :php:meth:`Page::render`,
-:php:meth:`Page::addAnnotation`, :php:meth:`Annotation::setRect` or a box setter such as
-:php:meth:`Page::setCropBox`. A :php:class:`Quad` goes to :php:meth:`Annotation::addQuadPoints` and
-:php:meth:`Annotation::setQuadPoints`, and a :php:class:`Point` to
-:php:meth:`Annotation::addInkStroke`.
+You cannot create these classes with ``new``, except :php:class:`Rect`, :php:class:`Quad` and
+:php:class:`Point`. Get the others as follows:
 
-:php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
-:php:class:`Bitmap`, :php:class:`Attachment`, :php:class:`Annotation` and :php:class:`FormField`
-cannot be cloned or serialized. The value classes (:php:class:`Metadata`, :php:class:`Permissions`,
-:php:class:`Rect`, :php:class:`Char`, :php:class:`Color`, :php:class:`Matrix`,
-:php:class:`TextMatch`, :php:class:`WebLink`, :php:class:`Bookmark`, :php:class:`Link`,
-:php:class:`Quad`, :php:class:`Destination`, :php:class:`Action`, :php:class:`JavaScript`,
-:php:class:`AttachmentMetadata`, :php:class:`Border`, :php:class:`Signature`, :php:class:`Point`,
-:php:class:`FormFieldOption` and :php:class:`FormFieldFlags`) are read-only and can be cloned and
-serialized.
+.. list-table::
+   :header-rows: 1
+   :widths: 20 80
+
+   * - Class
+     - How you get or use it
+   * - :php:class:`Document`
+     - :php:meth:`Document::fromFile`, :php:meth:`Document::fromString` or
+       :php:meth:`Document::create`; or :php:meth:`Document::extractPages`,
+       :php:meth:`Document::merge` or :php:meth:`Document::nUp`, which return a new one.
+   * - :php:class:`Rect`
+     - Create it with ``new`` and pass it to :php:meth:`TextPage::textIn`,
+       :php:meth:`TextPage::textInEach`, :php:meth:`Page::render`, :php:meth:`Page::addAnnotation`,
+       :php:meth:`Annotation::setRect` or a box setter such as :php:meth:`Page::setCropBox`.
+   * - :php:class:`Quad`
+     - Create it with ``new`` and pass it to :php:meth:`Annotation::addQuadPoints` and
+       :php:meth:`Annotation::setQuadPoints`.
+   * - :php:class:`Point`
+     - Create it with ``new`` and pass it to :php:meth:`Annotation::addInkStroke`.
+   * - Everything else
+     - Get it from the document.
+
+Cloning and serializing:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 75 25
+
+   * - Classes
+     - Clone and serialize
+   * - :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
+       :php:class:`Bitmap`, :php:class:`Attachment`, :php:class:`Annotation` and
+       :php:class:`FormField`
+     - Not possible.
+   * - The value classes: :php:class:`Metadata`, :php:class:`Permissions`, :php:class:`Rect`,
+       :php:class:`Char`, :php:class:`Color`, :php:class:`Matrix`, :php:class:`TextMatch`,
+       :php:class:`WebLink`, :php:class:`Bookmark`, :php:class:`Link`, :php:class:`Quad`,
+       :php:class:`Destination`, :php:class:`Action`, :php:class:`JavaScript`,
+       :php:class:`AttachmentMetadata`, :php:class:`Border`, :php:class:`Signature`,
+       :php:class:`Point`, :php:class:`FormFieldOption` and :php:class:`FormFieldFlags`
+     - Possible. These classes are read-only.
 
 
 Document
@@ -33,23 +57,26 @@ Document
 .. php:class:: Document
 
    A PDF document. Implements ``\Countable`` and ``\IteratorAggregate``, so ``count($doc)`` and
-   ``foreach ($doc as $index => $page)`` both work. It can be edited: pages deleted, added, copied
-   in, moved, rotated and given new boxes. The edits are written out only by :php:meth:`save` or
-   :php:meth:`toString`; see :ref:`page-editing`.
+   ``foreach ($doc as $index => $page)`` both work.
+
+   You can delete, add, copy in, move and rotate pages, and give them new boxes. Only
+   :php:meth:`save` or :php:meth:`toString` writes the edits out; see :ref:`page-editing`.
 
    .. rubric:: Opening
 
    .. php:staticmethod:: fromFile(string $path, ?string $password = null, bool $lazy = false) -> Document
 
       Reads a PDF file through PHP streams, so stream wrappers such as ``phar://`` or ``s3://`` work
-      and ``open_basedir`` is respected. The whole file is kept in PHP memory; the file itself is
-      not used again. With ``$lazy`` true, a local file is instead kept open and read as PDFium
+      and ``open_basedir`` applies. The extension keeps the whole file in PHP memory and does not
+      use the file again.
+
+      With ``$lazy`` true, the extension instead keeps a local file open and reads it as PDFium
       needs it; see :ref:`large-files`.
 
       :param string $path: Path or stream URL.
       :param ?string $password: Password for an encrypted document.
-      :param bool $lazy: Read the file on demand instead of loading it whole. Local files only, and
-         the file must not change while the document exists.
+      :param bool $lazy: Read the file on demand instead of loading it whole. Local files only; do
+         not change the file while the document exists.
       :rtype: Document
       :throws \\ValueError: The path is empty, or the path or password contains a NUL byte.
       :throws FileException: The file cannot be read, the path is too long, or it is outside
@@ -63,9 +90,10 @@ Document
 
    .. php:staticmethod:: create() -> Document
 
-      A new document with no pages, and no metadata beyond what PDFium writes. Add pages with
-      :php:meth:`addPage`; :php:meth:`save` and :php:meth:`toString` write it out, and a document
-      with no pages opens again with ``pageCount()`` of ``0``.
+      Returns a new document with no pages, and no metadata beyond what PDFium writes. Add pages
+      with :php:meth:`addPage`; :php:meth:`save` and :php:meth:`toString` write it out.
+
+      A document saved with no pages opens again with ``pageCount()`` of ``0``.
 
       :rtype: Document
       :throws MemoryException: PDFium cannot create a document.
@@ -73,7 +101,7 @@ Document
 
    .. php:staticmethod:: fromString(string $bytes, ?string $password = null) -> Document
 
-      Opens a PDF from a string. The string is not copied; the document keeps it in memory.
+      Opens a PDF from a string. The document keeps the string in memory without copying it.
 
       :param string $bytes: The contents of a PDF file.
       :param ?string $password: Password for an encrypted document.
@@ -88,21 +116,21 @@ Document
 
    .. php:method:: pageCount() -> int
 
-      The number of pages. Fast: no page is loaded.
+      Returns the number of pages. Fast: loads no page.
 
       :rtype: int
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: count() -> int
 
-      Same as :php:meth:`pageCount`, so ``count($doc)`` works.
+      Returns the same as :php:meth:`pageCount`, so ``count($doc)`` works.
 
       :rtype: int
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: metadata() -> Metadata
 
-      The document's title, author and so on. See :php:class:`Metadata`.
+      Returns the document's title, author and so on. See :php:class:`Metadata`.
 
       :rtype: Metadata
       :throws MemoryException: An entry would not fit under ``memory_limit``.
@@ -110,25 +138,25 @@ Document
 
    .. php:method:: permissions() -> Permissions
 
-      The document's permission flags. They are only reported, not enforced. See
-      :php:class:`Permissions`.
+      Returns the document's permission flags. The extension reports them and does not enforce
+      them. See :php:class:`Permissions`.
 
       :rtype: Permissions
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: isTagged() -> bool
 
-      Whether the document says it is a tagged PDF (its ``/MarkInfo`` has ``/Marked`` set). It does
-      not check that the document has a usable structure tree. See :ref:`accessibility`.
+      Returns whether the document says it is a tagged PDF (its ``/MarkInfo`` has ``/Marked``
+      set). Does not check that the document has a usable structure tree. See :ref:`accessibility`.
 
       :rtype: bool
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: language() -> ?string
 
-      The document's language (its ``/Lang``) as PDFium reads it, for example ``"en-US"``, as UTF-8;
-      ``null`` when there is none, it is empty, or PDFium cannot read it as text. See
-      :ref:`accessibility`.
+      Returns the document's language (its ``/Lang``) as PDFium reads it, for example ``"en-US"``,
+      as UTF-8. Returns ``null`` when there is none, it is empty, or PDFium cannot read it as text.
+      See :ref:`accessibility`.
 
       :rtype: ?string
       :throws MemoryException: It would not fit under ``memory_limit``.
@@ -136,8 +164,10 @@ Document
 
    .. php:method:: setLanguage(string $language) -> void
 
-      Sets the document's language, for example ``"en-US"``. It is not checked to be a language
-      tag. An empty string means the language is unknown, and ``language()`` then returns ``null``.
+      Sets the document's language, for example ``"en-US"``, without checking that it is a
+      language tag. Pass an empty string to mark the language unknown; ``language()`` then returns
+      ``null``.
+
       Changes the loaded document; ``save()`` or ``toString()`` writes it out.
 
       :param string $language: The language, as UTF-8.
@@ -150,9 +180,11 @@ Document
 
    .. php:method:: permanentId() -> ?string
 
-      The first of the file's two identifiers (its ``/ID``): set when the file was created and
-      meant to stay the same in later versions. Raw bytes: use ``bin2hex()`` to show them.
-      ``null`` when the file has none or it is empty.
+      Returns the first of the file's two identifiers (its ``/ID``): set when the file was created
+      and meant to stay the same in later versions. Returns ``null`` when the file has none or it
+      is empty.
+
+      The identifier is raw bytes: use ``bin2hex()`` to show it.
 
       :rtype: ?string
       :throws MemoryException: The identifier would not fit under ``memory_limit``.
@@ -160,9 +192,10 @@ Document
 
    .. php:method:: changingId() -> ?string
 
-      The second of the file's two identifiers (its ``/ID``), which changes each time the file is
-      saved. Raw bytes: use ``bin2hex()`` to show them. ``null`` when the file has none or it is
-      empty.
+      Returns the second of the file's two identifiers (its ``/ID``), which changes each time the
+      file is saved. Returns ``null`` when the file has none or it is empty.
+
+      The identifier is raw bytes: use ``bin2hex()`` to show it.
 
       :rtype: ?string
       :throws MemoryException: The identifier would not fit under ``memory_limit``.
@@ -172,8 +205,9 @@ Document
 
    .. php:method:: bookmarks() -> array
 
-      The document outline: the top-level :php:class:`Bookmark` entries, in order, each with its
-      :php:attr:`Bookmark::children`. Empty when the document has no outline.
+      Returns the document outline: the top-level :php:class:`Bookmark` entries, in order, each
+      with its :php:attr:`Bookmark::children`. Returns an empty array when the document has no
+      outline.
 
       .. code-block:: php
 
@@ -190,7 +224,7 @@ Document
          }
          toc($doc->bookmarks());
 
-      An outline that loops or nests deeper than 100 levels is cut short; see :ref:`navigation`.
+      Cuts short an outline that loops or nests deeper than 100 levels; see :ref:`navigation`.
 
       :rtype: Bookmark[]
       :throws MemoryException: The outline would not fit under ``memory_limit``.
@@ -200,10 +234,12 @@ Document
 
    .. php:method:: javaScripts() -> array
 
-      The scripts in the document's ``/JavaScript`` name tree, as :php:class:`JavaScript` values in
-      the order PDFium lists them. Empty when the document has none. Nothing is run; see
-      :ref:`javascript` for what is and is not included, and for a crafted file that can keep this
-      call busy for minutes.
+      Returns the scripts in the document's ``/JavaScript`` name tree, as :php:class:`JavaScript`
+      values in the order PDFium lists them. Returns an empty array when the document has none.
+      Runs nothing.
+
+      See :ref:`javascript` for what is and is not included, and for a crafted file that can keep
+      this call busy for minutes.
 
       .. code-block:: php
 
@@ -219,16 +255,16 @@ Document
 
    .. php:method:: attachmentCount() -> int
 
-      The number of files embedded in the document.
+      Returns the number of files embedded in the document.
 
       :rtype: int
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: attachments() -> array
 
-      Every embedded file as an :php:class:`Attachment`, keyed by the index that
-      :php:meth:`attachment` and :php:meth:`deleteAttachment` take. An entry PDFium cannot read is
-      left out, so keys can skip numbers.
+      Returns every embedded file as an :php:class:`Attachment`, keyed by the index that
+      :php:meth:`attachment` and :php:meth:`deleteAttachment` take. Leaves out an entry PDFium
+      cannot read, so keys can skip numbers.
 
       .. code-block:: php
 
@@ -245,7 +281,7 @@ Document
 
    .. php:method:: attachment(int $index) -> Attachment
 
-      One embedded file.
+      Returns one embedded file.
 
       :param int $index: Attachment number, starting at 0.
       :rtype: Attachment
@@ -257,9 +293,10 @@ Document
 
       Embeds a file in this document, in place: :php:meth:`save` or :php:meth:`toString` writes it
       out. PDFium sets the size, creation date and checksum; the MIME type, relationship and
-      modification date stay empty. The new file can take any index, and every
-      :php:class:`Attachment` fetched from the document's list before this call is now stale; an
-      annotation's file is not. See :ref:`attachments`.
+      modification date stay empty.
+
+      The new file can take any index. Every :php:class:`Attachment` fetched from the document's
+      list before this call is now stale; an annotation's file is not. See :ref:`attachments`.
 
       :param string $name: The file name, as UTF-8.
       :param string $contents: The file's bytes.
@@ -270,19 +307,23 @@ Document
          for a byte order mark (see :ref:`accessibility`); or ``$contents`` is longer than
          2147483647 bytes, the most PDFium can store (see :ref:`attachments`).
       :throws PdfiumException: PDFium refuses: the name may already be used, or the list of
-         attachments is damaged. Also when PDFium cannot store the contents or description; the new
-         entry is then removed if possible, and the message says when it stays.
+         attachments is damaged. Also when PDFium cannot store the contents or description; the
+         extension then removes the new entry if possible, and the message says when it stays.
       :throws MemoryException: The name or description would not fit under ``memory_limit``.
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: deleteAttachment(int $index) -> void
 
-      Removes an embedded file from this document, in place. A saved PDF leaves out a deleted
-      file that came with the loaded document, unless something else in the document still points
-      to it; a file added since loading and then deleted stays in the saved PDF, unused. Every
-      :php:class:`Attachment` fetched from the document's list before this call is now stale; an
-      annotation's file is not. To delete several, collect their indexes first and delete from the
-      highest down:
+      Removes an embedded file from this document, in place. What a saved PDF then holds:
+
+      - A deleted file that came with the loaded document: left out, unless something else in the
+        document still points to it.
+      - A file added since loading and then deleted: kept, unused.
+
+      Every :php:class:`Attachment` fetched from the document's list before this call is now
+      stale; an annotation's file is not.
+
+      To delete several, collect their indexes first and delete from the highest down:
 
       .. code-block:: php
 
@@ -305,16 +346,16 @@ Document
 
    .. php:method:: signatureCount() -> int
 
-      How many signature fields are at the top of the form's field list, signed or not.
+      Returns how many signature fields are at the top of the form's field list, signed or not.
 
       :rtype: int
       :throws BusyException: ZTS only: another thread is using PDFium.
 
    .. php:method:: signatures() -> array
 
-      Every signature field at the top of the form's field list as a :php:class:`Signature`,
-      signed or not, in order and with repeats; empty when there are none.
-      See :ref:`signatures`.
+      Returns every signature field at the top of the form's field list as a
+      :php:class:`Signature`, signed or not, in order and with repeats. Returns an empty array when
+      there are none. See :ref:`signatures`.
 
       .. code-block:: php
 
@@ -332,8 +373,8 @@ Document
 
    .. php:method:: formType() -> FormType
 
-      Which kind of form the document has, read from its catalog; see :php:class:`FormType`. Unlike
-      the other form methods, it leaves the document unchanged.
+      Returns which kind of form the document has, read from its catalog; see
+      :php:class:`FormType`. Unlike the other form methods, it leaves the document unchanged.
 
       :rtype: FormType
       :throws BusyException: ZTS only: another thread is using PDFium.
@@ -352,8 +393,8 @@ Document
 
    .. php:method:: deletePage(int $index) -> void
 
-      Removes a page from this document. Deleting the only page leaves a document with no
-      pages, which :php:meth:`save` and :php:meth:`toString` can write.
+      Removes a page from this document. Deleting the only page leaves a document with no pages,
+      which :php:meth:`save` and :php:meth:`toString` can write.
 
       Deleting inside ``foreach`` can make the loop skip a page; see :ref:`page-editing`.
 
@@ -367,8 +408,10 @@ Document
 
       Adds a blank page of ``$width`` by ``$height`` points and returns it.
 
-      The page is unrotated and exactly this size, whatever rotation or crop box its place in the page
-      tree would give it. Adding inside ``foreach`` can make the loop see a page again. See :ref:`page-editing`.
+      The page is unrotated and exactly this size, whatever rotation or crop box its place in the
+      page tree would give it.
+
+      Adding inside ``foreach`` can make the loop see a page again. See :ref:`page-editing`.
 
       :param float $width: Width in points; finite and greater than 0.
       :param float $height: Height in points; finite and greater than 0.
@@ -384,25 +427,31 @@ Document
 
    .. php:method:: insertPages(Document $source, ?array $indexes = null, ?int $index = null, bool $removeSecurity = false) -> void
 
-      Copies pages of ``$source`` into this document at ``$index``. ``$indexes`` are int
-      page indexes of ``$source`` in the order wanted, duplicates kept; ``null`` copies every page.
-      ``$source`` may be this document; the pages then go through a temporary copy, so they are
-      held twice in memory during the call. Bookmarks, attachments and viewer preferences are not
-      copied, and copied form fields can no longer be filled in. It sets the document's producer to
-      ``"PDFium"``, replacing the old one, if the file has document information (what
-      :php:meth:`metadata` reads), as most files do.
+      Copies pages of ``$source`` into this document at ``$index``. ``$indexes`` lists int page
+      indexes of ``$source`` in the order wanted, duplicates kept; ``null`` copies every page.
 
-      A copy can take its rotation and crop box from where it lands in this document's page tree, so
-      its size and rotation can differ from the source page's. Inserting inside ``foreach`` can make
-      the loop see a page again. See :ref:`page-editing`.
+      ``$source`` may be this document; the pages then go through a temporary copy, so memory
+      holds them twice during the call.
+
+      What the copy leaves behind or changes:
+
+      - Does not copy bookmarks, attachments or viewer preferences.
+      - Copied form fields can no longer be filled in.
+      - Sets the document's producer to ``"PDFium"``, replacing the old one, if the file has
+        document information (what :php:meth:`metadata` reads), as most files do.
+
+      A copy can take its rotation and crop box from where it lands in this document's page tree,
+      so its size and rotation can differ from the source page's.
+
+      Inserting inside ``foreach`` can make the loop see a page again. See :ref:`page-editing`.
 
       :param Document $source: The document to copy from.
       :param ?array $indexes: Page indexes of ``$source``; ``null`` means every page.
       :param ?int $index: Where the pages go, from 0 to ``pageCount()``; ``null`` puts them after
          the last page.
       :param bool $removeSecurity: Needed only when ``$source`` is another, encrypted document:
-         ``true`` lets its pages go without the source's password. They take this document's
-         encryption, if any.
+         pass ``true`` to let its pages go without the source's password. They take this
+         document's encryption, if any.
       :throws \\ValueError: ``$source`` has no pages, ``$indexes`` is empty or holds an index
          outside ``$source``'s pages, or ``$index`` is out of range.
       :throws \\TypeError: An element of ``$indexes`` is not an int.
@@ -424,8 +473,10 @@ Document
       listed.
 
       A moved page can take its rotation, boxes, fonts and images from its new place in the page
-      tree, so its size, rotation and look can change. Moving pages inside ``foreach`` can make the
-      loop skip or repeat a page. See :ref:`page-editing`.
+      tree, so its size, rotation and look can change.
+
+      Moving pages inside ``foreach`` can make the loop skip or repeat a page. See
+      :ref:`page-editing`.
 
       :param array $indexes: Distinct int page indexes to move.
       :param int $to: Where the first listed page goes, from 0 to ``pageCount() - count($indexes)``.
@@ -439,13 +490,13 @@ Document
 
    .. php:method:: pages() -> PageIterator
 
-      An iterator over all pages. It loads one page at a time.
+      Returns an iterator over all pages. The iterator loads one page at a time.
 
       :rtype: PageIterator
 
    .. php:method:: getIterator() -> PageIterator
 
-      Same as :php:meth:`pages`, so ``foreach ($doc as $index => $page)`` works.
+      Returns the same as :php:meth:`pages`, so ``foreach ($doc as $index => $page)`` works.
 
       :rtype: PageIterator
 
@@ -453,14 +504,14 @@ Document
 
    .. php:method:: extractPages(array $indexes, bool $removeSecurity = false) -> Document
 
-      A new document with the given pages, in the given order. A page can appear more than once.
-      It keeps this document's viewer preferences.
+      Returns a new document with the given pages, in the given order. A page can appear more than
+      once. The new document keeps this document's viewer preferences.
 
       The new document is unencrypted and has no bookmarks or metadata beyond what PDFium writes.
       Form fields still draw but can no longer be filled in. See :ref:`pdfium-defaults`.
 
       :param array $indexes: A non-empty list of page numbers (``int[]``).
-      :param bool $removeSecurity: Must be ``true`` if this document is encrypted, because PDFium
+      :param bool $removeSecurity: Pass ``true`` if this document is encrypted, because PDFium
          cannot encrypt the result.
       :rtype: Document
       :throws \\ValueError: The list is empty, or an index is out of range.
@@ -475,13 +526,16 @@ Document
 
    .. php:method:: nUp(float $width, float $height, int $columns, int $rows, bool $removeSecurity = false) -> Document
 
-      A new document with this document's pages scaled onto sheets of ``$width`` by ``$height``
-      points, ``$columns`` across and ``$rows`` down, in page order left to right, then top to
-      bottom. Each page is scaled up or down to fit its cell, keeping its proportions, and centred
-      in it. The last sheet may be partly empty. The sheets show the pages' content only, without
-      links, form fields or other annotations. With one column and one row, PDFium instead copies
-      the pages whole and ignores ``$width`` and ``$height``: links stay, and form fields draw but
-      can no longer be filled in.
+      Returns a new document with this document's pages scaled onto sheets of ``$width`` by
+      ``$height`` points, ``$columns`` across and ``$rows`` down, in page order left to right, then
+      top to bottom.
+
+      Scales each page up or down to fit its cell, keeping its proportions, and centres it in the
+      cell. The last sheet may be partly empty. The sheets show the pages' content only, without
+      links, form fields or other annotations.
+
+      With one column and one row, PDFium instead copies the pages whole and ignores ``$width`` and
+      ``$height``: links stay, and form fields draw but can no longer be filled in.
 
       The new document is unencrypted and has no viewer preferences, bookmarks, attachments or
       metadata beyond what PDFium writes.
@@ -490,7 +544,7 @@ Document
       :param float $height: Sheet height in points, finite and greater than 0.
       :param int $columns: Pages across a sheet, at least 1.
       :param int $rows: Pages down a sheet, at least 1.
-      :param bool $removeSecurity: Must be ``true`` if this document is encrypted, because PDFium
+      :param bool $removeSecurity: Pass ``true`` if this document is encrypted, because PDFium
          cannot encrypt the result.
       :rtype: Document
       :throws \\ValueError: A size is not finite or not above 0 once rounded to a float, or a count
@@ -504,16 +558,16 @@ Document
 
    .. php:staticmethod:: merge(array $documents, bool $removeSecurity = false) -> Document
 
-      A new document with all pages of each document, one after another. It uses the first
-      document's viewer preferences.
+      Returns a new document with all pages of each document, one after another. The new document
+      uses the first document's viewer preferences.
 
-      Like :php:meth:`extractPages`, the result is unencrypted and has no bookmarks or metadata beyond
-      what PDFium writes, and its form fields can no longer be filled in.
+      Like :php:meth:`extractPages`, the result is unencrypted and has no bookmarks or metadata
+      beyond what PDFium writes, and its form fields can no longer be filled in.
 
       :param array $documents: A non-empty list of ``Document`` objects.
-      :param bool $removeSecurity: Must be ``true`` if any document is encrypted, because PDFium
-         cannot encrypt the result. Without it, the exception names the index of the first encrypted
-         document.
+      :param bool $removeSecurity: Pass ``true`` if any document is encrypted, because PDFium
+         cannot encrypt the result. Without it, the exception names the index of the first
+         encrypted document.
       :rtype: Document
       :throws \\ValueError: The list is empty.
       :throws \\TypeError: An element is not a ``Document``.
@@ -525,8 +579,8 @@ Document
 
    .. php:method:: toString(bool $removeSecurity = false, bool $incremental = false, ?int $version = null) -> string
 
-      The whole document as a PDF file in a string: a full copy, unless ``$incremental`` is
-      ``true``.
+      Returns the whole document as a PDF file in a string: a full copy, unless ``$incremental``
+      is ``true``.
 
       :param bool $removeSecurity: ``true`` writes the document without encryption. By default an
          encrypted document stays encrypted.
@@ -549,8 +603,10 @@ Document
    .. php:method:: save(string $path, bool $removeSecurity = false, bool $incremental = false, ?int $version = null) -> void
 
       Writes :php:meth:`toString` to a file, replacing it if it exists. Stream wrappers and
-      ``open_basedir`` work here. If writing a new file fails, the half-written file is deleted.
-      An existing file is replaced by renaming a complete copy over it where possible; see
+      ``open_basedir`` work here.
+
+      If writing a new file fails, the extension deletes the half-written file. It replaces an
+      existing file by renaming a complete copy over it where possible; see
       :ref:`the behaviour page <pdfium-defaults>`.
 
       :param string $path: File to write.
@@ -579,8 +635,9 @@ Metadata
 .. php:class:: Metadata
 
    The document information returned by :php:meth:`Document::metadata`: a final, read-only value.
-   Each property is a UTF-8 string, or ``null`` when the entry is empty or missing. Dates are
-   returned as they are stored in the PDF, for example ``D:20261031120000Z``.
+   Each property is a UTF-8 string, or ``null`` when the entry is empty or missing.
+
+   Dates come back as stored in the PDF, for example ``D:20261031120000Z``.
 
    .. php:attr:: title
 
@@ -621,9 +678,10 @@ AttachmentMetadata
 .. php:class:: AttachmentMetadata
 
    An embedded file's details, returned by :php:meth:`Attachment::metadata`: a final, read-only
-   value. Each property is a UTF-8 string, or ``null`` when the entry is empty or missing. Dates are
-   as stored in the PDF, for example ``D:20261031120000Z``. There is no size, as PDFium does not
-   read the stored one; use ``strlen($attachment->contents())``.
+   value. Each property is a UTF-8 string, or ``null`` when the entry is empty or missing. Dates
+   come back as stored in the PDF, for example ``D:20261031120000Z``.
+
+   It has no size, as PDFium does not read the stored one; use ``strlen($attachment->contents())``.
 
    .. php:attr:: description
 
@@ -648,9 +706,9 @@ AttachmentMetadata
 
    .. php:attr:: checksum
 
-      ``?string``: the MD5 the PDF stores for the file, as 32 lowercase hex digits. It is not checked
-      against :php:meth:`Attachment::contents`. ``null`` when missing or not stored as a hex
-      string.
+      ``?string``: the MD5 the PDF stores for the file, as 32 lowercase hex digits. The extension
+      does not check it against :php:meth:`Attachment::contents`. ``null`` when missing or not
+      stored as a hex string.
 
 
 Signature
@@ -659,9 +717,11 @@ Signature
 .. php:class:: Signature
 
    A signature field's details, returned by :php:meth:`Document::signatures`: a final, read-only
-   value. A value that is missing or empty comes back as ``null`` (``byteRange`` as an empty
-   array), so an unsigned field is all nulls. The signer's name, location and contact details and
-   the signature handler (``/Filter``) are not available.
+   value. A missing or empty value comes back as ``null`` (``byteRange`` as an empty array), so an
+   unsigned field is all nulls.
+
+   It does not expose the signer's name, location and contact details, or the signature handler
+   (``/Filter``).
 
    .. php:attr:: contents
 
@@ -690,8 +750,20 @@ Signature
 
    .. php:attr:: docMdpPermission
 
-      ``?int``: the certification level the signature claims: 1 no changes, 2 form filling and
-      signing, 3 also annotations. ``null`` for an ordinary signature.
+      ``?int``: the certification level the signature claims. ``null`` for an ordinary signature.
+
+      .. list-table::
+         :header-rows: 1
+         :widths: 20 80
+
+         * - Value
+           - Changes the signature allows
+         * - ``1``
+           - None
+         * - ``2``
+           - Form filling and signing
+         * - ``3``
+           - Form filling and signing, and also annotations
 
 
 Permissions
@@ -700,7 +772,8 @@ Permissions
 .. php:class:: Permissions
 
    The permission flags returned by :php:meth:`Document::permissions`: a final, read-only value.
-   They are only reported, never enforced. For an unencrypted document, all of them are ``true``.
+   The extension only reports them and never enforces them. For an unencrypted document, all of
+   them are ``true``.
 
    .. php:attr:: print
 
@@ -740,22 +813,23 @@ Page
 
 .. php:class:: Page
 
-   One page of a :php:class:`Document`. It follows its page when pages are deleted, added, copied
-   in or moved, and :php:meth:`index` reports where the page is now. Once its page is deleted, or a
-   failed edit leaves its position unknown, every method throws ``PdfiumException``; see
-   :ref:`page-editing`.
+   One page of a :php:class:`Document`. The object tracks its page when pages are deleted, added,
+   copied in or moved, and :php:meth:`index` reports where the page is now.
+
+   Once its page is deleted, or a failed edit leaves its position unknown, every method throws
+   ``PdfiumException``; see :ref:`page-editing`.
 
    .. php:method:: index() -> int
 
-      The page's position in its document, starting at 0.
+      Returns the page's position in its document, starting at 0.
 
       :rtype: int
       :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
 
    .. php:method:: width() -> float
 
-      Width of the area where the media box and crop box overlap, in points (1/72 inch), after
-      rotation. For example, ``595.28`` for A4.
+      Returns the width of the area where the media box and crop box overlap, in points (1/72
+      inch), after rotation. For example, ``595.28`` for A4.
 
       :rtype: float
       :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
@@ -763,8 +837,8 @@ Page
 
    .. php:method:: height() -> float
 
-      Height of the area where the media box and crop box overlap, in points, after rotation. For
-      example, ``841.89`` for A4.
+      Returns the height of the area where the media box and crop box overlap, in points, after
+      rotation. For example, ``841.89`` for A4.
 
       :rtype: float
       :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
@@ -772,8 +846,8 @@ Page
 
    .. php:method:: rotation() -> int
 
-      Rotation in degrees: ``0``, ``90``, ``180`` or ``270``. Unlike the box getters, it includes a
-      rotation the page takes from its page tree; see :ref:`page-editing`.
+      Returns the rotation in degrees: ``0``, ``90``, ``180`` or ``270``. Unlike the box getters,
+      it includes a rotation the page takes from its page tree; see :ref:`page-editing`.
 
       :rtype: int
       :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
@@ -781,7 +855,7 @@ Page
 
    .. php:method:: setRotation(int $degrees) -> void
 
-      Sets the rotation, clockwise and absolute, not added to the current one.
+      Sets the rotation, clockwise and absolute: it replaces the current rotation, not adds to it.
       :php:meth:`width` and :php:meth:`height` follow, also on every other :php:class:`Page`
       object at the same index.
 
@@ -796,13 +870,25 @@ Page
                    trimBox() -> ?Rect
                    artBox() -> ?Rect
 
-      The media box is the paper size, and the crop box the part of it that is shown and printed.
-      The bleed, trim and art boxes are used in print production; most files leave them unset.
+      Returns the page's own box, in points, as stored, with the corners ordered so that
+      ``left <= right`` and ``bottom <= top``. The getters don't clip a box other than the media
+      box to it.
 
-      The page's own box, in points, as stored, with the corners ordered so that ``left <= right``
-      and ``bottom <= top``; a box other than the media box is not clipped to it. ``null`` when
-      the page has none of its own, also when it takes one from its page tree; see
-      :ref:`page-editing`.
+      Returns ``null`` when the page has no box of its own, also when it takes one from its page
+      tree; see :ref:`page-editing`.
+
+      .. list-table::
+         :header-rows: 1
+         :widths: 30 70
+
+         * - Box
+           - Meaning
+         * - Media box
+           - The paper size.
+         * - Crop box
+           - The part of the media box that viewers show and print.
+         * - Bleed, trim and art boxes
+           - Used in print production; most files leave them unset.
 
       :rtype: ?Rect
       :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
@@ -814,13 +900,15 @@ Page
                    setTrimBox(Rect $box) -> void
                    setArtBox(Rect $box) -> void
 
-      Writes the page's own box as given. A box other than the media box is not checked against
-      it; viewers clip it to the media box. Every other :php:class:`Page` object at the same index
-      reports the new box too. After :php:meth:`setMediaBox` or :php:meth:`setCropBox`,
-      :php:meth:`width` and :php:meth:`height` follow, on every such object; the bleed, trim and
-      art boxes do not affect them. A crop box and media box that do not overlap leave the page
-      with zero width and height, and :php:meth:`render` then returns a 1 × 1 image of just the
-      background.
+      Writes the page's own box as given. The setters don't check a crop, bleed, trim or art box
+      against the media box; viewers clip it to the media box.
+
+      Every other :php:class:`Page` object at the same index reports the new box too. After
+      :php:meth:`setMediaBox` or :php:meth:`setCropBox`, :php:meth:`width` and :php:meth:`height`
+      follow on every such object; the bleed, trim and art boxes don't affect them.
+
+      A crop box and media box that don't overlap leave the page with zero width and height, and
+      :php:meth:`render` then returns a 1 × 1 image of just the background.
 
       :param Rect $box: The box, in points.
       :throws \\ValueError: A side is unset or not finite, or ``left`` is not less than ``right``
@@ -830,10 +918,11 @@ Page
 
    .. php:method:: text() -> string
 
-      All text on the page, as UTF-8, with ``\r\n`` between lines. Returns ``""`` if the page has
-      no text. See :ref:`text-positions` for hyphenated words and characters without Unicode. To
-      also search the text or read positions, use :php:meth:`textPage`, which reads the text only
-      once.
+      Returns all text on the page as UTF-8, with ``\r\n`` between lines, or ``""`` if the page
+      has no text. See :ref:`text-positions` for hyphenated words and characters without Unicode.
+
+      To also search the text or read positions, call :php:meth:`textPage` instead: it reads the
+      text only once.
 
       :rtype: string
       :throws FormatException: PDFium cannot read the page's text.
@@ -849,10 +938,10 @@ Page
       :param ?Rect $region: Render only this area, in points, as for
          :ref:`text positions <text-positions>`.
       :param bool $transparent: Render on a transparent background instead of white.
-      :param bool $annotations: Draw annotations and form fields. Form fields, and annotations of
-         most types, that have no appearance stream get one, stored in the document; on a form with
-         ``/NeedAppearances true`` the fields' streams can be replaced too. A later save writes
-         them. ``false`` leaves the document unchanged. See :ref:`annotations`.
+      :param bool $annotations: Draw annotations and form fields. PDFium gives form fields, and
+         annotations of most types, that have no appearance stream one, stored in the document; on
+         a form with ``/NeedAppearances true`` it can replace the fields' streams too. A later save
+         writes them. Pass ``false`` to leave the document unchanged. See :ref:`annotations`.
       :param bool $grayscale: Render in gray: PNG and JPEG output have one gray channel, two in a
          transparent PNG.
       :rtype: Bitmap
@@ -884,7 +973,8 @@ Page
 
    .. php:method:: openAction() -> ?Action
 
-      The action a viewer runs when it opens the page, or ``null``. See :ref:`navigation`.
+      Returns the action a viewer runs when it opens the page, or ``null``. See
+      :ref:`navigation`.
 
       :rtype: ?Action
       :throws MemoryException: The action would not fit under ``memory_limit``.
@@ -893,7 +983,8 @@ Page
 
    .. php:method:: closeAction() -> ?Action
 
-      The action a viewer runs when it closes the page, or ``null``. See :ref:`navigation`.
+      Returns the action a viewer runs when it closes the page, or ``null``. See
+      :ref:`navigation`.
 
       :rtype: ?Action
       :throws MemoryException: The action would not fit under ``memory_limit``.
@@ -902,8 +993,8 @@ Page
 
    .. php:method:: links() -> array
 
-      The page's link annotations, as :php:class:`Link` objects, back to front. These are the
-      areas a viewer makes clickable; URLs that are only written in the text are in
+      Returns the page's link annotations as :php:class:`Link` objects, back to front: the areas
+      a viewer makes clickable. For URLs that are only written in the text, use
       :php:meth:`TextPage::webLinks`.
 
       .. code-block:: php
@@ -923,13 +1014,17 @@ Page
 
    .. php:method:: linkAt(float $x, float $y) -> ?Link
 
-      The topmost link annotation at a point, or ``null`` if there is none.
+      Returns the topmost link annotation at a point, or ``null`` if there is none.
 
       Once ``linkAt()`` has looked at a page of a document, it keeps finding that page's link
-      annotations as they were then: a link removed since with :php:meth:`removeAnnotation` or
-      :php:meth:`Annotation::remove` is still found, and one added with :php:meth:`addAnnotation` is
-      not. :php:meth:`links` and :php:meth:`Annotation::link` see the change; use them after adding
-      or removing annotations. See :ref:`annotations`.
+      annotations as they were then:
+
+      - It still finds a link removed since with :php:meth:`removeAnnotation` or
+        :php:meth:`Annotation::remove`.
+      - It doesn't find one added with :php:meth:`addAnnotation`.
+
+      :php:meth:`links` and :php:meth:`Annotation::link` see the change; use them after adding or
+      removing annotations. See :ref:`annotations`.
 
       :param float $x: Horizontal position in points.
       :param float $y: Vertical position in points, from the bottom of the page.
@@ -943,7 +1038,7 @@ Page
 
    .. php:method:: annotationCount() -> int
 
-      The number of annotations on the page, of every type, including form fields (Widget
+      Returns the number of annotations on the page, of every type, including form fields (Widget
       annotations).
 
       :rtype: int
@@ -951,9 +1046,11 @@ Page
 
    .. php:method:: annotations() -> array
 
-      Every annotation on the page as an :php:class:`Annotation`, back to front, keyed by the index
-      that :php:meth:`annotation` takes. An entry of a damaged list that is not an annotation is
-      left out, so keys can skip numbers. Each call returns new objects.
+      Returns every annotation on the page as an :php:class:`Annotation`, back to front, keyed by
+      the index that :php:meth:`annotation` takes. Each call returns new objects.
+
+      In a damaged list, the method leaves out an entry that is not an annotation, so keys can skip
+      numbers.
 
       .. code-block:: php
 
@@ -967,7 +1064,7 @@ Page
 
    .. php:method:: annotation(int $index) -> Annotation
 
-      One annotation, as a new object.
+      Returns one annotation, as a new object.
 
       :param int $index: Annotation number, starting at 0.
       :rtype: Annotation
@@ -977,10 +1074,13 @@ Page
 
    .. php:method:: addAnnotation(string $type, Rect $rect) -> Annotation
 
-      Adds an annotation at the end of the page's list, in place: :php:meth:`Document::save` or
-      :php:meth:`Document::toString` writes it out. It has no colour, contents or appearance yet,
-      and its flags are 0: add :php:const:`FLAG_PRINT <Annotation::FLAG_PRINT>` for viewers to
-      print it. PDFium creates ``"Text"``, ``"Link"``, ``"FreeText"``, ``"Square"``, ``"Circle"``,
+      Adds an annotation at the end of the page's list, in place; :php:meth:`Document::save` or
+      :php:meth:`Document::toString` writes it out.
+
+      The new annotation has no colour, contents or appearance yet, and its flags are 0. Add
+      :php:const:`FLAG_PRINT <Annotation::FLAG_PRINT>` for viewers to print it.
+
+      PDFium creates ``"Text"``, ``"Link"``, ``"FreeText"``, ``"Square"``, ``"Circle"``,
       ``"Highlight"``, ``"Underline"``, ``"Squiggly"``, ``"StrikeOut"``, ``"Stamp"``, ``"Ink"``,
       ``"Popup"`` and ``"FileAttachment"`` annotations.
 
@@ -1001,12 +1101,17 @@ Page
 
    .. php:method:: removeAnnotation(int $index) -> void
 
-      Removes an annotation from the page, in place. The annotations after it move down one index,
-      and every :php:class:`Annotation` for the removed one throws from then on; the others stay
-      usable. So does every :php:class:`FormField` of another widget, while one of a removed Widget
-      throws. On a damaged page that lists the annotation twice, nothing throws; see
-      :ref:`annotations`. To remove several by index, remove from the highest down. A Widget's form
-      field stays in the document.
+      Removes an annotation from the page, in place. The annotations after it move down one index.
+
+      - Every :php:class:`Annotation` for the removed one throws from then on; the others stay
+        usable.
+      - Every :php:class:`FormField` of another widget stays usable; one of a removed Widget
+        throws.
+      - On a damaged page that lists the annotation twice, nothing throws; see
+        :ref:`annotations`.
+      - A Widget's form field stays in the document.
+
+      To remove several by index, remove from the highest down.
 
       :param int $index: Annotation number, starting at 0.
       :throws \\ValueError: The index is out of range.
@@ -1017,9 +1122,11 @@ Page
 
    .. php:method:: formFields() -> array
 
-      A :php:class:`FormField` for every widget on the page, back to front. A field with several
-      widgets, such as a radio group, gives one for each. Links and other annotations are not
-      listed. Empty when the page has no widgets or PDFium cannot set up its form. Like
+      Returns a :php:class:`FormField` for every widget on the page, back to front. A field with
+      several widgets, such as a radio group, gives one for each. The list leaves out links and
+      other annotations.
+
+      Returns an empty array when the page has no widgets or PDFium cannot set up its form. Like
       :php:meth:`render`, this can add appearance streams that a later save writes; see
       :ref:`pdfium-defaults`.
 
@@ -1035,9 +1142,9 @@ Page
 
    .. php:method:: formFieldAt(float $x, float $y) -> ?FormField
 
-      The form field whose widget is at a point, or ``null`` if there is none. A widget that PDFium
-      cannot tie to a field, which :php:meth:`formFields` lists with the type ``Unknown``, is not
-      found; see :ref:`forms`.
+      Returns the form field whose widget is at a point, or ``null`` if there is none. It doesn't
+      find a widget that PDFium cannot tie to a field, which :php:meth:`formFields` lists with the
+      type ``Unknown``; see :ref:`forms`.
 
       :param float $x: Horizontal position in points.
       :param float $y: Vertical position in points, from the bottom of the page.
@@ -1048,8 +1155,8 @@ Page
    .. php:method:: flatten(bool $forPrint = false) -> bool
 
       Turns every annotation of the page, form fields with their current values and links included,
-      into page content, in place and for good. This ``Page`` shows the new content, but objects made
-      before the flatten do not; see :ref:`forms`.
+      into page content, in place and for good. This ``Page`` shows the new content, but objects
+      made before the flatten don't; see :ref:`forms`.
 
       .. code-block:: php
 
@@ -1074,20 +1181,27 @@ Attachment
 
    A file embedded in a :php:class:`Document`, from :php:meth:`Document::attachments`,
    :php:meth:`Document::attachment` or :php:meth:`Document::addAttachment`. It keeps its document
-   alive. Once a file is added to or deleted from the document, it is stale and must be fetched
-   again; see :ref:`attachments`.
+   alive.
+
+   Once you add a file to or delete one from the document, the object is stale: fetch it again. See
+   :ref:`attachments`.
 
    One from :php:meth:`Annotation::attachment` or :php:meth:`Annotation::setAttachment` is the file
-   of a FileAttachment annotation instead. It keeps its annotation alive, is separate from the
-   document's list, and its :php:meth:`index` always throws. It reads the annotation's current
-   file on every call, also after :php:meth:`Annotation::setAttachment` or
-   :php:meth:`Annotation::setStringValue` with the key ``FS`` replaces it. Adding or deleting a
-   document file does not affect it. Every method throws once the annotation is removed from its
-   page or has no file. See :ref:`annotations`.
+   of a FileAttachment annotation instead:
+
+   - It keeps its annotation alive, is separate from the document's list, and its :php:meth:`index`
+     always throws.
+   - It reads the annotation's current file on every call, also after
+     :php:meth:`Annotation::setAttachment` or :php:meth:`Annotation::setStringValue` with the key
+     ``FS`` replaces it.
+   - Adding or deleting a document file does not affect it.
+   - Every method throws once the annotation is removed from its page or has no file.
+
+   See :ref:`annotations`.
 
    .. php:method:: index() -> int
 
-      The attachment's position in its document, starting at 0. For one returned by
+      Returns the attachment's position in its document, starting at 0. For one returned by
       :php:meth:`Document::addAttachment`, each call searches the list, so keep the result.
 
       :rtype: int
@@ -1097,8 +1211,9 @@ Attachment
 
    .. php:method:: name() -> string
 
-      The file name the entry gives, as UTF-8; empty when it gives none. It can differ from the key
-      the list is sorted by, and on macOS each ``/`` shows as ``:``; see :ref:`attachments`.
+      Returns the file name the entry gives, as UTF-8, or an empty string when it gives none. It can
+      differ from the key the list is sorted by, and on macOS each ``/`` shows as ``:``; see
+      :ref:`attachments`.
 
       :rtype: string
       :throws PdfiumException: The document's attachments changed since this one was fetched.
@@ -1109,9 +1224,10 @@ Attachment
 
    .. php:method:: contents() -> ?string
 
-      The file's bytes, decoded. ``null`` when there is no embedded file PDFium can read, for
-      example when the entry only points to a file outside the PDF. When PDFium cannot decode the
-      file, these are the bytes as stored; see :ref:`attachments`.
+      Returns the file's bytes, decoded. Returns ``null`` when there is no embedded file PDFium can
+      read, for example when the entry only points to a file outside the PDF.
+
+      When PDFium cannot decode the file, returns the bytes as stored; see :ref:`attachments`.
 
       :rtype: ?string
       :throws PdfiumException: The document's attachments changed since this one was fetched, or
@@ -1123,7 +1239,7 @@ Attachment
 
    .. php:method:: metadata() -> AttachmentMetadata
 
-      The file's description, MIME type, relationship to the document, dates and checksum.
+      Returns the file's description, MIME type, relationship to the document, dates and checksum.
 
       :rtype: AttachmentMetadata
       :throws PdfiumException: The document's attachments changed since this one was fetched.
@@ -1140,17 +1256,22 @@ Annotation
 
    An annotation on a :php:class:`Page`, from :php:meth:`Page::annotations`,
    :php:meth:`Page::annotation`, :php:meth:`Page::addAnnotation` or :php:meth:`linkedAnnotation`. It
-   keeps its page and document alive. Two objects for the same annotation see each other's
-   changes, but they are not ``==``; compare :php:meth:`index` instead. Once the annotation is
-   removed from its page, by :php:meth:`remove` or :php:meth:`Page::removeAnnotation`, or its page
-   is flattened with :php:meth:`Page::flatten`, every method throws :php:class:`PdfiumException`.
-   It follows its page when pages are moved, added or deleted, and throws as the
-   :php:class:`Page`'s methods do once the page is deleted or its position is unknown; see
+   keeps its page and document alive.
+
+   Two objects for the same annotation see each other's changes, but they are not ``==``; compare
+   :php:meth:`index` instead.
+
+   Every method throws :php:class:`PdfiumException` once the annotation is removed from its page,
+   by :php:meth:`remove` or :php:meth:`Page::removeAnnotation`, or its page is flattened with
+   :php:meth:`Page::flatten`.
+
+   The object follows its page when pages are moved, added or deleted. Once the page is deleted or
+   its position is unknown, it throws as the :php:class:`Page`'s methods do; see
    :ref:`page-editing`.
 
    The setters change the loaded document, in place: :php:meth:`Document::save` or
-   :php:meth:`Document::toString` writes the change out. What :php:meth:`Page::render` draws for an
-   annotation is its appearance stream, which blocks some changes; see :ref:`annotations`.
+   :php:meth:`Document::toString` writes the change out. :php:meth:`Page::render` draws an
+   annotation's appearance stream, which blocks some changes; see :ref:`annotations`.
 
    The bits of :php:meth:`flags`, as the PDF standard defines them:
 
@@ -1208,8 +1329,8 @@ Annotation
 
    .. php:method:: index() -> int
 
-      The annotation's current position on its page, starting at 0. For an annotation that a
-      damaged page lists twice, the first; see :ref:`annotations`.
+      Returns the annotation's current position on its page, starting at 0. For an annotation that
+      a damaged page lists twice, returns the first; see :ref:`annotations`.
 
       :rtype: int
       :throws PdfiumException: The annotation was removed from its page.
@@ -1217,12 +1338,39 @@ Annotation
 
    .. php:method:: type() -> string
 
-      The PDF subtype: ``"Text"``, ``"Link"``, ``"FreeText"``, ``"Line"``, ``"Square"``,
-      ``"Circle"``, ``"Polygon"``, ``"PolyLine"``, ``"Highlight"``, ``"Underline"``,
-      ``"Squiggly"``, ``"StrikeOut"``, ``"Stamp"``, ``"Caret"``, ``"Ink"``, ``"Popup"``,
-      ``"FileAttachment"``, ``"Sound"``, ``"Movie"``, ``"Widget"``, ``"Screen"``,
-      ``"PrinterMark"``, ``"TrapNet"``, ``"Watermark"``, ``"3D"``, ``"RichMedia"``,
-      ``"XFAWidget"``, ``"Redact"``, or ``"Unknown"`` for any other.
+      Returns the PDF subtype, one of the following, or ``"Unknown"`` for any other:
+
+      .. hlist::
+         :columns: 4
+
+         - ``"Text"``
+         - ``"Link"``
+         - ``"FreeText"``
+         - ``"Line"``
+         - ``"Square"``
+         - ``"Circle"``
+         - ``"Polygon"``
+         - ``"PolyLine"``
+         - ``"Highlight"``
+         - ``"Underline"``
+         - ``"Squiggly"``
+         - ``"StrikeOut"``
+         - ``"Stamp"``
+         - ``"Caret"``
+         - ``"Ink"``
+         - ``"Popup"``
+         - ``"FileAttachment"``
+         - ``"Sound"``
+         - ``"Movie"``
+         - ``"Widget"``
+         - ``"Screen"``
+         - ``"PrinterMark"``
+         - ``"TrapNet"``
+         - ``"Watermark"``
+         - ``"3D"``
+         - ``"RichMedia"``
+         - ``"XFAWidget"``
+         - ``"Redact"``
 
       :rtype: string
       :throws PdfiumException: The annotation was removed from its page.
@@ -1230,9 +1378,9 @@ Annotation
 
    .. php:method:: rect() -> ?Rect
 
-      Where the annotation is on the page, in points, with left below right and bottom below top.
-      PDFium gives 0, 0, 0, 0 for an annotation without a rectangle; ``null`` when it cannot read
-      one.
+      Returns where the annotation is on the page, in points, with left below right and bottom
+      below top. PDFium gives 0, 0, 0, 0 for an annotation without a rectangle. Returns ``null``
+      when PDFium cannot read one.
 
       :rtype: ?Rect
       :throws PdfiumException: The annotation was removed from its page.
@@ -1241,9 +1389,11 @@ Annotation
    .. php:method:: setRect(Rect $rect) -> void
 
       Moves or resizes the annotation, in place. An appearance stream stays, and
-      :php:meth:`Page::render` draws it in the new rectangle, except for a Highlight, Underline,
-      Squiggly or StrikeOut whose appearance PDFium generated: that one is drawn at its quad points,
-      so change those too, and call :php:meth:`clearAppearance` for the next render to draw them.
+      :php:meth:`Page::render` draws it in the new rectangle.
+
+      Exception: for a Highlight, Underline, Squiggly or StrikeOut whose appearance PDFium
+      generated, the render draws at the quad points instead. Change those too, and call
+      :php:meth:`clearAppearance` for the next render to draw them.
 
       :param Rect $rect: The new rectangle, in points.
       :throws \\ValueError: A side of ``$rect`` is unset or one its constructor refuses, as in one
@@ -1254,7 +1404,8 @@ Annotation
 
    .. php:method:: flags() -> int
 
-      The annotation flags, a combination of the ``FLAG_*`` constants, from 0 to 4294967295.
+      Returns the annotation flags, a combination of the ``FLAG_*`` constants, from 0 to
+      4294967295.
 
       :rtype: int
       :throws PdfiumException: The annotation was removed from its page.
@@ -1276,11 +1427,14 @@ Annotation
 
    .. php:method:: color() -> ?Color
 
-      The colour (``/C``), with the opacity ``/CA`` as alpha, rounded down: 0.5 is 127. A
-      component below 0 in the file reads as 0, one above 1 as 255; one far above 1 may read as 0
-      instead. Without ``/C``, PDFium gives yellow (255, 255, 0) for a Highlight and black for other
-      types. ``null`` while the annotation has a normal appearance stream, whatever ``/C`` holds;
+      Returns the colour (``/C``), with the opacity ``/CA`` as alpha, rounded down: 0.5 is 127.
+      Returns ``null`` while the annotation has a normal appearance stream, whatever ``/C`` holds;
       see :ref:`annotations`.
+
+      - A component below 0 in the file reads as 0, one above 1 as 255; one far above 1 may read
+        as 0 instead.
+      - Without ``/C``, PDFium gives yellow (255, 255, 0) for a Highlight and black for other
+        types.
 
       :rtype: ?Color
       :throws PdfiumException: The annotation was removed from its page.
@@ -1288,9 +1442,9 @@ Annotation
 
    .. php:method:: interiorColor() -> ?Color
 
-      The interior colour (``/IC``), read as :php:meth:`color` reads ``/C``: with ``/CA`` as alpha,
-      yellow for a Highlight and black for other types when there is no ``/IC``, and ``null`` while
-      the annotation has a normal appearance stream.
+      Returns the interior colour (``/IC``), read as :php:meth:`color` reads ``/C``: with ``/CA``
+      as alpha, yellow for a Highlight and black for other types when there is no ``/IC``, and
+      ``null`` while the annotation has a normal appearance stream.
 
       :rtype: ?Color
       :throws PdfiumException: The annotation was removed from its page.
@@ -1298,11 +1452,13 @@ Annotation
 
    .. php:method:: setColor(int $red, int $green, int $blue, int $alpha = 255) -> void
 
-      Sets the colour (``/C``) and the opacity (``/CA``). PDFium refuses while the annotation has a
-      normal appearance stream, which most types get from a :php:meth:`Page::render` with
-      annotations. Call :php:meth:`clearAppearance` first; the extension never drops one for you.
-      The next render then draws the new colour for the types listed in :ref:`annotations`; any
-      other type, except a form field, is left with no appearance and draws nothing.
+      Sets the colour (``/C``) and the opacity (``/CA``). PDFium refuses while the annotation has
+      a normal appearance stream, which most types get from a :php:meth:`Page::render` with
+      annotations.
+
+      Call :php:meth:`clearAppearance` first; the extension never drops one for you. The next
+      render then draws the new colour for the types listed in :ref:`annotations`. Any other type,
+      except a form field, is left with no appearance and draws nothing.
 
       :param int $red: From 0 to 255.
       :param int $green: From 0 to 255.
@@ -1317,8 +1473,10 @@ Annotation
    .. php:method:: setInteriorColor(int $red, int $green, int $blue, int $alpha = 255) -> void
 
       Sets the interior colour (``/IC``) and the opacity (``/CA``), as :php:meth:`setColor` does,
-      with the same refusal while the annotation has a normal appearance stream. Both colours share
-      ``/CA``, so ``$alpha``, 255 by default, replaces an opacity :php:meth:`setColor` set.
+      with the same refusal while the annotation has a normal appearance stream.
+
+      Both colours share ``/CA``, so ``$alpha``, 255 by default, replaces an opacity
+      :php:meth:`setColor` set.
 
       :param int $red: From 0 to 255.
       :param int $green: From 0 to 255.
@@ -1331,8 +1489,8 @@ Annotation
 
    .. php:method:: border() -> ?Border
 
-      The border (``/Border``); ``null`` when the annotation has none, or one with fewer than three
-      numbers.
+      Returns the border (``/Border``), or ``null`` when the annotation has none, or one with fewer
+      than three numbers.
 
       :rtype: ?Border
       :throws PdfiumException: The annotation was removed from its page.
@@ -1341,9 +1499,11 @@ Annotation
    .. php:method:: setBorder(float $horizontalRadius, float $verticalRadius, float $width) -> void
 
       Sets the border (``/Border``), in points. This also removes the annotation's appearance
-      streams of every mode, including one another tool wrote. The next :php:meth:`Page::render`
-      generates a new one only for the types listed in :ref:`annotations` and for form fields; an
-      annotation of another type, such as a Stamp, then draws nothing.
+      streams of every mode, including one another tool wrote.
+
+      The next :php:meth:`Page::render` generates a new one only for the types listed in
+      :ref:`annotations` and for form fields. An annotation of another type, such as a Stamp, then
+      draws nothing.
 
       :param float $horizontalRadius: The horizontal radius of the rounded corners.
       :param float $verticalRadius: The vertical radius of the rounded corners.
@@ -1355,8 +1515,8 @@ Annotation
 
    .. php:method:: quadPoints() -> array
 
-      The quad points of a Highlight, Underline, Squiggly, StrikeOut or Link annotation: the areas
-      it covers. Empty when the annotation has none.
+      Returns the quad points of a Highlight, Underline, Squiggly, StrikeOut or Link annotation:
+      the areas it covers. Returns an empty array when the annotation has none.
 
       :rtype: Quad[]
       :throws PdfiumException: The annotation was removed from its page.
@@ -1373,8 +1533,8 @@ Annotation
          $h = $page->addAnnotation('Highlight', new Pdfium\Rect(72, 700, 300, 714));
          $h->addQuadPoints(new Pdfium\Quad(72, 714, 300, 714, 72, 700, 300, 700));
 
-      While the annotation has an appearance stream, :php:meth:`Page::render` keeps drawing it;
-      the area shows after :php:meth:`clearAppearance`.
+      While the annotation has an appearance stream, :php:meth:`Page::render` keeps drawing it.
+      Call :php:meth:`clearAppearance` to show the area.
 
       :param Quad $quad: The area, corners in the order upper left, upper right, lower left, lower
          right.
@@ -1386,9 +1546,10 @@ Annotation
 
    .. php:method:: setQuadPoints(int $index, Quad $quad) -> void
 
-      Replaces one area of the quad points. PDFium has no call to remove one. While the annotation
-      has an appearance stream, :php:meth:`Page::render` keeps drawing it; the new area shows
-      after :php:meth:`clearAppearance`. See :ref:`annotations`.
+      Replaces one area of the quad points. PDFium has no call to remove one.
+
+      While the annotation has an appearance stream, :php:meth:`Page::render` keeps drawing it.
+      Call :php:meth:`clearAppearance` to show the new area. See :ref:`annotations`.
 
       :param int $index: The area's index in :php:meth:`quadPoints`.
       :param Quad $quad: The new area.
@@ -1400,7 +1561,8 @@ Annotation
 
    .. php:method:: vertices() -> array
 
-      The vertices (``/Vertices``) of a Polygon or PolyLine annotation; empty for other types.
+      Returns the vertices (``/Vertices``) of a Polygon or PolyLine annotation; empty for other
+      types.
 
       :rtype: Point[]
       :throws PdfiumException: The annotation was removed from its page.
@@ -1409,8 +1571,8 @@ Annotation
 
    .. php:method:: line() -> ?array
 
-      The start and end points (``/L``) of a Line annotation, in that order; ``null`` for other
-      types and for a Line without a valid ``/L``.
+      Returns the start and end points (``/L``) of a Line annotation, in that order; ``null`` for
+      other types and for a Line without a valid ``/L``.
 
       :rtype: ?Point[]
       :throws PdfiumException: The annotation was removed from its page.
@@ -1418,8 +1580,8 @@ Annotation
 
    .. php:method:: inkStrokes() -> array
 
-      The strokes (``/InkList``) of an Ink annotation, one list of :php:class:`Point` per stroke;
-      empty for other types.
+      Returns the strokes (``/InkList``) of an Ink annotation, one list of :php:class:`Point` per
+      stroke; empty for other types.
 
       :rtype: Point[][]
       :throws PdfiumException: The annotation was removed from its page.
@@ -1428,9 +1590,9 @@ Annotation
 
    .. php:method:: addInkStroke(array $points) -> int
 
-      Adds a stroke to an Ink annotation and returns its index in :php:meth:`inkStrokes`. While the
-      annotation has an appearance stream, :php:meth:`Page::render` keeps drawing it; the stroke
-      shows after :php:meth:`clearAppearance`.
+      Adds a stroke to an Ink annotation and returns its index in :php:meth:`inkStrokes`. While
+      the annotation has an appearance stream, :php:meth:`Page::render` keeps drawing it. Call
+      :php:meth:`clearAppearance` to show the stroke.
 
       .. code-block:: php
 
@@ -1451,7 +1613,8 @@ Annotation
    .. php:method:: removeInkStrokes() -> void
 
       Removes every stroke of an Ink annotation. An appearance stream stays, and
-      :php:meth:`Page::render` keeps drawing the old strokes until :php:meth:`clearAppearance`.
+      :php:meth:`Page::render` keeps drawing the old strokes until you call
+      :php:meth:`clearAppearance`.
 
       :throws PdfiumException: The annotation was removed from its page, or PDFium refuses: it is not
          an Ink annotation.
@@ -1459,7 +1622,7 @@ Annotation
 
    .. php:method:: hasKey(string $key) -> bool
 
-      Whether the annotation's dictionary has the key.
+      Returns whether the annotation's dictionary has the key.
 
       :param string $key: A PDF key without the slash, such as ``"Contents"``, ``"T"`` (the author),
          ``"M"`` (the modification date), ``"Subj"``, ``"NM"`` or ``"CreationDate"``.
@@ -1470,10 +1633,12 @@ Annotation
 
    .. php:method:: valueType(string $key) -> string
 
-      The type of the key's value: ``"Boolean"``, ``"Number"``, ``"String"``, ``"Name"``,
-      ``"Array"``, ``"Dictionary"``, ``"Stream"``, ``"Null"``, ``"Reference"`` (an indirect
-      reference, such as ``/Popup``, even when the object it names does not exist), or
+      Returns the type of the key's value: ``"Boolean"``, ``"Number"``, ``"String"``,
+      ``"Name"``, ``"Array"``, ``"Dictionary"``, ``"Stream"``, ``"Null"``, ``"Reference"``, or
       ``"Unknown"`` when the key is missing.
+
+      ``"Reference"`` is an indirect reference, such as ``/Popup``, even when the object it names
+      does not exist.
 
       :param string $key: A PDF key without the slash, as for :php:meth:`hasKey`.
       :rtype: string
@@ -1483,8 +1648,8 @@ Annotation
 
    .. php:method:: stringValue(string $key) -> ?string
 
-      The key's string or name value as UTF-8; ``null`` when the key is missing, the value is
-      empty, or it is of another type, such as a number.
+      Returns the key's string or name value as UTF-8; ``null`` when the key is missing, the value
+      is empty, or it is of another type, such as a number.
 
       :param string $key: A PDF key without the slash, as for :php:meth:`hasKey`.
       :rtype: ?string
@@ -1495,7 +1660,7 @@ Annotation
 
    .. php:method:: numberValue(string $key) -> ?float
 
-      The key's number value; ``null`` when the key is missing or not a number.
+      Returns the key's number value; ``null`` when the key is missing or not a number.
 
       :param string $key: A PDF key without the slash, as for :php:meth:`hasKey`.
       :rtype: ?float
@@ -1505,12 +1670,30 @@ Annotation
 
    .. php:method:: linkedAnnotation(string $key) -> ?Annotation
 
-      The annotation the key points to, as a new object: ``"Popup"`` gives a markup annotation's
-      pop-up, ``"IRT"`` the annotation a reply answers, ``"Parent"`` a pop-up's annotation. It
-      follows one step only. It returns ``null`` when the key is missing or not a dictionary, or
-      when the annotation it points to is not in this page's annotation list, such as one of
-      another page. It also returns ``null`` when that dictionary has no ``/Type /Annot``, which
-      PDF makes optional, so some files leave it out. See :ref:`annotations`.
+      Returns the annotation the key points to, as a new object. It follows one step only.
+
+      .. list-table::
+         :header-rows: 1
+         :widths: 20 80
+
+         * - Key
+           - Returns
+         * - ``"Popup"``
+           - A markup annotation's pop-up.
+         * - ``"IRT"``
+           - The annotation a reply answers.
+         * - ``"Parent"``
+           - A pop-up's annotation.
+
+      Returns ``null`` when:
+
+      - the key is missing or not a dictionary;
+      - the annotation it points to is not in this page's annotation list, such as one of another
+        page;
+      - that dictionary has no ``/Type /Annot``, which PDF makes optional, so some files leave it
+        out.
+
+      See :ref:`annotations`.
 
       .. code-block:: php
 
@@ -1530,16 +1713,30 @@ Annotation
    .. php:method:: setStringValue(string $key, string $value) -> void
 
       Sets the key to a string, replacing any value it had. PDFium has no call to remove a key or to
-      write another type. A key whose value must be a name, such as ``Subtype`` or ``AS``, then
-      holds a string that PDFium and other viewers ignore: ``setStringValue('Subtype', 'Square')``
-      makes :php:meth:`type` return ``"Unknown"``. Setting ``FS`` replaces the file of a
-      FileAttachment annotation, as :php:meth:`setAttachment` does.
+      write another type.
 
-      The value is stored as given, so text that a PDF reader decodes differently does not read
-      back as written. A value that starts with ``þÿ`` or ``ÿþ``, which a reader takes for a UTF-16
-      byte order mark, reads back as UTF-16: ``"þÿAB"`` gives ``"䅂"``. One that starts with ``ï»¿``,
-      a UTF-8 byte order mark, loses those three characters, and one with the escape character
-      U+001B is cut there: ``"a\x1bb"`` gives ``"a"``.
+      A key whose value must be a name, such as ``Subtype`` or ``AS``, then holds a string that
+      PDFium and other viewers ignore: ``setStringValue('Subtype', 'Square')`` makes
+      :php:meth:`type` return ``"Unknown"``.
+
+      Setting ``FS`` replaces the file of a FileAttachment annotation, as :php:meth:`setAttachment`
+      does.
+
+      ``setStringValue()`` stores the value as given, so text that a PDF reader decodes differently
+      does not read back as written:
+
+      .. list-table::
+         :header-rows: 1
+         :widths: 45 55
+
+         * - Value
+           - Reads back
+         * - Starts with ``þÿ`` or ``ÿþ``, which a reader takes for a UTF-16 byte order mark
+           - As UTF-16: ``"þÿAB"`` gives ``"䅂"``.
+         * - Starts with ``ï»¿``, a UTF-8 byte order mark
+           - Without those three characters.
+         * - Contains the escape character U+001B
+           - Cut there: ``"a\x1bb"`` gives ``"a"``.
 
       .. code-block:: php
 
@@ -1557,11 +1754,24 @@ Annotation
 
    .. php:method:: appearance(int $mode = Annotation::APPEARANCE_NORMAL) -> ?string
 
-      The annotation's appearance stream for one mode, as UTF-8 text; ``null`` when there is none
-      or it is empty. The stream is decoded as a PDF text string: as UTF-16 when it starts with a
-      UTF-16 byte order mark (FE FF or FF FE), as UTF-8 after a UTF-8 one (EF BB BF), otherwise one
-      character per byte in PDFDocEncoding. ASCII comes back unchanged, other bytes do not: 0xE9
-      reads as ``é``, and ``é`` stored as UTF-8 reads as ``Ã©``.
+      Returns the annotation's appearance stream for one mode, as UTF-8 text; ``null`` when there
+      is none or it is empty. The method decodes the stream as a PDF text string:
+
+      .. list-table::
+         :header-rows: 1
+         :widths: 50 50
+
+         * - Stream starts with
+           - Decoded as
+         * - A UTF-16 byte order mark (FE FF or FF FE)
+           - UTF-16
+         * - A UTF-8 byte order mark (EF BB BF)
+           - UTF-8, after the mark
+         * - Anything else
+           - One character per byte, in PDFDocEncoding
+
+      ASCII comes back unchanged, other bytes do not: 0xE9 reads as ``é``, and ``é`` stored as UTF-8
+      reads as ``Ã©``.
 
       :param int $mode: One of the ``APPEARANCE_*`` constants.
       :rtype: ?string
@@ -1572,23 +1782,25 @@ Annotation
 
    .. php:method:: setAppearance(string $stream, int $mode = Annotation::APPEARANCE_NORMAL) -> void
 
-      Sets the appearance stream for one mode: PDF content operators that
-      :php:meth:`Page::render` draws instead of what PDFium would generate. This is how a Stamp
-      gets a picture. PDFium gives the stream the annotation's rectangle as its bounding box, so it
-      draws in page coordinates:
+      Sets the appearance stream for one mode: PDF content operators that :php:meth:`Page::render`
+      draws instead of what PDFium would generate. Use it to give a Stamp a picture.
+
+      PDFium gives the stream the annotation's rectangle as its bounding box, so it draws in page
+      coordinates:
 
       .. code-block:: php
 
          $stamp = $page->addAnnotation('Stamp', new Pdfium\Rect(100, 650, 300, 700));
          $stamp->setAppearance('1 0 0 rg 100 650 200 50 re f');   // fills the rectangle red
 
-      The stream is stored one byte per character, in PDFDocEncoding. If any character is not in
-      PDFDocEncoding, all of it is stored as UTF-16 and draws nothing. Keep it to ASCII, and write
-      other bytes in strings as octal escapes or hex strings.
+      ``setAppearance()`` stores the stream one byte per character, in PDFDocEncoding. If any
+      character is not in PDFDocEncoding, it stores all of it as UTF-16, which draws nothing.
+
+      Keep the stream to ASCII, and write other bytes in strings as octal escapes or hex strings.
 
       On a form with ``/NeedAppearances true``, the next :php:meth:`Page::render` of the page with
       annotations replaces a Widget's stream with one PDFium generates, and a later save writes
-      that; on other forms the stream stays. See :ref:`annotations`.
+      that. On other forms the stream stays. See :ref:`annotations`.
 
       :param string $stream: The content stream, as UTF-8.
       :param int $mode: One of the ``APPEARANCE_*`` constants.
@@ -1601,11 +1813,13 @@ Annotation
 
    .. php:method:: clearAppearance(int $mode = Annotation::APPEARANCE_NORMAL) -> void
 
-      Removes the appearance stream of one mode; for ``APPEARANCE_NORMAL``, of all three. The next
-      :php:meth:`Page::render` with annotations generates a new normal appearance only for the
-      types listed in :ref:`annotations` and for form fields. An annotation of any other type, such
-      as a Stamp, or a Line or Polygon from another tool, is left with no appearance and draws
-      nothing.
+      Removes the appearance stream of one mode; for ``APPEARANCE_NORMAL``, of all three.
+
+      The next :php:meth:`Page::render` with annotations generates a new normal appearance only for
+      the types listed in :ref:`annotations` and for form fields.
+
+      An annotation of any other type, such as a Stamp, or a Line or Polygon from another tool, is
+      left with no appearance and draws nothing.
 
       :param int $mode: One of the ``APPEARANCE_*`` constants.
       :throws \\ValueError: ``$mode`` is not one of the ``APPEARANCE_*`` constants.
@@ -1614,8 +1828,8 @@ Annotation
 
    .. php:method:: link() -> ?Link
 
-      The link of a Link annotation: the same :php:class:`Link` that :php:meth:`Page::links` gives
-      for it. ``null`` for an annotation of any other type.
+      Returns the link of a Link annotation: the same :php:class:`Link` that
+      :php:meth:`Page::links` gives for it. Returns ``null`` for an annotation of any other type.
 
       :rtype: ?Link
       :throws PdfiumException: The annotation was removed from its page.
@@ -1624,11 +1838,14 @@ Annotation
 
    .. php:method:: setUri(string $uri) -> void
 
-      Makes a Link annotation open a URI, in place: its action becomes a URI action, replacing
-      any action it had. A destination (``/Dest``) the link had stays: :php:meth:`link` and
-      :php:meth:`Page::links` report the action, but another viewer may follow the destination.
-      The URI is stored as its bytes, as PDF URIs are, so keep it to ASCII and percent-encode other
-      characters.
+      Makes a Link annotation open a URI, in place: its action becomes a URI action, replacing any
+      action it had.
+
+      A destination (``/Dest``) the link had stays: :php:meth:`link` and :php:meth:`Page::links`
+      report the action, but another viewer may follow the destination.
+
+      ``setUri()`` stores the URI as its bytes, as PDF URIs are, so keep it to ASCII and
+      percent-encode other characters.
 
       .. code-block:: php
 
@@ -1644,9 +1861,11 @@ Annotation
 
    .. php:method:: attachment() -> ?Attachment
 
-      The file of a FileAttachment annotation, as an :php:class:`Attachment`; ``null`` when it has
-      none, and for an annotation of any other type. The file need not be in the document's
-      attachment list; this :php:class:`Attachment` is the annotation's own and has no index.
+      Returns the file of a FileAttachment annotation, as an :php:class:`Attachment`; ``null`` when
+      it has none, and for an annotation of any other type.
+
+      The file need not be in the document's attachment list; this :php:class:`Attachment` is the
+      annotation's own and has no index.
 
       :rtype: ?Attachment
       :throws PdfiumException: The annotation was removed from its page.
@@ -1664,9 +1883,10 @@ Annotation
          $file = $clip->setAttachment('data.csv', "a,b\n1,2\n", 'Data for the figure');
          echo $clip->attachment()->name();   // data.csv
 
-      An :php:class:`Attachment` fetched earlier from this annotation reads the new file. When
-      PDFium cannot store the contents or description, the annotation's previous file is already
-      gone, and PDFium has no undo.
+      An :php:class:`Attachment` fetched earlier from this annotation reads the new file.
+
+      When PDFium cannot store the contents or description, the annotation's previous file is
+      already gone, and PDFium has no undo.
 
       :param string $name: The file name, as UTF-8.
       :param string $contents: The file's bytes.
@@ -1686,9 +1906,10 @@ Annotation
 
       Removes the annotation from its page, in place, as :php:meth:`Page::removeAnnotation` does
       with its index. The annotations after it move down one index; this object and every other
-      one for the same annotation throw from then on. One exception: when a damaged page lists the
-      annotation twice, the first entry goes and only this object throws; the others find the entry
-      that is left.
+      one for the same annotation throw from then on.
+
+      One exception: when a damaged page lists the annotation twice, the first entry goes and only
+      this object throws; the others find the entry that is left.
 
       .. code-block:: php
 
@@ -1710,17 +1931,25 @@ FormField
 
    One widget of a form field, from :php:meth:`Page::formFields` or :php:meth:`Page::formFieldAt`.
    A field with several widgets, such as a radio group, gives one ``FormField`` for each;
-   :php:meth:`controlIndex` tells them apart. It keeps its page and document alive and reads the
-   field's current state on every call. Every method throws :php:class:`PdfiumException` once its
-   widget is removed from the page, by :php:meth:`Page::removeAnnotation` or
-   :php:meth:`Annotation::remove`, or its page is flattened, because the field is gone. Removing
-   other annotations of the page does not affect it. It follows its page when pages are moved,
-   added or deleted, and throws as the :php:class:`Page`'s methods do once the page is deleted or
-   its position is unknown; see :ref:`page-editing`.
+   :php:meth:`controlIndex` tells them apart.
+
+   It keeps its page and document alive and reads the field's current state on every call.
+
+   Once the field is gone, every method throws :php:class:`PdfiumException`. The field is gone when:
+
+   - :php:meth:`Page::removeAnnotation` or :php:meth:`Annotation::remove` removes its widget from
+     the page;
+   - its page is flattened.
+
+   Removing other annotations of the page does not affect it.
+
+   It follows its page when pages are moved, added or deleted. Once the page is deleted or its
+   position is unknown, it throws as the :php:class:`Page`'s methods do; see :ref:`page-editing`.
 
    .. php:method:: name() -> string
 
-      The field's fully qualified name, as UTF-8, such as ``parent.notes``. Empty when it has none.
+      Returns the field's fully qualified name, as UTF-8, such as ``parent.notes``. Returns an empty
+      string when it has none.
 
       :rtype: string
       :throws PdfiumException: The field is gone.
@@ -1729,7 +1958,7 @@ FormField
 
    .. php:method:: alternateName() -> ?string
 
-      The field's tooltip, as UTF-8. ``null`` when it has none.
+      Returns the field's tooltip, as UTF-8, or ``null`` when it has none.
 
       :rtype: ?string
       :throws PdfiumException: The field is gone.
@@ -1738,7 +1967,7 @@ FormField
 
    .. php:method:: type() -> FormFieldType
 
-      The field's type.
+      Returns the field's type.
 
       :rtype: FormFieldType
       :throws PdfiumException: The field is gone.
@@ -1746,8 +1975,8 @@ FormField
 
    .. php:method:: value() -> string
 
-      The field's value exactly as PDFium reports it, as UTF-8; empty when there is none. Combo
-      boxes, list boxes and buttons give export values; see :ref:`forms`.
+      Returns the field's value exactly as PDFium reports it, as UTF-8, or an empty string when
+      there is none. Combo boxes, list boxes and buttons give export values; see :ref:`forms`.
 
       :rtype: string
       :throws PdfiumException: The field is gone.
@@ -1756,8 +1985,8 @@ FormField
 
    .. php:method:: exportValue() -> ?string
 
-      What the field's value is when this checkbox or radio button is checked, as UTF-8. ``null``
-      for any other type, and when the button gives none.
+      Returns the value the field takes when this checkbox or radio button is checked, as UTF-8.
+      Returns ``null`` for any other type, and when the button gives none.
 
       :rtype: ?string
       :throws PdfiumException: The field is gone.
@@ -1766,7 +1995,7 @@ FormField
 
    .. php:method:: isChecked() -> bool
 
-      Whether this checkbox or radio button is checked. ``false`` for any other type.
+      Returns whether this checkbox or radio button is checked; ``false`` for any other type.
 
       :rtype: bool
       :throws PdfiumException: The field is gone.
@@ -1774,7 +2003,7 @@ FormField
 
    .. php:method:: rect() -> Rect
 
-      The widget's rectangle on its page, in points.
+      Returns the widget's rectangle on its page, in points.
 
       :rtype: Rect
       :throws PdfiumException: The field is gone.
@@ -1782,7 +2011,7 @@ FormField
 
    .. php:method:: controlIndex() -> int
 
-      This widget's place among the field's widgets, starting at 0.
+      Returns this widget's place among the field's widgets, starting at 0.
 
       :rtype: int
       :throws PdfiumException: The field is gone, or PDFium cannot read the field's group.
@@ -1790,7 +2019,7 @@ FormField
 
    .. php:method:: controlCount() -> int
 
-      The number of widgets the field has.
+      Returns the number of widgets the field has.
 
       :rtype: int
       :throws PdfiumException: The field is gone, or PDFium cannot read the field's group.
@@ -1798,9 +2027,11 @@ FormField
 
    .. php:method:: options() -> array
 
-      The options of a combo box or list box, in order, as :php:class:`FormFieldOption` objects.
-      An empty array for any other type. PDFium does not give an option's export value, only its
-      label; :php:meth:`value` gives the export value of the selected option.
+      Returns the options of a combo box or list box, in order, as :php:class:`FormFieldOption`
+      objects, or an empty array for any other type.
+
+      PDFium gives an option's label but not its export value. Call :php:meth:`value` for the export
+      value of the selected option.
 
       :rtype: FormFieldOption[]
       :throws PdfiumException: The field is gone.
@@ -1809,7 +2040,7 @@ FormField
 
    .. php:method:: flags() -> FormFieldFlags
 
-      The field's flags. A flag that does not apply to the field's type is ``false``.
+      Returns the field's flags. A flag that does not apply to the field's type is ``false``.
 
       :rtype: FormFieldFlags
       :throws PdfiumException: The field is gone.
@@ -1817,10 +2048,11 @@ FormField
 
    .. php:method:: setValue(string $value) -> void
 
-      Sets the text of a text field or of a combo box with the ``editable`` flag, as if a user typed
-      it, in place; an empty string clears the field. PDFium cuts text to the field's length limit,
-      changes read-only fields and does not store characters above U+FFFF correctly; see
-      :ref:`forms`.
+      Sets the text of a text field or of a combo box with the ``editable`` flag in place, as if a
+      user typed it. Pass an empty string to clear the field.
+
+      PDFium cuts the text to the field's length limit, changes read-only fields and does not store
+      characters above U+FFFF correctly; see :ref:`forms`.
 
       :param string $value: The text, as UTF-8.
       :throws \\ValueError: ``$value`` is not valid UTF-8 or contains a null byte.
@@ -1831,9 +2063,11 @@ FormField
 
    .. php:method:: setChecked(bool $checked = true) -> void
 
-      Checks or unchecks a checkbox or radio button, as if a user clicked it, in place. Nothing is
-      done when the button is already in the requested state. PDFium does not change a read-only
-      button or uncheck a radio button, so those throw; see :ref:`forms`.
+      Checks or unchecks a checkbox or radio button in place, as if a user clicked it. Does nothing
+      when the button is already in the requested state.
+
+      PDFium does not change a read-only button or uncheck a radio button, so those calls throw; see
+      :ref:`forms`.
 
       :param bool $checked: The state to leave the button in.
       :throws PdfiumException: The field is gone, the field is not a checkbox or radio button, or
@@ -1842,9 +2076,11 @@ FormField
 
    .. php:method:: select(int $option, bool $selected = true) -> void
 
-      Selects or deselects one option of a combo box or list box, as if a user picked it, in place.
-      It replaces the selection, except in a list box with ``multiSelect``. PDFium changes read-only
-      fields too, but does not deselect a combo box's option, so that throws; see :ref:`forms`.
+      Selects or deselects one option of a combo box or list box in place, as if a user picked it.
+      It replaces the selection, except in a list box with ``multiSelect``.
+
+      PDFium changes read-only fields too, but does not deselect a combo box's option, so that
+      throws; see :ref:`forms`.
 
       :param int $option: The index into :php:meth:`options`.
       :param bool $selected: Whether the option ends up selected.
@@ -1898,7 +2134,7 @@ FormFieldFlags
 
       ``bool``
 
-      The field is left out when the form is submitted.
+      Submitting the form leaves the field out.
 
    .. php:attr:: multiline
 
@@ -1922,7 +2158,7 @@ FormFieldFlags
 
       ``bool``
 
-      List boxes only: several options can be selected.
+      List boxes only: the user can select several options.
 
 
 FormType
@@ -1930,13 +2166,23 @@ FormType
 
 .. php:class:: FormType
 
-   An enum, returned by :php:meth:`Document::formType`. XFA forms are told apart but not
-   supported; see :ref:`forms`.
+   An enum that :php:meth:`Document::formType` returns. It tells XFA forms apart; the extension
+   does not read or fill their XFA data. See :ref:`forms`.
 
-   - ``None``: no form.
-   - ``AcroForm``: an ordinary form.
-   - ``XfaFull``: a full XFA form (the catalog has ``/NeedsRendering true``).
-   - ``XfaForeground``: an AcroForm that also carries XFA data (an ``/XFA`` entry).
+   .. list-table::
+      :header-rows: 1
+      :widths: 25 75
+
+      * - Case
+        - Meaning
+      * - ``None``
+        - No form.
+      * - ``AcroForm``
+        - An ordinary form.
+      * - ``XfaFull``
+        - A full XFA form (the catalog has ``/NeedsRendering true``).
+      * - ``XfaForeground``
+        - An AcroForm that also carries XFA data (an ``/XFA`` entry).
 
 
 FormFieldType
@@ -1944,9 +2190,9 @@ FormFieldType
 
 .. php:class:: FormFieldType
 
-   An enum, returned by :php:meth:`FormField::type`, with the cases ``Unknown``, ``PushButton``,
+   An enum that :php:meth:`FormField::type` returns, with the cases ``Unknown``, ``PushButton``,
    ``Checkbox``, ``RadioButton``, ``ComboBox``, ``ListBox``, ``Text`` and ``Signature``. A type
-   PDFium reports that is not in this list is ``Unknown``.
+   PDFium reports that is not in this list comes back as ``Unknown``.
 
 
 TextPage
@@ -1956,13 +2202,15 @@ TextPage
 
    A page's text as PDFium read it once, returned by :php:meth:`Page::textPage`. It keeps its page
    and document alive. Its methods never throw ``FormatException``, because the text is already
-   read. Once its page is removed with :php:meth:`Document::deletePage`, or a failed edit leaves
-   the page's position unknown, every method throws ``PdfiumException`` with the same message as
-   the :php:class:`Page`'s methods. See :ref:`text-positions`.
+   read.
+
+   Once :php:meth:`Document::deletePage` removes its page, or a failed edit leaves the page's
+   position unknown, every method throws ``PdfiumException`` with the same message as the
+   :php:class:`Page`'s methods. See :ref:`text-positions`.
 
    .. php:method:: text() -> string
 
-      The same as :php:meth:`Page::text`, without reading the text again.
+      Returns the same as :php:meth:`Page::text`, without reading the text again.
 
       :rtype: string
       :throws MemoryException: The text would not fit under ``memory_limit``.
@@ -1971,7 +2219,7 @@ TextPage
 
    .. php:method:: charCount() -> int
 
-      The number of characters: the size of :php:meth:`chars`.
+      Returns the number of characters: the size of :php:meth:`chars`.
 
       :rtype: int
       :throws PdfiumException: The page was deleted from its document, or its position is unknown after a failed edit.
@@ -1979,11 +2227,13 @@ TextPage
 
    .. php:method:: chars(int $start = 0, ?int $length = null) -> array
 
-      The characters of :php:meth:`text`, in the same order, with their position and font. Without
-      arguments it returns all of them, and the array index is the character index that
-      :php:meth:`search`, :php:meth:`webLinks` and :php:meth:`charIndexAt` use. With arguments it
-      builds only the characters asked for, which costs far less on a long page. See
-      :ref:`text-positions`.
+      Returns the characters of :php:meth:`text`, in the same order, with their position and font.
+      See :ref:`text-positions`.
+
+      Without arguments it returns all of them, and the array index is the character index that
+      :php:meth:`search`, :php:meth:`webLinks` and :php:meth:`charIndexAt` use.
+
+      With arguments it builds only the characters asked for, which costs far less on a long page.
 
       .. code-block:: php
 
@@ -2006,9 +2256,10 @@ TextPage
 
    .. php:method:: charIndexAt(float $x, float $y, float $xTolerance = 0.0, float $yTolerance = 0.0) -> ?int
 
-      The index of the character at a point, or ``null`` if there is none. The tolerances are the
-      width and height of an area centred on the point, so a character up to half a tolerance away
-      also counts.
+      Returns the index of the character at a point, or ``null`` if there is none.
+
+      The tolerances are the width and height of an area centred on the point, so a character up to
+      half a tolerance away also counts.
 
       :param float $x: Horizontal position in points.
       :param float $y: Vertical position in points, from the bottom of the page.
@@ -2021,10 +2272,11 @@ TextPage
 
    .. php:method:: textIn(Rect $rect) -> string
 
-      The text of the characters inside a rectangle, as UTF-8, written as in :php:meth:`text`.
-      A character is inside when the centre of its :php:attr:`Char::box` is inside the rectangle
-      or on its edge, so a glyph the rectangle only clips stays out. Returns ``""`` if there are
-      none.
+      Returns the text of the characters inside a rectangle, as UTF-8, written as in
+      :php:meth:`text`. Returns ``""`` if there are none.
+
+      A character is inside when the centre of its :php:attr:`Char::box` is inside the rectangle or
+      on its edge, so a glyph the rectangle only clips stays out.
 
       .. code-block:: php
 
@@ -2040,8 +2292,9 @@ TextPage
 
    .. php:method:: textInEach(array $rects) -> array
 
-      :php:meth:`textIn` for every rectangle. It reads the page's characters once, so it is far
-      faster than one :php:meth:`textIn` call per rectangle, as for the cells of a table.
+      Returns the :php:meth:`textIn` result for every rectangle. It reads the page's characters
+      once, which makes it far faster than one :php:meth:`textIn` call per rectangle. Use it for the
+      cells of a table.
 
       .. code-block:: php
 
@@ -2063,10 +2316,13 @@ TextPage
 
    .. php:method:: search(string $needle, bool $matchCase = false, bool $wholeWord = false, bool $overlapping = false) -> array
 
-      Every match of ``$needle`` in :php:meth:`text`, in order, with the rectangles to highlight.
-      A space, no-break space or line break in the needle matches any run of them, so
-      ``total due`` is found across a line break. A tab does not. A word hyphenated across two
-      lines is found with its hyphen: ``hyphen-ated``, not ``hyphenated``.
+      Returns every match of ``$needle`` in :php:meth:`text`, in order, with the rectangles to
+      highlight.
+
+      - A space, no-break space or line break in the needle matches any run of them, so
+        ``total due`` matches across a line break. A tab does not.
+      - To find a word hyphenated across two lines, include its hyphen: search for ``hyphen-ated``,
+        not ``hyphenated``.
 
       .. code-block:: php
 
@@ -2075,15 +2331,15 @@ TextPage
          }
 
       :param string $needle: The text to find, as UTF-8.
-      :param bool $matchCase: Match upper and lower case exactly. Without it, case is ignored for
-         every alphabet in the Basic Multilingual Plane, one character for one: ``Σ`` matches both
-         ``σ`` and ``ς``, but ``ß`` does not match ``SS``.
+      :param bool $matchCase: Match upper and lower case exactly. Without it, the search ignores
+         case for every alphabet in the Basic Multilingual Plane, one character for one: ``Σ``
+         matches both ``σ`` and ``ς``, but ``ß`` does not match ``SS``.
       :param bool $wholeWord: Only match whole words: a match that starts or ends with a letter or
          digit of any alphabet must not have another one right before or after it. The characters
          of scripts written without spaces between words, such as Chinese, Japanese and Thai, do
          not count as letters, so there every match is a whole word.
       :param bool $overlapping: Look for the next match from the second character of the last one,
-         so ``aa`` is found twice in ``aaa``.
+         so ``aa`` matches twice in ``aaa``.
       :rtype: TextMatch[]
       :throws \\ValueError: The needle is empty, is not valid UTF-8 or contains a NUL byte.
       :throws MemoryException: The matches would not fit under ``memory_limit``.
@@ -2092,10 +2348,12 @@ TextPage
 
    .. php:method:: webLinks() -> array
 
-      The URLs and email addresses written in the page's text. PDFium finds them by their shape:
-      ``http://``, ``https://`` and ``www.`` addresses, and email addresses, which come back as
-      ``mailto:`` URLs. Link annotations, the clickable areas a PDF can define, are not included:
-      :php:meth:`Page::links` gives those.
+      Returns the URLs and email addresses written in the page's text. PDFium finds them by their
+      shape: ``http://``, ``https://`` and ``www.`` addresses, and email addresses, which come back
+      as ``mailto:`` URLs.
+
+      It skips link annotations, the clickable areas a PDF can define; call :php:meth:`Page::links`
+      for those.
 
       :rtype: WebLink[]
       :throws MemoryException: The links would not fit under ``memory_limit``.
@@ -2109,7 +2367,7 @@ PageIterator
 .. php:class:: PageIterator
 
    Returned by :php:meth:`Document::pages`. Implements ``\Iterator``: keys are page numbers, values
-   are :php:class:`Page` objects. Only the current page is kept in memory.
+   are :php:class:`Page` objects. It keeps only the current page in memory.
 
    .. code-block:: php
 
@@ -2117,9 +2375,14 @@ PageIterator
 
    .. php:method:: current() -> Page
 
-      The page at :php:meth:`key`, loaded on the first call and again when an edit has deleted it,
-      moved it away from :php:meth:`key` or left its position unknown. A :php:class:`Page` returned
-      earlier keeps following its own page.
+      Returns the page at :php:meth:`key`. It loads the page on the first call, and again when an
+      edit has:
+
+      - deleted it;
+      - moved it away from :php:meth:`key`;
+      - left its position unknown.
+
+      A :php:class:`Page` returned earlier keeps following its own page.
 
       :rtype: Page
       :throws PdfiumException: The iterator is past the last page.
@@ -2128,7 +2391,7 @@ PageIterator
 
    .. php:method:: key() -> int
 
-      The current page number.
+      Returns the current page number.
 
       :rtype: int
 
@@ -2138,11 +2401,11 @@ PageIterator
 
    .. php:method:: rewind() -> void
 
-      Goes back to the first page.
+      Moves back to the first page.
 
    .. php:method:: valid() -> bool
 
-      Whether the iterator is on a page.
+      Returns whether the iterator is on a page.
 
       :rtype: bool
       :throws BusyException: ZTS only: another thread is using PDFium.
@@ -2158,20 +2421,20 @@ Bitmap
 
    .. php:method:: width() -> int
 
-      Width in pixels.
+      Returns the width in pixels.
 
       :rtype: int
 
    .. php:method:: height() -> int
 
-      Height in pixels.
+      Returns the height in pixels.
 
       :rtype: int
 
    .. php:method:: toPng() -> string
 
-      The bitmap as PNG data: RGB, RGBA, gray, or gray and alpha, following the render's options
-      (see :ref:`rendering`).
+      Returns the bitmap as PNG data: RGB, RGBA, gray, or gray and alpha, following the render's
+      options (see :ref:`rendering`).
 
       :rtype: string
       :throws MemoryException: The PNG would not fit under ``memory_limit``.
@@ -2179,7 +2442,7 @@ Bitmap
 
    .. php:method:: toJpeg(int $quality = 85) -> string
 
-      The bitmap as JPEG data, RGB or gray. A transparent render is drawn on white.
+      Returns the bitmap as JPEG data, RGB or gray. It draws a transparent render on white.
 
       :param int $quality: Quality, from 1 to 100.
       :rtype: string
@@ -2217,13 +2480,18 @@ Rect
 .. php:class:: Rect
 
    A rectangle in points, with ``y`` growing upwards: a final, read-only value. See
-   :ref:`text-positions`. :php:meth:`TextPage::chars`, :php:meth:`TextPage::search`,
-   :php:meth:`TextPage::webLinks` and :php:meth:`Annotation::rect` return them, as do
-   :php:attr:`Link::rect` and the box getters such as :php:meth:`Page::cropBox`. You create one to
-   pass to :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach`, :php:meth:`Page::render`,
-   :php:meth:`Page::addAnnotation`, :php:meth:`Annotation::setRect` or a box setter such as
-   :php:meth:`Page::setCropBox`. The box setters need ``left`` less than ``right`` and ``bottom``
-   less than ``top``; the constructor also accepts them equal.
+   :ref:`text-positions`.
+
+   :php:meth:`TextPage::chars`, :php:meth:`TextPage::search`, :php:meth:`TextPage::webLinks`,
+   :php:meth:`Annotation::rect`, :php:attr:`Link::rect` and the box getters such as
+   :php:meth:`Page::cropBox` return them.
+
+   Create one to pass to :php:meth:`TextPage::textIn`, :php:meth:`TextPage::textInEach`,
+   :php:meth:`Page::render`, :php:meth:`Page::addAnnotation`, :php:meth:`Annotation::setRect` or a
+   box setter such as :php:meth:`Page::setCropBox`.
+
+   The box setters need ``left`` less than ``right`` and ``bottom`` less than ``top``; the
+   constructor also accepts them equal.
 
    .. php:method:: __construct(float $left, float $bottom, float $right, float $top)
 
@@ -2254,9 +2522,22 @@ Char
 
    One character of a page's text, returned by :php:meth:`TextPage::chars`: a final, read-only value.
 
-   A character PDFium added (``generated``) has no font or colour: ``fontName``, ``fontWeight``,
-   ``fillColor`` and ``strokeColor`` are ``null``, ``fontSize`` is ``1.0`` and both boxes are
-   zero-sized. Check for ``null`` before reading a colour.
+   A character PDFium added (``generated``) has no font or colour:
+
+   .. list-table::
+      :header-rows: 1
+      :widths: 60 40
+
+      * - Property
+        - Value
+      * - ``fontName``, ``fontWeight``, ``fillColor``, ``strokeColor``
+        - ``null``
+      * - ``fontSize``
+        - ``1.0``
+      * - ``box``, ``looseBox``
+        - zero-sized
+
+   Check for ``null`` before reading a colour.
 
    .. php:attr:: text
 
@@ -2294,8 +2575,23 @@ Char
 
    .. php:attr:: fontFlags
 
-      ``int``: the font descriptor flags from the PDF specification (ISO 32000-1, 9.8.2), for example
-      ``1`` fixed-pitch, ``2`` serif, ``64`` italic, ``262144`` bold; ``0`` when unknown.
+      ``int``: the font descriptor flags from the PDF specification (ISO 32000-1, 9.8.2); ``0`` when
+      unknown. For example:
+
+      .. list-table::
+         :header-rows: 1
+         :widths: 30 70
+
+         * - Flag
+           - Meaning
+         * - ``1``
+           - fixed-pitch
+         * - ``2``
+           - serif
+         * - ``64``
+           - italic
+         * - ``262144``
+           - bold
 
    .. php:attr:: angle
 
@@ -2327,11 +2623,12 @@ Char
    .. php:attr:: matrix
 
       ``?Matrix``: the matrix of the text object the character is in: its text matrix combined with
-      the page's transformation. It does not include the font size or how far along the line the
-      character is, so the characters of one text object share it; use ``x`` and ``y`` for the
-      character's own position. ``null`` when PDFium cannot tell.
+      the page's transformation; ``null`` when PDFium cannot tell.
 
-   Characters next to each other with the same colour or matrix share one :php:class:`Color` or
+      It does not include the font size or how far along the line the character is, so the
+      characters of one text object share it. Use ``x`` and ``y`` for the character's own position.
+
+   Adjacent characters with the same colour or matrix share one :php:class:`Color` or
    :php:class:`Matrix` object, so ``===`` on two of them depends on where the characters are.
    Compare them with ``==``.
 
@@ -2341,10 +2638,11 @@ Color
 
 .. php:class:: Color
 
-   A colour from :php:attr:`Char::fillColor`, :php:attr:`Char::strokeColor`,
-   :php:attr:`Bookmark::color`, :php:meth:`Annotation::color` or
-   :php:meth:`Annotation::interiorColor`, as RGB with values from 0 to 255: a final, read-only
-   value. PDFium converts other colour spaces, such as CMYK, to RGB.
+   An RGB colour with values from 0 to 255: a final, read-only value. :php:attr:`Char::fillColor`,
+   :php:attr:`Char::strokeColor`, :php:attr:`Bookmark::color`, :php:meth:`Annotation::color` and
+   :php:meth:`Annotation::interiorColor` return it.
+
+   PDFium converts other colour spaces, such as CMYK, to RGB.
 
    .. php:attr:: red
 
@@ -2620,16 +2918,34 @@ Destination
 
    .. php:attr:: view
 
-      ``?string``: how the viewer shows the page: ``"XYZ"`` (a point at a zoom), ``"Fit"`` (the
-      whole page), ``"FitH"`` (full width, from a top edge), ``"FitV"`` (full height, from a left
-      edge), ``"FitR"`` (a rectangle), or ``"FitB"``, ``"FitBH"``, ``"FitBV"`` (the same, for the
-      page's content only); ``null`` when PDFium cannot tell.
+      ``?string``: how the viewer shows the page; ``null`` when PDFium cannot tell.
+
+      .. list-table::
+         :header-rows: 1
+         :widths: 30 70
+
+         * - View
+           - Shows
+         * - ``"XYZ"``
+           - A point at a zoom.
+         * - ``"Fit"``
+           - The whole page.
+         * - ``"FitH"``
+           - Full width, from a top edge.
+         * - ``"FitV"``
+           - Full height, from a left edge.
+         * - ``"FitR"``
+           - A rectangle.
+         * - ``"FitB"``, ``"FitBH"``, ``"FitBV"``
+           - The same as ``"Fit"``, ``"FitH"`` and ``"FitV"``, for the page's content only.
 
    .. php:attr:: params
 
       ``float[]``: the view's numbers, at most four: none for ``"Fit"``, the top edge for
-      ``"FitH"``, the left, bottom, right and top for ``"FitR"``. For ``"XYZ"`` a missing number is
-      0 here; use :php:attr:`x`, :php:attr:`y` and :php:attr:`zoom`, which are ``null`` instead.
+      ``"FitH"``, the left, bottom, right and top for ``"FitR"``.
+
+      For ``"XYZ"`` this array holds 0 for a missing number. Read :php:attr:`x`, :php:attr:`y` and
+      :php:attr:`zoom` instead, which are ``null`` then.
 
    .. php:attr:: x
 
@@ -2654,22 +2970,51 @@ Action
 
    .. php:attr:: type
 
-      ``string``: ``"GoTo"`` (a place in this document), ``"GoToR"`` (a place in another PDF file),
-      ``"URI"`` (open a web address), ``"Launch"`` (open a file or run an application),
-      ``"GoToE"`` (a place in an embedded PDF), or ``"Unsupported"`` for every type PDFium does not
-      read, such as JavaScript.
+      ``string``: one of these:
+
+      .. list-table::
+         :header-rows: 1
+         :widths: 30 70
+
+         * - Type
+           - Action
+         * - ``"GoTo"``
+           - A place in this document.
+         * - ``"GoToR"``
+           - A place in another PDF file.
+         * - ``"URI"``
+           - Open a web address.
+         * - ``"Launch"``
+           - Open a file or run an application.
+         * - ``"GoToE"``
+           - A place in an embedded PDF.
+         * - ``"Unsupported"``
+           - Every type PDFium does not read, such as JavaScript.
 
    .. php:attr:: uri
 
       ``?string``: for ``"URI"``, the URI as written in the PDF, with the document's base URI in
-      front when it is relative and the document sets one. It may not be UTF-8; see
-      :ref:`navigation`. ``null`` when the action names none, and for every other type.
+      front when it is relative and the document sets one. ``null`` when the action names none,
+      and for every other type.
+
+      It may not be UTF-8; see :ref:`navigation`.
 
    .. php:attr:: filePath
 
-      ``?string``: the file, as UTF-8, for ``"GoToR"`` and ``"Launch"``, ``null`` when the action
-      names none; for ``"GoToE"``, the PDF file that holds the embedded one, ``null`` when that is
-      this document. ``null`` for every other type.
+      ``?string``: the file, as UTF-8, depending on the type:
+
+      .. list-table::
+         :header-rows: 1
+         :widths: 30 70
+
+         * - Type
+           - Value
+         * - ``"GoToR"``, ``"Launch"``
+           - The file; ``null`` when the action names none.
+         * - ``"GoToE"``
+           - The PDF file that holds the embedded one; ``null`` when that is this document.
+         * - Every other type
+           - ``null``
 
    .. php:attr:: destination
 
@@ -2695,10 +3040,17 @@ JavaScript
 Ini settings
 ------------
 
-``pdfium.font_paths``
-   The directories PDFium scans for fonts a PDF does not embed, separated by ``:``. Empty by
-   default, which means PDFium's own directories. Read once when PHP starts; ``ini_set()`` cannot
-   change it. See :ref:`fonts`.
+.. list-table::
+   :header-rows: 1
+   :widths: 25 25 50
+
+   * - Setting
+     - Default
+     - Meaning
+   * - ``pdfium.font_paths``
+     - Empty, which means PDFium's own directories.
+     - The directories PDFium scans for fonts a PDF does not embed, separated by ``:``. The
+       extension reads it once when PHP starts; ``ini_set()`` cannot change it. See :ref:`fonts`.
 
 
 .. _exceptions:
@@ -2715,33 +3067,47 @@ these:
 
    Base class for all exceptions below. Extends ``\RuntimeException``.
 
-   Also thrown on its own when PDFium cannot copy pages, edit pages, write a document, encode a
-   bitmap or flatten a page, or refuses a change to an annotation; when :php:meth:`Document::nUp`
-   cannot lay out the pages; when a :php:class:`FormField` cannot be read or changed; by a
-   :php:class:`Page`, :php:class:`TextPage`, :php:class:`Annotation` or :php:class:`FormField` whose
-   page was deleted or whose position is unknown after a failed edit; by an :php:class:`Annotation`
-   once its annotation is removed from its page; by a stale :php:class:`Attachment`; and by
-   :php:meth:`Attachment::index` for an annotation's file.
+   Also thrown on its own:
+
+   - when PDFium cannot copy pages, edit pages, write a document, encode a bitmap or flatten a
+     page, or refuses a change to an annotation;
+   - when :php:meth:`Document::nUp` cannot lay out the pages;
+   - when a :php:class:`FormField` cannot be read or changed;
+   - by a :php:class:`Page`, :php:class:`TextPage`, :php:class:`Annotation` or
+     :php:class:`FormField` whose page was deleted or whose position is unknown after a failed
+     edit;
+   - by an :php:class:`Annotation` once its annotation is removed from its page;
+   - by a stale :php:class:`Attachment`;
+   - by :php:meth:`Attachment::index` for an annotation's file.
 
 .. php:exception:: FileException
 
-   The file cannot be read or written, the path is too long, or ``open_basedir`` blocks it. Also
-   thrown when a save would have to overwrite a file in place while a document opened with
-   ``lazy: true`` reads it.
+   Thrown when:
 
-   When opening or saving fails, the PHP warning that says why (for example ``No such file or
-   directory``) is attached as the previous exception (``$e->getPrevious()``). No warning is shown
-   or logged. Through stream wrappers the call behaves like ``@fopen()``: your error handler, if you
-   set one, still sees the wrapper's warnings, and fatal errors are shown as usual. With
-   ``fromFile(lazy: true)``, a read that fails while PDFium opens the document has no previous
+   - the file cannot be read or written;
+   - the path is too long;
+   - ``open_basedir`` blocks it;
+   - a save would have to overwrite a file in place while a document opened with ``lazy: true``
+     reads it.
+
+   When opening or saving fails, the extension attaches the PHP warning that says why (for example
+   ``No such file or directory``) as the previous exception (``$e->getPrevious()``). It neither
+   shows nor logs the warning.
+
+   Through stream wrappers the call behaves like ``@fopen()``: your error handler, if you set one,
+   still sees the wrapper's warnings, and PHP shows fatal errors as usual.
+
+   With ``fromFile(lazy: true)``, a read that fails while PDFium opens the document has no previous
    exception.
 
 .. php:exception:: FormatException
 
-   The data is not a PDF, or it is too damaged to read. Also thrown when a page or its text cannot
-   be loaded, when an entry of a page's annotation list is not an annotation, and when saving,
-   extracting from, merging or laying out with ``nUp()`` a document opened with ``lazy: true``
-   whose file could not be read in full, or inserting pages from or into one.
+   The data is not a PDF, or it is too damaged to read. Also thrown when:
+
+   - a page or its text cannot be loaded;
+   - an entry of a page's annotation list is not an annotation;
+   - you save, extract from, merge or lay out with ``nUp()`` a document opened with ``lazy: true``
+     whose file could not be read in full, or insert pages from or into one.
 
 .. php:exception:: PasswordException
 
@@ -2749,11 +3115,14 @@ these:
 
 .. php:exception:: UnsupportedException
 
-   The document uses an encryption PDFium does not support, :php:meth:`Document::extractPages`,
-   :php:meth:`Document::insertPages`, :php:meth:`Document::merge` or :php:meth:`Document::nUp` was
-   given an encrypted document without ``removeSecurity: true``, :php:meth:`Page::addAnnotation` was
-   given a type PDFium cannot create, or ``fromFile(lazy: true)`` was given a path that goes through
-   a stream wrapper.
+   Thrown when:
+
+   - the document uses an encryption PDFium does not support;
+   - :php:meth:`Document::extractPages`, :php:meth:`Document::insertPages`,
+     :php:meth:`Document::merge` or :php:meth:`Document::nUp` gets an encrypted document without
+     ``removeSecurity: true``;
+   - :php:meth:`Page::addAnnotation` gets a type PDFium cannot create;
+   - ``fromFile(lazy: true)`` gets a path that goes through a stream wrapper.
 
 .. php:exception:: MemoryException
 
@@ -2761,20 +3130,25 @@ these:
    See :ref:`memory-limit`.
 
    Also thrown when PDFium cannot create a document; raising ``memory_limit`` does not help then.
-   Thrown this way by :php:meth:`Document::create`, :php:meth:`Document::extractPages`,
+
+   These throw it that way: :php:meth:`Document::create`, :php:meth:`Document::extractPages`,
    :php:meth:`Document::merge`, and :php:meth:`Document::insertPages` when it copies pages within
    one document.
 
 .. php:exception:: BusyException
 
-   ZTS PHP only. Another thread is using PDFium, and nothing was done. It is safe to retry, except
+   ZTS PHP only. Another thread is using PDFium, and the call did nothing. Retrying is safe, except
    that :php:meth:`Document::fromFile` has already read the file. See :ref:`threads`.
 
    Every :php:class:`Document`, :php:class:`Page`, :php:class:`TextPage`, :php:class:`PageIterator`,
    :php:class:`Attachment`, :php:class:`Annotation` and :php:class:`FormField` method can throw it,
-   including ``current()`` and ``valid()`` in the middle of a ``foreach``, except
-   :php:meth:`Document::pages`, :php:meth:`Document::getIterator`, :php:meth:`Page::index`,
-   :php:meth:`PageIterator::key`, :php:meth:`PageIterator::next` and
-   :php:meth:`PageIterator::rewind`. :php:class:`Bitmap` and the value classes never throw it.
+   including ``current()`` and ``valid()`` in the middle of a ``foreach``. These are the exceptions:
+
+   - :php:meth:`Document::pages` and :php:meth:`Document::getIterator`;
+   - :php:meth:`Page::index`;
+   - :php:meth:`PageIterator::key`, :php:meth:`PageIterator::next` and
+     :php:meth:`PageIterator::rewind`.
+
+   :php:class:`Bitmap` and the value classes never throw it.
 
 The exception class says what went wrong; ``$e->getCode()`` is always 0.

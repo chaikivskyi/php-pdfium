@@ -11,13 +11,13 @@ What it does
 - List the scripts in the document's JavaScript name tree, without running them.
 - Find text on a page: search it, read the text inside a rectangle, list the URLs written in it,
   and get every character with its position, font and colour.
-- Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
+- Render pages, or part of a page, to PNG or JPEG at 1 to 2400 DPI, in colour or gray, on white or
   transparent.
 - List, extract, add and delete embedded files (attachments).
 - List digital signatures and read their details.
 - Read whether a document is tagged, and read and set its language.
-- List, read, add, change and remove annotations, such as highlights, notes and links. Form
-  fields can also be changed and removed as Widget annotations, but not added.
+- List, read, add, change and remove annotations, such as highlights, notes and links. Change and
+  remove form fields as Widget annotations; you cannot add them.
 - Read and fill in form fields (text fields, checkboxes, radio buttons, combo and list boxes), and
   flatten a page's annotations and fields into page content.
 - Edit pages: delete, add, copy in from another document, move, rotate and set their boxes.
@@ -25,15 +25,20 @@ What it does
   incrementally if you want to keep the original file.
 - Open large local files without loading them whole into memory.
 
-It needs PHP 8.2 to 8.5, NTS or ZTS, and no FFI. The only ini setting, ``pdfium.font_paths``, is
-optional and tells PDFium where to find fonts; see :ref:`fonts`.
-See :doc:`platforms` for the supported systems.
+Requirements:
+
+=====================  ==========================================================================
+PHP                    8.2 to 8.5, NTS or ZTS. No FFI.
+Platforms              See :doc:`platforms`.
+``pdfium.font_paths``  Optional, the only ini setting. Tells PDFium where to find fonts; see
+                       :ref:`fonts`.
+=====================  ==========================================================================
 
 
 Installation
 ------------
 
-The extension needs libpng, libjpeg, and a prebuilt PDFium from
+You need libpng, libjpeg, and a prebuilt PDFium from
 `pdfium-binaries <https://github.com/bblanchon/pdfium-binaries>`_ (version |pdfium_version|). The
 build downloads PDFium for you.
 
@@ -66,9 +71,11 @@ build downloads PDFium for you.
       sudo make install
 
    ``configure`` downloads the PDFium build for your platform into ``src/libpdfium/`` and checks
-   it against ``pdfium.sha256``. ``make install`` copies ``libpdfium.so`` (``libpdfium.dylib`` on
-   macOS) next to ``pdfium.so`` in PHP's extension directory, where the extension finds it, so the
-   build directory can be deleted afterwards.
+   it against ``pdfium.sha256``.
+
+   ``make install`` copies ``libpdfium.so`` (``libpdfium.dylib`` on macOS) next to ``pdfium.so``
+   in PHP's extension directory, where the extension finds it. You can delete the build directory
+   afterwards.
 
 3. Add ``extension=pdfium`` to ``php.ini`` if it is not there yet, and check that it loads:
 
@@ -77,7 +84,7 @@ build downloads PDFium for you.
       php --ri pdfium
 
 To build without internet access, download ``pdfium-<platform>.tgz`` from the pdfium-binaries
-release yourself, unpack it so that ``include/`` and ``lib/`` sit side by side, and pass its
+release yourself. Unpack it so that ``include/`` and ``lib/`` sit side by side, and pass its
 directory with ``--with-pdfium=DIR`` to ``pie install`` or ``./configure``.
 
 .. warning::
@@ -89,7 +96,8 @@ directory with ``--with-pdfium=DIR`` to ``pie install`` or ``./configure``.
 Usage
 -----
 
-All classes are in the ``Pdfium`` namespace. Page numbers start at 0. Every error throws an exception.
+Every class lives in the ``Pdfium`` namespace. Page numbers start at 0. Every error throws an
+exception.
 
 Open a document
 ~~~~~~~~~~~~~~~
@@ -105,9 +113,9 @@ Open a document
    // From a string, for example a file from S3 or a phar archive:
    $doc = Document::fromString(file_get_contents('s3://bucket/report.pdf'));
 
-``fromFile()`` reads through PHP streams as well, so
-``Document::fromFile('s3://bucket/report.pdf')`` works too. Either way the whole file is held in PHP
-memory, unless you pass ``lazy: true`` for a local file.
+``fromFile()`` reads through PHP streams too, so ``Document::fromFile('s3://bucket/report.pdf')``
+works. Either way PHP holds the whole file in memory. Pass ``lazy: true`` for a local file to avoid
+that.
 
 Read document information
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -215,9 +223,11 @@ Create, split, merge, put pages on a sheet and save
 
    // Write a PDF 1.4 header:
    $doc->save('/tmp/old.pdf', version: 14);
-The new documents keep only the pages: no encryption, bookmarks, viewer preferences or metadata
-beyond what PDFium writes, and no ``/AcroForm``, so ``formType()`` is ``None``. See
-:ref:`pdfium-defaults`.
+
+The new documents keep only the pages. They get no encryption, no bookmarks, no viewer preferences,
+no metadata beyond what PDFium writes, and no ``/AcroForm``, so ``formType()`` is ``None``.
+
+See :ref:`pdfium-defaults`.
 
 Edit pages
 ~~~~~~~~~~
@@ -234,7 +244,7 @@ Edit pages
 
    $doc->save('/tmp/edited.pdf');           // written out only here; report.pdf is not changed
 
-A ``Page`` you hold follows its page through the edits and throws once its page is deleted; see
+A ``Page`` you hold follows its page through the edits, and throws once you delete its page. See
 :ref:`page-editing`.
 
 Embedded files
@@ -251,7 +261,7 @@ Embedded files
    $doc->addAttachment('data.csv', $csv, 'Raw figures');
    $doc->save('/tmp/with-data.pdf');
 
-Adding a file can move the others, so fetch attachments again after it; see :ref:`attachments`.
+Adding a file can shift the others, so fetch attachments again afterwards. See :ref:`attachments`.
 
 Signatures
 ~~~~~~~~~~
@@ -264,7 +274,7 @@ Signatures
        }
    }
 
-See :ref:`signatures` for which fields are listed.
+See :ref:`signatures` for which fields the list includes.
 
 Language and tagging
 ~~~~~~~~~~~~~~~~~~~~
@@ -277,7 +287,7 @@ Language and tagging
    }
    var_dump($doc->isTagged());
 
-``isTagged()`` is the document's own claim; see :ref:`accessibility`.
+``isTagged()`` reports the document's own claim. See :ref:`accessibility`.
 
 Annotations
 ~~~~~~~~~~~
@@ -303,8 +313,8 @@ Annotations
    $page->render();   // draws the highlight and stores its appearance, for other viewers
    $doc->save('/tmp/highlighted.pdf');
 
-Other viewers draw an annotation from its appearance stream, which ``render()`` generates for most
-types, so render the page before saving; see :ref:`annotations`.
+Other viewers draw an annotation from its appearance stream. ``render()`` generates one for most
+types, so render the page before you save. See :ref:`annotations`.
 
 Fill in a form
 ~~~~~~~~~~~~~~
@@ -331,14 +341,14 @@ Fill in a form
    $page->flatten();
    $doc->save('/tmp/filled.pdf');
 
-Filling and flattening change the loaded document, never the file it came from. See :ref:`forms` for
-what PDFium does with read-only fields, scripts and long text.
+Filling and flattening change the loaded document, never the file it came from. See :ref:`forms`
+for what PDFium does with read-only fields, scripts and long text.
 
 Free a document
 ~~~~~~~~~~~~~~~
 
-There is no ``close()``. PHP frees a document when nothing uses it any more. Pages keep their
-document alive:
+There is no ``close()``. PHP frees a document once nothing uses it. Pages keep their document
+alive:
 
 .. code-block:: php
 
@@ -369,7 +379,7 @@ See :ref:`exceptions` for the full list.
 Development
 -----------
 
-Run the tests (this builds the extension first if needed):
+Run the tests. The script builds the extension first if needed:
 
 .. code-block:: sh
 
@@ -383,33 +393,42 @@ Or run them inside Docker, with all tools installed:
    scripts/dev.sh scripts/test.sh
    PDFIUM_ZTS=1 scripts/dev.sh scripts/test.sh   # ZTS PHP, with the thread tests
 
-The thread tests run when the ``parallel`` extension is installed; ``scripts/test.sh`` loads it.
+The thread tests need the ``parallel`` extension; ``scripts/test.sh`` loads it.
 
-Without the scripts, run PHP's test runner directly. On ZTS PHP add ``-d extension=parallel`` so the
-thread tests are not skipped:
+Without the scripts, run PHP's test runner directly. On ZTS PHP, add ``-d extension=parallel`` or
+the runner skips the thread tests:
 
 .. code-block:: sh
 
    php run-tests.php -n -d extension=$PWD/modules/pdfium.so tests
 
-The public API is defined in ``pdfium.stub.php``. ``pdfium_arginfo.h`` is generated from it with
-PHP's ``build/gen_stub.php``.
+``pdfium.stub.php`` defines the public API. PHP's ``build/gen_stub.php`` generates
+``pdfium_arginfo.h`` from it.
 
 ``src/unicode_tables.h`` holds the case-folding and word-character tables for
 ``TextPage::search()``. ``scripts/unicode-tables.py`` generates it from the Unicode data of the
-Python that runs it, and records that version as ``PDFIUM_UNICODE_VERSION``. Do not edit the
-header; run the script again.
+Python that runs it, and records that version as ``PDFIUM_UNICODE_VERSION``.
 
-CI builds with ``-Wall -Wextra -Werror``, checks that ``pdfium_arginfo.h`` matches the stub, and
-runs the tests on every supported platform and PHP version, and also under Valgrind,
-AddressSanitizer and UndefinedBehaviorSanitizer. The Linux jobs run in prebuilt images from
-``ci/docker/``, which the ``CI images`` workflow publishes to ``ghcr.io``.
+Do not edit the header; run the script again.
 
-PDFium is pinned by ``PDFIUM_VERSION`` and ``pdfium.sha256``. ``scripts/update-pdfium.sh`` moves
-both to the latest pdfium-binaries release, or to the one given as its argument. The ``PDFium
-update`` workflow runs it on the first day of each month and opens a pull request when there is a
-new release. It uses the ``PDFIUM_BOT_TOKEN`` secret, a fine-grained token with contents and pull
-request write access to this repository, so that CI runs on that pull request.
+CI does the following:
+
+- builds with ``-Wall -Wextra -Werror``;
+- checks that ``pdfium_arginfo.h`` matches the stub;
+- runs the tests on every supported platform and PHP version;
+- runs them again under Valgrind, AddressSanitizer and UndefinedBehaviorSanitizer.
+
+The Linux jobs run in prebuilt images from ``ci/docker/``, which the ``CI images`` workflow
+publishes to ``ghcr.io``.
+
+``PDFIUM_VERSION`` and ``pdfium.sha256`` pin PDFium. ``scripts/update-pdfium.sh`` moves both to the
+latest pdfium-binaries release, or to the one you pass as its argument.
+
+The ``PDFium update`` workflow runs that script on the first day of each month and opens a pull
+request when there is a new release.
+
+The workflow uses the ``PDFIUM_BOT_TOKEN`` secret: a fine-grained token with contents and pull
+request write access to this repository. A pull request opened with it triggers CI.
 
 Build these docs:
 
@@ -423,16 +442,16 @@ Build these docs:
 Contributing
 ------------
 
-Report bugs and send pull requests on `GitHub <https://github.com/chaikivskyi/php-pdfium>`_. Please include
-the output of ``php -v`` and ``php --ri pdfium``, and the PDF that causes the problem if you can share
-it.
+Report bugs and send pull requests on `GitHub <https://github.com/chaikivskyi/php-pdfium>`_.
+Include the output of ``php -v`` and ``php --ri pdfium``, and the PDF that causes the problem if
+you can share it.
 
 
 License
 -------
 
-The extension is MIT licensed. PDFium is BSD-3-Clause / Apache-2.0; its license files come with the
-prebuilt binaries and must be included if you distribute them.
+The extension is MIT licensed. PDFium is BSD-3-Clause / Apache-2.0. Its license files ship with
+the prebuilt binaries; include them if you distribute those binaries.
 
 Thanks to the `PDFium <https://pdfium.googlesource.com/pdfium/>`_ authors,
 `pdfium-binaries <https://github.com/bblanchon/pdfium-binaries>`_ for the prebuilt releases, and
