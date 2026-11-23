@@ -82,7 +82,7 @@ ZEND_METHOD(Pdfium_Page, width)
 	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_page_live(ph) || !pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	float width = FPDF_GetPageWidthF(ph->page);
@@ -95,7 +95,7 @@ ZEND_METHOD(Pdfium_Page, height)
 	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_page_live(ph) || !pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	float height = FPDF_GetPageHeightF(ph->page);
@@ -108,7 +108,7 @@ ZEND_METHOD(Pdfium_Page, rotation)
 	pdfium_page_handle *ph = pdfium_this_page(ZEND_THIS);
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_page_live(ph) || !pdfium_enter()) {
+	if (!pdfium_page_enter(ZEND_THIS)) {
 		RETURN_THROWS();
 	}
 	int rotation = FPDFPage_GetRotation(ph->page);
@@ -133,7 +133,7 @@ static void page_box_get(INTERNAL_FUNCTION_PARAMETERS, const box_kind *kind)
 	float left, bottom, right, top;
 
 	ZEND_PARSE_PARAMETERS_NONE();
-	if (!pdfium_page_live(ph) || !pdfium_enter()) {
+	if (!pdfium_page_handle_enter(ph)) {
 		RETURN_THROWS();
 	}
 	bool found = kind->get(ph->page, &left, &bottom, &right, &top);
@@ -172,7 +172,7 @@ static void page_box_set(INTERNAL_FUNCTION_PARAMETERS, const box_kind *kind)
 	ZEND_PARSE_PARAMETERS_START(1, 1)
 		Z_PARAM_OBJECT_OF_CLASS(zr, pdfium_ce_rect)
 	ZEND_PARSE_PARAMETERS_END();
-	if (!pdfium_page_live(ph)) {
+	if (!pdfium_page_usable(ph)) {
 		RETURN_THROWS();
 	}
 	const char *fault = box_fault(zr, box);
@@ -200,7 +200,7 @@ ZEND_METHOD(Pdfium_Page, setRotation)
 	ZEND_PARSE_PARAMETERS_START(1, 1)
 		Z_PARAM_LONG(degrees)
 	ZEND_PARSE_PARAMETERS_END();
-	if (!pdfium_page_live(ph)) {
+	if (!pdfium_page_usable(ph)) {
 		RETURN_THROWS();
 	}
 	if (degrees < 0 || degrees > 270 || degrees % 90) {
@@ -243,9 +243,8 @@ zend_object *pdfium_page_new(pdfium_doc_handle *h)
 	return Z_OBJ(zv);
 }
 
-zend_object *pdfium_page_attach(zend_object *obj, FPDF_PAGE page, int index)
+static void handle_link(pdfium_page_handle *ph, FPDF_PAGE page, int index)
 {
-	pdfium_page_handle *ph = pdfium_page_from_obj(obj)->ph;
 	pdfium_doc_handle *h = ph->h;
 
 	ph->page = page;
@@ -255,6 +254,11 @@ zend_object *pdfium_page_attach(zend_object *obj, FPDF_PAGE page, int index)
 		h->pages->prev = ph;
 	}
 	h->pages = ph;
+}
+
+zend_object *pdfium_page_attach(zend_object *obj, FPDF_PAGE page, int index)
+{
+	handle_link(pdfium_page_from_obj(obj)->ph, page, index);
 	return obj;
 }
 
@@ -345,6 +349,14 @@ void pdfium_page_handle_addref(pdfium_page_handle *ph)
 	ph->refs++;
 }
 
+static void form_unload(pdfium_page_handle *ph)
+{
+	if (ph->form_loaded) {
+		FORM_OnBeforeClosePage(ph->page, ph->h->form);
+		ph->form_loaded = false;
+	}
+}
+
 void pdfium_page_handle_release(pdfium_page_handle *ph)
 {
 	if (--ph->refs) {
@@ -352,9 +364,7 @@ void pdfium_page_handle_release(pdfium_page_handle *ph)
 	}
 	if (ph->page) {
 		pdfium_enter_wait();
-		if (ph->form_loaded) {
-			FORM_OnBeforeClosePage(ph->page, ph->h->form);
-		}
+		form_unload(ph);
 		FPDF_ClosePage(ph->page);
 		pdfium_leave();
 		if (ph->prev) {
@@ -368,6 +378,59 @@ void pdfium_page_handle_release(pdfium_page_handle *ph)
 	}
 	pdfium_doc_handle_release(ph->h);
 	efree(ph);
+}
+
+FPDF_FORMHANDLE pdfium_page_form(pdfium_page_handle *ph)
+{
+	FPDF_FORMHANDLE form = pdfium_doc_handle_form(ph->h);
+
+	if (ph->form_changes != ph->h->form_changes) {
+		form_unload(ph);
+	}
+	if (form && !ph->form_loaded) {
+		FORM_OnAfterLoadPage(ph->page, form);
+		ph->form_loaded = true;
+		ph->form_changes = ph->h->form_changes;
+	}
+	return form;
+}
+
+void pdfium_page_swap_handle(pdfium_page *p, FPDF_PAGE fresh)
+{
+	pdfium_page_handle *old = p->ph;
+	pdfium_page_handle *ph = ecalloc(1, sizeof(*ph));
+
+	ph->h = old->h;
+	ph->refs = 1;
+	ph->index = old->index;
+	pdfium_doc_handle_addref(old->h);
+	if (fresh) {
+		handle_link(ph, fresh, old->index);
+	}
+	p->ph = ph;
+	pdfium_page_handle_release(old);
+}
+
+bool pdfium_page_usable(pdfium_page_handle *ph)
+{
+	if (!pdfium_page_live(ph)) {
+		return false;
+	}
+	if (!ph->page) {
+		zend_throw_exception_ex(pdfium_ce_format_exception, 0, "Cannot load page %d", ph->index);
+		return false;
+	}
+	return true;
+}
+
+bool pdfium_page_handle_enter(pdfium_page_handle *ph)
+{
+	return pdfium_page_usable(ph) && pdfium_enter();
+}
+
+bool pdfium_page_enter(zval *self)
+{
+	return pdfium_page_handle_enter(pdfium_this_page(self));
 }
 
 zend_object *pdfium_page_iterator_create(pdfium_doc_handle *h)

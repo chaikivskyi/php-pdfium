@@ -1,5 +1,5 @@
 /* This is a generated file, edit the .stub.php file instead.
- * Stub hash: 1efe90d0180dd2048e75084b66ad6864b1ed2645 */
+ * Stub hash: e5bf24ba5bd2be73f82de2988cb2d6f90511579a */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Document___construct, 0, 0, 0)
 ZEND_END_ARG_INFO()
@@ -28,10 +28,19 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_permissions, 0, 0, Pdfium\\Permissions, 0)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_permanentId, 0, 0, IS_STRING, 1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_isTagged, 0, 0, _IS_BOOL, 0)
 ZEND_END_ARG_INFO()
 
-#define arginfo_class_Pdfium_Document_changingId arginfo_class_Pdfium_Document_permanentId
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_language, 0, 0, IS_STRING, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_setLanguage, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, language, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Document_permanentId arginfo_class_Pdfium_Document_language
+
+#define arginfo_class_Pdfium_Document_changingId arginfo_class_Pdfium_Document_language
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_bookmarks, 0, 0, IS_ARRAY, 0)
 ZEND_END_ARG_INFO()
@@ -52,6 +61,13 @@ ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Document_deleteAttachment, 0, 1, IS_VOID, 0)
 	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Document_signatureCount arginfo_class_Pdfium_Document_pageCount
+
+#define arginfo_class_Pdfium_Document_signatures arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_formType, 0, 0, Pdfium\\FormType, 0)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Document_page, 0, 1, Pdfium\\Page, 0)
@@ -114,7 +130,13 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_AttachmentMetadata___construct arginfo_class_Pdfium_Document___construct
 
+#define arginfo_class_Pdfium_Signature___construct arginfo_class_Pdfium_Document___construct
+
 #define arginfo_class_Pdfium_Permissions___construct arginfo_class_Pdfium_Document___construct
+
+#define arginfo_class_Pdfium_FormFieldOption___construct arginfo_class_Pdfium_Document___construct
+
+#define arginfo_class_Pdfium_FormFieldFlags___construct arginfo_class_Pdfium_Document___construct
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Rect___construct, 0, 0, 4)
 	ZEND_ARG_TYPE_INFO(0, left, IS_DOUBLE, 0)
@@ -137,7 +159,23 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_Link___construct arginfo_class_Pdfium_Document___construct
 
-#define arginfo_class_Pdfium_Quad___construct arginfo_class_Pdfium_Document___construct
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Quad___construct, 0, 0, 8)
+	ZEND_ARG_TYPE_INFO(0, x1, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y1, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, x2, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y2, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, x3, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y3, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, x4, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y4, IS_DOUBLE, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_class_Pdfium_Point___construct, 0, 0, 2)
+	ZEND_ARG_TYPE_INFO(0, x, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y, IS_DOUBLE, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Border___construct arginfo_class_Pdfium_Document___construct
 
 #define arginfo_class_Pdfium_Destination___construct arginfo_class_Pdfium_Document___construct
 
@@ -207,15 +245,199 @@ ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Page_linkAt, 0, 2, P
 	ZEND_ARG_TYPE_INFO(0, y, IS_DOUBLE, 0)
 ZEND_END_ARG_INFO()
 
+#define arginfo_class_Pdfium_Page_annotationCount arginfo_class_Pdfium_Document_pageCount
+
+#define arginfo_class_Pdfium_Page_annotations arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Page_annotation, 0, 1, Pdfium\\Annotation, 0)
+	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Page_addAnnotation, 0, 2, Pdfium\\Annotation, 0)
+	ZEND_ARG_TYPE_INFO(0, type, IS_STRING, 0)
+	ZEND_ARG_OBJ_INFO(0, rect, Pdfium\\Rect, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Page_removeAnnotation arginfo_class_Pdfium_Document_deleteAttachment
+
+#define arginfo_class_Pdfium_Page_formFields arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Page_formFieldAt, 0, 2, Pdfium\\FormField, 1)
+	ZEND_ARG_TYPE_INFO(0, x, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, y, IS_DOUBLE, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Page_flatten, 0, 0, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, forPrint, _IS_BOOL, 0, "false")
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation___construct arginfo_class_Pdfium_Document___construct
+
+#define arginfo_class_Pdfium_Annotation_index arginfo_class_Pdfium_Document_pageCount
+
+#define arginfo_class_Pdfium_Annotation_type arginfo_class_Pdfium_Page_text
+
+#define arginfo_class_Pdfium_Annotation_rect arginfo_class_Pdfium_Page_mediaBox
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setRect, 0, 1, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, rect, Pdfium\\Rect, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_flags arginfo_class_Pdfium_Document_pageCount
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setFlags, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, flags, IS_LONG, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_color, 0, 0, Pdfium\\Color, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_interiorColor arginfo_class_Pdfium_Annotation_color
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setColor, 0, 3, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, red, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, green, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, blue, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, alpha, IS_LONG, 0, "255")
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_setInteriorColor arginfo_class_Pdfium_Annotation_setColor
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_border, 0, 0, Pdfium\\Border, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setBorder, 0, 3, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, horizontalRadius, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, verticalRadius, IS_DOUBLE, 0)
+	ZEND_ARG_TYPE_INFO(0, width, IS_DOUBLE, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_quadPoints arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_addQuadPoints, 0, 1, IS_VOID, 0)
+	ZEND_ARG_OBJ_INFO(0, quad, Pdfium\\Quad, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setQuadPoints, 0, 2, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, index, IS_LONG, 0)
+	ZEND_ARG_OBJ_INFO(0, quad, Pdfium\\Quad, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_vertices arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_line, 0, 0, IS_ARRAY, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_inkStrokes arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_addInkStroke, 0, 1, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO(0, points, IS_ARRAY, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_removeInkStrokes, 0, 0, IS_VOID, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_hasKey, 0, 1, _IS_BOOL, 0)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_valueType, 0, 1, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_stringValue, 0, 1, IS_STRING, 1)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_numberValue, 0, 1, IS_DOUBLE, 1)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_linkedAnnotation, 0, 1, Pdfium\\Annotation, 1)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setStringValue, 0, 2, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, key, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_appearance, 0, 0, IS_STRING, 1)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, mode, IS_LONG, 0, "Pdfium\\Annotation::APPEARANCE_NORMAL")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setAppearance, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, stream, IS_STRING, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, mode, IS_LONG, 0, "Pdfium\\Annotation::APPEARANCE_NORMAL")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_clearAppearance, 0, 0, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, mode, IS_LONG, 0, "Pdfium\\Annotation::APPEARANCE_NORMAL")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_link, 0, 0, Pdfium\\Link, 1)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_Annotation_setUri, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, uri, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Annotation_attachment, 0, 0, Pdfium\\Attachment, 1)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_Annotation_setAttachment arginfo_class_Pdfium_Document_addAttachment
+
+#define arginfo_class_Pdfium_Annotation_remove arginfo_class_Pdfium_Annotation_removeInkStrokes
+
 #define arginfo_class_Pdfium_Attachment___construct arginfo_class_Pdfium_Document___construct
 
 #define arginfo_class_Pdfium_Attachment_index arginfo_class_Pdfium_Document_pageCount
 
 #define arginfo_class_Pdfium_Attachment_name arginfo_class_Pdfium_Page_text
 
-#define arginfo_class_Pdfium_Attachment_contents arginfo_class_Pdfium_Document_permanentId
+#define arginfo_class_Pdfium_Attachment_contents arginfo_class_Pdfium_Document_language
 
 ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_Attachment_metadata, 0, 0, Pdfium\\AttachmentMetadata, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_FormField___construct arginfo_class_Pdfium_Document___construct
+
+#define arginfo_class_Pdfium_FormField_name arginfo_class_Pdfium_Page_text
+
+#define arginfo_class_Pdfium_FormField_alternateName arginfo_class_Pdfium_Document_language
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_FormField_type, 0, 0, Pdfium\\FormFieldType, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_FormField_value arginfo_class_Pdfium_Page_text
+
+#define arginfo_class_Pdfium_FormField_exportValue arginfo_class_Pdfium_Document_language
+
+#define arginfo_class_Pdfium_FormField_isChecked arginfo_class_Pdfium_Document_isTagged
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_FormField_rect, 0, 0, Pdfium\\Rect, 0)
+ZEND_END_ARG_INFO()
+
+#define arginfo_class_Pdfium_FormField_controlIndex arginfo_class_Pdfium_Document_pageCount
+
+#define arginfo_class_Pdfium_FormField_controlCount arginfo_class_Pdfium_Document_pageCount
+
+#define arginfo_class_Pdfium_FormField_options arginfo_class_Pdfium_Document_bookmarks
+
+ZEND_BEGIN_ARG_WITH_RETURN_OBJ_INFO_EX(arginfo_class_Pdfium_FormField_flags, 0, 0, Pdfium\\FormFieldFlags, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_FormField_setValue, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, value, IS_STRING, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_FormField_setChecked, 0, 0, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, checked, _IS_BOOL, 0, "true")
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_FormField_select, 0, 1, IS_VOID, 0)
+	ZEND_ARG_TYPE_INFO(0, option, IS_LONG, 0)
+	ZEND_ARG_TYPE_INFO_WITH_DEFAULT_VALUE(0, selected, _IS_BOOL, 0, "true")
 ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_TextPage___construct arginfo_class_Pdfium_Document___construct
@@ -260,13 +482,11 @@ ZEND_END_ARG_INFO()
 
 #define arginfo_class_Pdfium_PageIterator_key arginfo_class_Pdfium_Document_pageCount
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_PageIterator_next, 0, 0, IS_VOID, 0)
-ZEND_END_ARG_INFO()
+#define arginfo_class_Pdfium_PageIterator_next arginfo_class_Pdfium_Annotation_removeInkStrokes
 
-#define arginfo_class_Pdfium_PageIterator_rewind arginfo_class_Pdfium_PageIterator_next
+#define arginfo_class_Pdfium_PageIterator_rewind arginfo_class_Pdfium_Annotation_removeInkStrokes
 
-ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_class_Pdfium_PageIterator_valid, 0, 0, _IS_BOOL, 0)
-ZEND_END_ARG_INFO()
+#define arginfo_class_Pdfium_PageIterator_valid arginfo_class_Pdfium_Document_isTagged
 
 #define arginfo_class_Pdfium_Bitmap___construct arginfo_class_Pdfium_Document___construct
 
@@ -296,6 +516,9 @@ ZEND_METHOD(Pdfium_Document, fromString);
 ZEND_METHOD(Pdfium_Document, pageCount);
 ZEND_METHOD(Pdfium_Document, metadata);
 ZEND_METHOD(Pdfium_Document, permissions);
+ZEND_METHOD(Pdfium_Document, isTagged);
+ZEND_METHOD(Pdfium_Document, language);
+ZEND_METHOD(Pdfium_Document, setLanguage);
 ZEND_METHOD(Pdfium_Document, permanentId);
 ZEND_METHOD(Pdfium_Document, changingId);
 ZEND_METHOD(Pdfium_Document, bookmarks);
@@ -304,6 +527,9 @@ ZEND_METHOD(Pdfium_Document, attachments);
 ZEND_METHOD(Pdfium_Document, attachment);
 ZEND_METHOD(Pdfium_Document, addAttachment);
 ZEND_METHOD(Pdfium_Document, deleteAttachment);
+ZEND_METHOD(Pdfium_Document, signatureCount);
+ZEND_METHOD(Pdfium_Document, signatures);
+ZEND_METHOD(Pdfium_Document, formType);
 ZEND_METHOD(Pdfium_Document, page);
 ZEND_METHOD(Pdfium_Document, deletePage);
 ZEND_METHOD(Pdfium_Document, addPage);
@@ -317,7 +543,10 @@ ZEND_METHOD(Pdfium_Document, save);
 ZEND_METHOD(Pdfium_Document, toString);
 ZEND_METHOD(Pdfium_Metadata, __construct);
 ZEND_METHOD(Pdfium_AttachmentMetadata, __construct);
+ZEND_METHOD(Pdfium_Signature, __construct);
 ZEND_METHOD(Pdfium_Permissions, __construct);
+ZEND_METHOD(Pdfium_FormFieldOption, __construct);
+ZEND_METHOD(Pdfium_FormFieldFlags, __construct);
 ZEND_METHOD(Pdfium_Rect, __construct);
 ZEND_METHOD(Pdfium_Color, __construct);
 ZEND_METHOD(Pdfium_Matrix, __construct);
@@ -327,6 +556,8 @@ ZEND_METHOD(Pdfium_WebLink, __construct);
 ZEND_METHOD(Pdfium_Bookmark, __construct);
 ZEND_METHOD(Pdfium_Link, __construct);
 ZEND_METHOD(Pdfium_Quad, __construct);
+ZEND_METHOD(Pdfium_Point, __construct);
+ZEND_METHOD(Pdfium_Border, __construct);
 ZEND_METHOD(Pdfium_Destination, __construct);
 ZEND_METHOD(Pdfium_Action, __construct);
 ZEND_METHOD(Pdfium_Page, __construct);
@@ -352,11 +583,69 @@ ZEND_METHOD(Pdfium_Page, openAction);
 ZEND_METHOD(Pdfium_Page, closeAction);
 ZEND_METHOD(Pdfium_Page, links);
 ZEND_METHOD(Pdfium_Page, linkAt);
+ZEND_METHOD(Pdfium_Page, annotationCount);
+ZEND_METHOD(Pdfium_Page, annotations);
+ZEND_METHOD(Pdfium_Page, annotation);
+ZEND_METHOD(Pdfium_Page, addAnnotation);
+ZEND_METHOD(Pdfium_Page, removeAnnotation);
+ZEND_METHOD(Pdfium_Page, formFields);
+ZEND_METHOD(Pdfium_Page, formFieldAt);
+ZEND_METHOD(Pdfium_Page, flatten);
+ZEND_METHOD(Pdfium_Annotation, __construct);
+ZEND_METHOD(Pdfium_Annotation, index);
+ZEND_METHOD(Pdfium_Annotation, type);
+ZEND_METHOD(Pdfium_Annotation, rect);
+ZEND_METHOD(Pdfium_Annotation, setRect);
+ZEND_METHOD(Pdfium_Annotation, flags);
+ZEND_METHOD(Pdfium_Annotation, setFlags);
+ZEND_METHOD(Pdfium_Annotation, color);
+ZEND_METHOD(Pdfium_Annotation, interiorColor);
+ZEND_METHOD(Pdfium_Annotation, setColor);
+ZEND_METHOD(Pdfium_Annotation, setInteriorColor);
+ZEND_METHOD(Pdfium_Annotation, border);
+ZEND_METHOD(Pdfium_Annotation, setBorder);
+ZEND_METHOD(Pdfium_Annotation, quadPoints);
+ZEND_METHOD(Pdfium_Annotation, addQuadPoints);
+ZEND_METHOD(Pdfium_Annotation, setQuadPoints);
+ZEND_METHOD(Pdfium_Annotation, vertices);
+ZEND_METHOD(Pdfium_Annotation, line);
+ZEND_METHOD(Pdfium_Annotation, inkStrokes);
+ZEND_METHOD(Pdfium_Annotation, addInkStroke);
+ZEND_METHOD(Pdfium_Annotation, removeInkStrokes);
+ZEND_METHOD(Pdfium_Annotation, hasKey);
+ZEND_METHOD(Pdfium_Annotation, valueType);
+ZEND_METHOD(Pdfium_Annotation, stringValue);
+ZEND_METHOD(Pdfium_Annotation, numberValue);
+ZEND_METHOD(Pdfium_Annotation, linkedAnnotation);
+ZEND_METHOD(Pdfium_Annotation, setStringValue);
+ZEND_METHOD(Pdfium_Annotation, appearance);
+ZEND_METHOD(Pdfium_Annotation, setAppearance);
+ZEND_METHOD(Pdfium_Annotation, clearAppearance);
+ZEND_METHOD(Pdfium_Annotation, link);
+ZEND_METHOD(Pdfium_Annotation, setUri);
+ZEND_METHOD(Pdfium_Annotation, attachment);
+ZEND_METHOD(Pdfium_Annotation, setAttachment);
+ZEND_METHOD(Pdfium_Annotation, remove);
 ZEND_METHOD(Pdfium_Attachment, __construct);
 ZEND_METHOD(Pdfium_Attachment, index);
 ZEND_METHOD(Pdfium_Attachment, name);
 ZEND_METHOD(Pdfium_Attachment, contents);
 ZEND_METHOD(Pdfium_Attachment, metadata);
+ZEND_METHOD(Pdfium_FormField, __construct);
+ZEND_METHOD(Pdfium_FormField, name);
+ZEND_METHOD(Pdfium_FormField, alternateName);
+ZEND_METHOD(Pdfium_FormField, type);
+ZEND_METHOD(Pdfium_FormField, value);
+ZEND_METHOD(Pdfium_FormField, exportValue);
+ZEND_METHOD(Pdfium_FormField, isChecked);
+ZEND_METHOD(Pdfium_FormField, rect);
+ZEND_METHOD(Pdfium_FormField, controlIndex);
+ZEND_METHOD(Pdfium_FormField, controlCount);
+ZEND_METHOD(Pdfium_FormField, options);
+ZEND_METHOD(Pdfium_FormField, flags);
+ZEND_METHOD(Pdfium_FormField, setValue);
+ZEND_METHOD(Pdfium_FormField, setChecked);
+ZEND_METHOD(Pdfium_FormField, select);
 ZEND_METHOD(Pdfium_TextPage, __construct);
 ZEND_METHOD(Pdfium_TextPage, text);
 ZEND_METHOD(Pdfium_TextPage, charCount);
@@ -393,6 +682,9 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 #endif
 	ZEND_ME(Pdfium_Document, metadata, arginfo_class_Pdfium_Document_metadata, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, permissions, arginfo_class_Pdfium_Document_permissions, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, isTagged, arginfo_class_Pdfium_Document_isTagged, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, language, arginfo_class_Pdfium_Document_language, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, setLanguage, arginfo_class_Pdfium_Document_setLanguage, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, permanentId, arginfo_class_Pdfium_Document_permanentId, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, changingId, arginfo_class_Pdfium_Document_changingId, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, bookmarks, arginfo_class_Pdfium_Document_bookmarks, ZEND_ACC_PUBLIC)
@@ -401,6 +693,9 @@ static const zend_function_entry class_Pdfium_Document_methods[] = {
 	ZEND_ME(Pdfium_Document, attachment, arginfo_class_Pdfium_Document_attachment, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, addAttachment, arginfo_class_Pdfium_Document_addAttachment, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, deleteAttachment, arginfo_class_Pdfium_Document_deleteAttachment, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, signatureCount, arginfo_class_Pdfium_Document_signatureCount, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, signatures, arginfo_class_Pdfium_Document_signatures, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Document, formType, arginfo_class_Pdfium_Document_formType, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, page, arginfo_class_Pdfium_Document_page, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, deletePage, arginfo_class_Pdfium_Document_deletePage, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Document, addPage, arginfo_class_Pdfium_Document_addPage, ZEND_ACC_PUBLIC)
@@ -430,8 +725,23 @@ static const zend_function_entry class_Pdfium_AttachmentMetadata_methods[] = {
 	ZEND_FE_END
 };
 
+static const zend_function_entry class_Pdfium_Signature_methods[] = {
+	ZEND_ME(Pdfium_Signature, __construct, arginfo_class_Pdfium_Signature___construct, ZEND_ACC_PRIVATE)
+	ZEND_FE_END
+};
+
 static const zend_function_entry class_Pdfium_Permissions_methods[] = {
 	ZEND_ME(Pdfium_Permissions, __construct, arginfo_class_Pdfium_Permissions___construct, ZEND_ACC_PRIVATE)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_FormFieldOption_methods[] = {
+	ZEND_ME(Pdfium_FormFieldOption, __construct, arginfo_class_Pdfium_FormFieldOption___construct, ZEND_ACC_PRIVATE)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_FormFieldFlags_methods[] = {
+	ZEND_ME(Pdfium_FormFieldFlags, __construct, arginfo_class_Pdfium_FormFieldFlags___construct, ZEND_ACC_PRIVATE)
 	ZEND_FE_END
 };
 
@@ -476,7 +786,17 @@ static const zend_function_entry class_Pdfium_Link_methods[] = {
 };
 
 static const zend_function_entry class_Pdfium_Quad_methods[] = {
-	ZEND_ME(Pdfium_Quad, __construct, arginfo_class_Pdfium_Quad___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Pdfium_Quad, __construct, arginfo_class_Pdfium_Quad___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_Point_methods[] = {
+	ZEND_ME(Pdfium_Point, __construct, arginfo_class_Pdfium_Point___construct, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_Border_methods[] = {
+	ZEND_ME(Pdfium_Border, __construct, arginfo_class_Pdfium_Border___construct, ZEND_ACC_PRIVATE)
 	ZEND_FE_END
 };
 
@@ -514,6 +834,53 @@ static const zend_function_entry class_Pdfium_Page_methods[] = {
 	ZEND_ME(Pdfium_Page, closeAction, arginfo_class_Pdfium_Page_closeAction, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, links, arginfo_class_Pdfium_Page_links, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Page, linkAt, arginfo_class_Pdfium_Page_linkAt, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, annotationCount, arginfo_class_Pdfium_Page_annotationCount, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, annotations, arginfo_class_Pdfium_Page_annotations, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, annotation, arginfo_class_Pdfium_Page_annotation, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, addAnnotation, arginfo_class_Pdfium_Page_addAnnotation, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, removeAnnotation, arginfo_class_Pdfium_Page_removeAnnotation, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, formFields, arginfo_class_Pdfium_Page_formFields, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, formFieldAt, arginfo_class_Pdfium_Page_formFieldAt, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Page, flatten, arginfo_class_Pdfium_Page_flatten, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_Annotation_methods[] = {
+	ZEND_ME(Pdfium_Annotation, __construct, arginfo_class_Pdfium_Annotation___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Pdfium_Annotation, index, arginfo_class_Pdfium_Annotation_index, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, type, arginfo_class_Pdfium_Annotation_type, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, rect, arginfo_class_Pdfium_Annotation_rect, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setRect, arginfo_class_Pdfium_Annotation_setRect, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, flags, arginfo_class_Pdfium_Annotation_flags, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setFlags, arginfo_class_Pdfium_Annotation_setFlags, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, color, arginfo_class_Pdfium_Annotation_color, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, interiorColor, arginfo_class_Pdfium_Annotation_interiorColor, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setColor, arginfo_class_Pdfium_Annotation_setColor, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setInteriorColor, arginfo_class_Pdfium_Annotation_setInteriorColor, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, border, arginfo_class_Pdfium_Annotation_border, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setBorder, arginfo_class_Pdfium_Annotation_setBorder, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, quadPoints, arginfo_class_Pdfium_Annotation_quadPoints, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, addQuadPoints, arginfo_class_Pdfium_Annotation_addQuadPoints, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setQuadPoints, arginfo_class_Pdfium_Annotation_setQuadPoints, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, vertices, arginfo_class_Pdfium_Annotation_vertices, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, line, arginfo_class_Pdfium_Annotation_line, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, inkStrokes, arginfo_class_Pdfium_Annotation_inkStrokes, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, addInkStroke, arginfo_class_Pdfium_Annotation_addInkStroke, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, removeInkStrokes, arginfo_class_Pdfium_Annotation_removeInkStrokes, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, hasKey, arginfo_class_Pdfium_Annotation_hasKey, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, valueType, arginfo_class_Pdfium_Annotation_valueType, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, stringValue, arginfo_class_Pdfium_Annotation_stringValue, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, numberValue, arginfo_class_Pdfium_Annotation_numberValue, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, linkedAnnotation, arginfo_class_Pdfium_Annotation_linkedAnnotation, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setStringValue, arginfo_class_Pdfium_Annotation_setStringValue, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, appearance, arginfo_class_Pdfium_Annotation_appearance, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setAppearance, arginfo_class_Pdfium_Annotation_setAppearance, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, clearAppearance, arginfo_class_Pdfium_Annotation_clearAppearance, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, link, arginfo_class_Pdfium_Annotation_link, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setUri, arginfo_class_Pdfium_Annotation_setUri, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, attachment, arginfo_class_Pdfium_Annotation_attachment, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, setAttachment, arginfo_class_Pdfium_Annotation_setAttachment, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_Annotation, remove, arginfo_class_Pdfium_Annotation_remove, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -523,6 +890,25 @@ static const zend_function_entry class_Pdfium_Attachment_methods[] = {
 	ZEND_ME(Pdfium_Attachment, name, arginfo_class_Pdfium_Attachment_name, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Attachment, contents, arginfo_class_Pdfium_Attachment_contents, ZEND_ACC_PUBLIC)
 	ZEND_ME(Pdfium_Attachment, metadata, arginfo_class_Pdfium_Attachment_metadata, ZEND_ACC_PUBLIC)
+	ZEND_FE_END
+};
+
+static const zend_function_entry class_Pdfium_FormField_methods[] = {
+	ZEND_ME(Pdfium_FormField, __construct, arginfo_class_Pdfium_FormField___construct, ZEND_ACC_PRIVATE)
+	ZEND_ME(Pdfium_FormField, name, arginfo_class_Pdfium_FormField_name, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, alternateName, arginfo_class_Pdfium_FormField_alternateName, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, type, arginfo_class_Pdfium_FormField_type, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, value, arginfo_class_Pdfium_FormField_value, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, exportValue, arginfo_class_Pdfium_FormField_exportValue, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, isChecked, arginfo_class_Pdfium_FormField_isChecked, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, rect, arginfo_class_Pdfium_FormField_rect, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, controlIndex, arginfo_class_Pdfium_FormField_controlIndex, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, controlCount, arginfo_class_Pdfium_FormField_controlCount, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, options, arginfo_class_Pdfium_FormField_options, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, flags, arginfo_class_Pdfium_FormField_flags, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, setValue, arginfo_class_Pdfium_FormField_setValue, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, setChecked, arginfo_class_Pdfium_FormField_setChecked, ZEND_ACC_PUBLIC)
+	ZEND_ME(Pdfium_FormField, select, arginfo_class_Pdfium_FormField_select, ZEND_ACC_PUBLIC)
 	ZEND_FE_END
 };
 
@@ -788,6 +1174,57 @@ static zend_class_entry *register_class_Pdfium_AttachmentMetadata(void)
 	return class_entry;
 }
 
+static zend_class_entry *register_class_Pdfium_Signature(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Signature", class_Pdfium_Signature_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS;
+#endif
+
+	zval property_contents_default_value;
+	ZVAL_UNDEF(&property_contents_default_value);
+	zend_string *property_contents_name = zend_string_init("contents", sizeof("contents") - 1, 1);
+	zend_declare_typed_property(class_entry, property_contents_name, &property_contents_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string_release(property_contents_name);
+
+	zval property_byteRange_default_value;
+	ZVAL_UNDEF(&property_byteRange_default_value);
+	zend_string *property_byteRange_name = zend_string_init("byteRange", sizeof("byteRange") - 1, 1);
+	zend_declare_typed_property(class_entry, property_byteRange_name, &property_byteRange_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_ARRAY));
+	zend_string_release(property_byteRange_name);
+
+	zval property_subFilter_default_value;
+	ZVAL_UNDEF(&property_subFilter_default_value);
+	zend_string *property_subFilter_name = zend_string_init("subFilter", sizeof("subFilter") - 1, 1);
+	zend_declare_typed_property(class_entry, property_subFilter_name, &property_subFilter_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string_release(property_subFilter_name);
+
+	zval property_reason_default_value;
+	ZVAL_UNDEF(&property_reason_default_value);
+	zend_string *property_reason_name = zend_string_init("reason", sizeof("reason") - 1, 1);
+	zend_declare_typed_property(class_entry, property_reason_name, &property_reason_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string_release(property_reason_name);
+
+	zval property_time_default_value;
+	ZVAL_UNDEF(&property_time_default_value);
+	zend_string *property_time_name = zend_string_init("time", sizeof("time") - 1, 1);
+	zend_declare_typed_property(class_entry, property_time_name, &property_time_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING|MAY_BE_NULL));
+	zend_string_release(property_time_name);
+
+	zval property_docMdpPermission_default_value;
+	ZVAL_UNDEF(&property_docMdpPermission_default_value);
+	zend_string *property_docMdpPermission_name = zend_string_init("docMdpPermission", sizeof("docMdpPermission") - 1, 1);
+	zend_declare_typed_property(class_entry, property_docMdpPermission_name, &property_docMdpPermission_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG|MAY_BE_NULL));
+	zend_string_release(property_docMdpPermission_name);
+
+	return class_entry;
+}
+
 static zend_class_entry *register_class_Pdfium_Permissions(void)
 {
 	zend_class_entry ce, *class_entry;
@@ -847,6 +1284,90 @@ static zend_class_entry *register_class_Pdfium_Permissions(void)
 	zend_string *property_printHighQuality_name = zend_string_init("printHighQuality", sizeof("printHighQuality") - 1, 1);
 	zend_declare_typed_property(class_entry, property_printHighQuality_name, &property_printHighQuality_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
 	zend_string_release(property_printHighQuality_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_FormFieldOption(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "FormFieldOption", class_Pdfium_FormFieldOption_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS;
+#endif
+
+	zval property_label_default_value;
+	ZVAL_UNDEF(&property_label_default_value);
+	zend_string *property_label_name = zend_string_init("label", sizeof("label") - 1, 1);
+	zend_declare_typed_property(class_entry, property_label_name, &property_label_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_STRING));
+	zend_string_release(property_label_name);
+
+	zval property_selected_default_value;
+	ZVAL_UNDEF(&property_selected_default_value);
+	zend_string *property_selected_name = zend_string_init("selected", sizeof("selected") - 1, 1);
+	zend_declare_typed_property(class_entry, property_selected_name, &property_selected_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_selected_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_FormFieldFlags(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "FormFieldFlags", class_Pdfium_FormFieldFlags_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS;
+#endif
+
+	zval property_readOnly_default_value;
+	ZVAL_UNDEF(&property_readOnly_default_value);
+	zend_string *property_readOnly_name = zend_string_init("readOnly", sizeof("readOnly") - 1, 1);
+	zend_declare_typed_property(class_entry, property_readOnly_name, &property_readOnly_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_readOnly_name);
+
+	zval property_required_default_value;
+	ZVAL_UNDEF(&property_required_default_value);
+	zend_string *property_required_name = zend_string_init("required", sizeof("required") - 1, 1);
+	zend_declare_typed_property(class_entry, property_required_name, &property_required_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_required_name);
+
+	zval property_noExport_default_value;
+	ZVAL_UNDEF(&property_noExport_default_value);
+	zend_string *property_noExport_name = zend_string_init("noExport", sizeof("noExport") - 1, 1);
+	zend_declare_typed_property(class_entry, property_noExport_name, &property_noExport_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_noExport_name);
+
+	zval property_multiline_default_value;
+	ZVAL_UNDEF(&property_multiline_default_value);
+	zend_string *property_multiline_name = zend_string_init("multiline", sizeof("multiline") - 1, 1);
+	zend_declare_typed_property(class_entry, property_multiline_name, &property_multiline_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_multiline_name);
+
+	zval property_password_default_value;
+	ZVAL_UNDEF(&property_password_default_value);
+	zend_string *property_password_name = zend_string_init("password", sizeof("password") - 1, 1);
+	zend_declare_typed_property(class_entry, property_password_name, &property_password_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_password_name);
+
+	zval property_editable_default_value;
+	ZVAL_UNDEF(&property_editable_default_value);
+	zend_string *property_editable_name = zend_string_init("editable", sizeof("editable") - 1, 1);
+	zend_declare_typed_property(class_entry, property_editable_name, &property_editable_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_editable_name);
+
+	zval property_multiSelect_default_value;
+	ZVAL_UNDEF(&property_multiSelect_default_value);
+	zend_string *property_multiSelect_name = zend_string_init("multiSelect", sizeof("multiSelect") - 1, 1);
+	zend_declare_typed_property(class_entry, property_multiSelect_name, &property_multiSelect_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_BOOL));
+	zend_string_release(property_multiSelect_name);
 
 	return class_entry;
 }
@@ -1345,6 +1866,66 @@ static zend_class_entry *register_class_Pdfium_Quad(void)
 	return class_entry;
 }
 
+static zend_class_entry *register_class_Pdfium_Point(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Point", class_Pdfium_Point_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS;
+#endif
+
+	zval property_x_default_value;
+	ZVAL_UNDEF(&property_x_default_value);
+	zend_string *property_x_name = zend_string_init("x", sizeof("x") - 1, 1);
+	zend_declare_typed_property(class_entry, property_x_name, &property_x_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_x_name);
+
+	zval property_y_default_value;
+	ZVAL_UNDEF(&property_y_default_value);
+	zend_string *property_y_name = zend_string_init("y", sizeof("y") - 1, 1);
+	zend_declare_typed_property(class_entry, property_y_name, &property_y_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_y_name);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_Border(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Border", class_Pdfium_Border_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_READONLY_CLASS;
+#endif
+
+	zval property_horizontalRadius_default_value;
+	ZVAL_UNDEF(&property_horizontalRadius_default_value);
+	zend_string *property_horizontalRadius_name = zend_string_init("horizontalRadius", sizeof("horizontalRadius") - 1, 1);
+	zend_declare_typed_property(class_entry, property_horizontalRadius_name, &property_horizontalRadius_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_horizontalRadius_name);
+
+	zval property_verticalRadius_default_value;
+	ZVAL_UNDEF(&property_verticalRadius_default_value);
+	zend_string *property_verticalRadius_name = zend_string_init("verticalRadius", sizeof("verticalRadius") - 1, 1);
+	zend_declare_typed_property(class_entry, property_verticalRadius_name, &property_verticalRadius_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_verticalRadius_name);
+
+	zval property_width_default_value;
+	ZVAL_UNDEF(&property_width_default_value);
+	zend_string *property_width_name = zend_string_init("width", sizeof("width") - 1, 1);
+	zend_declare_typed_property(class_entry, property_width_name, &property_width_default_value, ZEND_ACC_PUBLIC|ZEND_ACC_READONLY, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_DOUBLE));
+	zend_string_release(property_width_name);
+
+	return class_entry;
+}
+
 static zend_class_entry *register_class_Pdfium_Destination(void)
 {
 	zend_class_entry ce, *class_entry;
@@ -1451,11 +2032,151 @@ static zend_class_entry *register_class_Pdfium_Page(void)
 	return class_entry;
 }
 
+static zend_class_entry *register_class_Pdfium_Annotation(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Annotation", class_Pdfium_Annotation_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE;
+#endif
+
+	zval const_FLAG_INVISIBLE_value;
+	ZVAL_LONG(&const_FLAG_INVISIBLE_value, 1);
+	zend_string *const_FLAG_INVISIBLE_name = zend_string_init_interned("FLAG_INVISIBLE", sizeof("FLAG_INVISIBLE") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_INVISIBLE_name, &const_FLAG_INVISIBLE_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_INVISIBLE_name);
+
+	zval const_FLAG_HIDDEN_value;
+	ZVAL_LONG(&const_FLAG_HIDDEN_value, 2);
+	zend_string *const_FLAG_HIDDEN_name = zend_string_init_interned("FLAG_HIDDEN", sizeof("FLAG_HIDDEN") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_HIDDEN_name, &const_FLAG_HIDDEN_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_HIDDEN_name);
+
+	zval const_FLAG_PRINT_value;
+	ZVAL_LONG(&const_FLAG_PRINT_value, 4);
+	zend_string *const_FLAG_PRINT_name = zend_string_init_interned("FLAG_PRINT", sizeof("FLAG_PRINT") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_PRINT_name, &const_FLAG_PRINT_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_PRINT_name);
+
+	zval const_FLAG_NO_ZOOM_value;
+	ZVAL_LONG(&const_FLAG_NO_ZOOM_value, 8);
+	zend_string *const_FLAG_NO_ZOOM_name = zend_string_init_interned("FLAG_NO_ZOOM", sizeof("FLAG_NO_ZOOM") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_NO_ZOOM_name, &const_FLAG_NO_ZOOM_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_NO_ZOOM_name);
+
+	zval const_FLAG_NO_ROTATE_value;
+	ZVAL_LONG(&const_FLAG_NO_ROTATE_value, 16);
+	zend_string *const_FLAG_NO_ROTATE_name = zend_string_init_interned("FLAG_NO_ROTATE", sizeof("FLAG_NO_ROTATE") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_NO_ROTATE_name, &const_FLAG_NO_ROTATE_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_NO_ROTATE_name);
+
+	zval const_FLAG_NO_VIEW_value;
+	ZVAL_LONG(&const_FLAG_NO_VIEW_value, 32);
+	zend_string *const_FLAG_NO_VIEW_name = zend_string_init_interned("FLAG_NO_VIEW", sizeof("FLAG_NO_VIEW") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_NO_VIEW_name, &const_FLAG_NO_VIEW_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_NO_VIEW_name);
+
+	zval const_FLAG_READ_ONLY_value;
+	ZVAL_LONG(&const_FLAG_READ_ONLY_value, 64);
+	zend_string *const_FLAG_READ_ONLY_name = zend_string_init_interned("FLAG_READ_ONLY", sizeof("FLAG_READ_ONLY") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_READ_ONLY_name, &const_FLAG_READ_ONLY_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_READ_ONLY_name);
+
+	zval const_FLAG_LOCKED_value;
+	ZVAL_LONG(&const_FLAG_LOCKED_value, 128);
+	zend_string *const_FLAG_LOCKED_name = zend_string_init_interned("FLAG_LOCKED", sizeof("FLAG_LOCKED") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_LOCKED_name, &const_FLAG_LOCKED_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_LOCKED_name);
+
+	zval const_FLAG_TOGGLE_NO_VIEW_value;
+	ZVAL_LONG(&const_FLAG_TOGGLE_NO_VIEW_value, 256);
+	zend_string *const_FLAG_TOGGLE_NO_VIEW_name = zend_string_init_interned("FLAG_TOGGLE_NO_VIEW", sizeof("FLAG_TOGGLE_NO_VIEW") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_FLAG_TOGGLE_NO_VIEW_name, &const_FLAG_TOGGLE_NO_VIEW_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_FLAG_TOGGLE_NO_VIEW_name);
+
+	zval const_APPEARANCE_NORMAL_value;
+	ZVAL_LONG(&const_APPEARANCE_NORMAL_value, 0);
+	zend_string *const_APPEARANCE_NORMAL_name = zend_string_init_interned("APPEARANCE_NORMAL", sizeof("APPEARANCE_NORMAL") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_APPEARANCE_NORMAL_name, &const_APPEARANCE_NORMAL_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_APPEARANCE_NORMAL_name);
+
+	zval const_APPEARANCE_ROLLOVER_value;
+	ZVAL_LONG(&const_APPEARANCE_ROLLOVER_value, 1);
+	zend_string *const_APPEARANCE_ROLLOVER_name = zend_string_init_interned("APPEARANCE_ROLLOVER", sizeof("APPEARANCE_ROLLOVER") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_APPEARANCE_ROLLOVER_name, &const_APPEARANCE_ROLLOVER_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_APPEARANCE_ROLLOVER_name);
+
+	zval const_APPEARANCE_DOWN_value;
+	ZVAL_LONG(&const_APPEARANCE_DOWN_value, 2);
+	zend_string *const_APPEARANCE_DOWN_name = zend_string_init_interned("APPEARANCE_DOWN", sizeof("APPEARANCE_DOWN") - 1, 1);
+	zend_declare_class_constant_ex(class_entry, const_APPEARANCE_DOWN_name, &const_APPEARANCE_DOWN_value, ZEND_ACC_PUBLIC, NULL);
+	zend_string_release(const_APPEARANCE_DOWN_name);
+
+	return class_entry;
+}
+
 static zend_class_entry *register_class_Pdfium_Attachment(void)
 {
 	zend_class_entry ce, *class_entry;
 
 	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "Attachment", class_Pdfium_Attachment_methods);
+#if (PHP_VERSION_ID >= 80400)
+	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
+#else
+	class_entry = zend_register_internal_class_ex(&ce, NULL);
+	class_entry->ce_flags |= ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE;
+#endif
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_FormType(void)
+{
+	zend_class_entry *class_entry = zend_register_internal_enum("Pdfium\\FormType", IS_UNDEF, NULL);
+
+	zend_enum_add_case_cstr(class_entry, "None", NULL);
+
+	zend_enum_add_case_cstr(class_entry, "AcroForm", NULL);
+
+	zend_enum_add_case_cstr(class_entry, "XfaFull", NULL);
+
+	zend_enum_add_case_cstr(class_entry, "XfaForeground", NULL);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_FormFieldType(void)
+{
+	zend_class_entry *class_entry = zend_register_internal_enum("Pdfium\\FormFieldType", IS_UNDEF, NULL);
+
+	zend_enum_add_case_cstr(class_entry, "Unknown", NULL);
+
+	zend_enum_add_case_cstr(class_entry, "PushButton", NULL);
+
+	zend_enum_add_case_cstr(class_entry, "Checkbox", NULL);
+
+	zend_enum_add_case_cstr(class_entry, "RadioButton", NULL);
+
+	zend_enum_add_case_cstr(class_entry, "ComboBox", NULL);
+
+	zend_enum_add_case_cstr(class_entry, "ListBox", NULL);
+
+	zend_enum_add_case_cstr(class_entry, "Text", NULL);
+
+	zend_enum_add_case_cstr(class_entry, "Signature", NULL);
+
+	return class_entry;
+}
+
+static zend_class_entry *register_class_Pdfium_FormField(void)
+{
+	zend_class_entry ce, *class_entry;
+
+	INIT_NS_CLASS_ENTRY(ce, "Pdfium", "FormField", class_Pdfium_FormField_methods);
 #if (PHP_VERSION_ID >= 80400)
 	class_entry = zend_register_internal_class_with_flags(&ce, NULL, ZEND_ACC_FINAL|ZEND_ACC_NO_DYNAMIC_PROPERTIES|ZEND_ACC_NOT_SERIALIZABLE);
 #else

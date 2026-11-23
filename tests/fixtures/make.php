@@ -75,6 +75,24 @@ function form(bool $withValue): string
     ], '');
 }
 
+function encryptedFormSource(): string
+{
+    $on = stream('0 g 0 0 20 20 re f', '/Type /XObject /Subtype /Form /BBox [0 0 20 20] ');
+    return build([
+        1 => '<< /Type /Catalog /Pages 2 0 R /AcroForm 6 0 R >>',
+        2 => '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        3 => '<< /Type /Page /Parent 2 0 R /MediaBox ' . MEDIA . ' /Annots [4 0 R 5 0 R] >>',
+        4 => '<< /Type /Annot /Subtype /Widget /FT /Tx /T (field1) /V (before)'
+            . ' /Rect [100 600 400 650] /F 4 /DA (/Helv 24 Tf 0 g) /P 3 0 R >>',
+        5 => '<< /Type /Annot /Subtype /Widget /FT /Btn /T (agree) /V /Off /AS /Off /Rect [100 500 120 520] /F 4 /P 3 0 R'
+            . ' /AP << /N << /Yes 8 0 R /Off 9 0 R >> >> >>',
+        6 => '<< /Fields [4 0 R 5 0 R] /DA (/Helv 24 Tf 0 g) /DR << /Font << /Helv 7 0 R >> >> >>',
+        7 => HELV,
+        8 => $on,
+        9 => stream('', '/Type /XObject /Subtype /Form /BBox [0 0 20 20] '),
+    ], '');
+}
+
 function unicodeDoc(): string
 {
     $cmap = "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n"
@@ -143,6 +161,52 @@ if (!file_exists("$dir/encrypted-owner.pdf")) {
 if (!file_exists("$dir/encrypted-r2.pdf")) {
     sh("qpdf --allow-weak-crypto --encrypt '' owner 40 --print=n --modify=n --extract=y --annotate=y -- $src "
         . escapeshellarg("$dir/encrypted-r2.pdf"));
+}
+if (!file_exists("$dir/encrypted-signed.pdf")) {
+    file_put_contents("$tmp/signed.pdf", build([
+        1 => '<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R 6 0 R] /SigFlags 3 >> >>',
+        2 => '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        3 => '<< /Type /Page /Parent 2 0 R /MediaBox ' . MEDIA . ' >>',
+        4 => '<< /FT /Sig /T (Sig) /V 5 0 R >>',
+        5 => '<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached /ByteRange [0 10 20 30] '
+            . "/Contents <3082AB000000> /Reason (I approve) /M (D:20261118120000+02'00') >>",
+        6 => '<< /FT /Sig /T (Untyped) /V 7 0 R >>',
+        7 => '<< /ByteRange [0 1 2 3] /Contents <CAFE00> /Reason (No type) >>',
+    ], ''));
+    sh('qpdf --encrypt user owner 256 -- ' . escapeshellarg("$tmp/signed.pdf") . ' ' . escapeshellarg("$dir/encrypted-signed.pdf"));
+}
+if (!file_exists("$dir/signed-cms.pdf")) {
+    $key = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
+    $csr = openssl_csr_new(['commonName' => 'php-pdfium test signer'], $key, ['digest_alg' => 'sha256']);
+    $cert = openssl_csr_sign($csr, null, $key, 36500, ['digest_alg' => 'sha256']);
+    openssl_x509_export_to_file($cert, "$dir/signer.pem");
+    $range = '/ByteRange [0 0000000000 0000000000 0000000000]';
+    $hole = '<' . str_repeat('0', 8192) . '>';
+    $pdf = build([
+        1 => '<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [4 0 R] /SigFlags 3 >> >>',
+        2 => '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        3 => '<< /Type /Page /Parent 2 0 R /MediaBox ' . MEDIA . ' >>',
+        4 => '<< /FT /Sig /T (Sig) /V 5 0 R >>',
+        5 => "<< /Type /Sig /Filter /Adobe.PPKLite /SubFilter /adbe.pkcs7.detached $range /Contents $hole "
+            . "/Reason (Tested) /M (D:20261121120000Z) >>",
+    ], '');
+    $start = strpos($pdf, $hole);
+    $end = $start + strlen($hole);
+    $pdf = str_replace($range, str_pad(sprintf('/ByteRange [0 %d %d %d]', $start, $end, strlen($pdf) - $end), strlen($range)), $pdf);
+    file_put_contents("$tmp/signed-bytes", substr($pdf, 0, $start) . substr($pdf, $end));
+    openssl_cms_sign("$tmp/signed-bytes", "$tmp/signature.der", $cert, $key, [], OPENSSL_CMS_DETACHED | OPENSSL_CMS_BINARY,
+        OPENSSL_ENCODING_DER) or throw new RuntimeException(openssl_error_string());
+    $signature = strtoupper(bin2hex(file_get_contents("$tmp/signature.der")));
+    file_put_contents("$dir/signed-cms.pdf", substr_replace($pdf, '<' . str_pad($signature, 8192, '0') . '>', $start, strlen($hole)));
+}
+
+if (!file_exists("$dir/encrypted-form.pdf")) {
+    file_put_contents("$tmp/form-source.pdf", encryptedFormSource());
+    sh('qpdf --encrypt user owner 256 -- ' . escapeshellarg("$tmp/form-source.pdf") . ' ' . escapeshellarg("$dir/encrypted-form.pdf"));
+}
+if (!file_exists("$dir/encrypted-form-locked.pdf")) {
+    file_put_contents("$tmp/form-source.pdf", encryptedFormSource());
+    sh("qpdf --encrypt '' owner 256 --modify=none -- " . escapeshellarg("$tmp/form-source.pdf") . ' ' . escapeshellarg("$dir/encrypted-form-locked.pdf"));
 }
 
 // Written raw: qpdf refuses a security handler it does not know.

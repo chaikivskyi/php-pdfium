@@ -40,7 +40,7 @@ ZEND_METHOD(Pdfium_Document, deletePage)
 
 	if (!in_range(index, before - 1)) {
 		pdfium_leave();
-		pdfium_index_error(1, before, "a page", "pages");
+		pdfium_index_error(1, before, "a page index", "the document has no pages");
 		RETURN_THROWS();
 	}
 	FPDFPage_Delete(h->doc, (int) index);

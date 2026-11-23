@@ -13,6 +13,12 @@ What it does
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
   transparent.
 - List, extract, add and delete embedded files (attachments).
+- List digital signatures and read their details.
+- Read whether a document is tagged, and read and set its language.
+- List, read, add, change and remove annotations, such as highlights, notes and links. Form
+  fields can also be changed and removed as Widget annotations, but not added.
+- Read and fill in form fields (text fields, checkboxes, radio buttons, combo and list boxes), and
+  flatten a page's annotations and fields into page content.
 - Edit pages: delete, add, copy in from another document, move, rotate and set their boxes.
 - Split and merge documents, put several pages on one sheet, start an empty document, and save.
 
@@ -198,7 +204,9 @@ Create, split, merge, put pages on a sheet and save
    // Save an encrypted document without its password:
    $doc->save('/tmp/open.pdf', removeSecurity: true);
 
-The new documents keep little but the pages; see :ref:`pdfium-defaults`.
+The new documents keep only the pages: no encryption, bookmarks, viewer preferences or metadata
+beyond what PDFium writes, and no ``/AcroForm``, so ``formType()`` is ``None``. See
+:ref:`pdfium-defaults`.
 
 Edit pages
 ~~~~~~~~~~
@@ -233,6 +241,87 @@ Embedded files
    $doc->save('/tmp/with-data.pdf');
 
 Adding a file can move the others, so fetch attachments again after it; see :ref:`attachments`.
+
+Signatures
+~~~~~~~~~~
+
+.. code-block:: php
+
+   foreach ($doc->signatures() as $s) {
+       if ($s->contents !== null) {
+           echo $s->subFilter, ' ', $s->time, ' ', $s->reason, "\n";
+       }
+   }
+
+See :ref:`signatures` for which fields are listed.
+
+Language and tagging
+~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: php
+
+   if ($doc->language() === null) {
+       $doc->setLanguage('en-US');
+       $doc->save('/tmp/with-language.pdf');
+   }
+   var_dump($doc->isTagged());
+
+``isTagged()`` is the document's own claim; see :ref:`accessibility`.
+
+Annotations
+~~~~~~~~~~~
+
+.. code-block:: php
+
+   use Pdfium\Quad;
+
+   $page = $doc->page(0);
+   foreach ($page->annotations() as $a) {
+       echo $a->type(), ': ', $a->stringValue('Contents') ?? '', "\n";   // Text: Check this
+   }
+
+   // Highlight a word; changes this document in place:
+   $r = $page->textPage()->search('total')[0]->rects[0];
+   $h = $page->addAnnotation('Highlight', $r);
+   $h->addQuadPoints(new Quad(
+       $r->left, $r->top, $r->right, $r->top, $r->left, $r->bottom, $r->right, $r->bottom,
+   ));
+   $h->setColor(255, 200, 0);
+   $h->setStringValue('Contents', 'Check the total');
+
+   $page->render();   // draws the highlight and stores its appearance, for other viewers
+   $doc->save('/tmp/highlighted.pdf');
+
+Other viewers draw an annotation from its appearance stream, which ``render()`` generates for most
+types, so render the page before saving; see :ref:`annotations`.
+
+Fill in a form
+~~~~~~~~~~~~~~
+
+.. code-block:: php
+
+   $doc = Document::fromFile('/path/form.pdf');
+   $page = $doc->page(0);
+
+   foreach ($page->formFields() as $field) {
+       echo $field->name(), ' (', $field->type()->name, '): ', $field->value(), "\n";
+   }
+
+   foreach ($page->formFields() as $field) {
+       match ($field->name()) {
+           'name' => $field->setValue('Jane Doe'),
+           'agree' => $field->setChecked(),
+           'country' => $field->select(2),
+           default => null,
+       };
+   }
+
+   // Turn the fields and every other annotation into page content, then write the document out:
+   $page->flatten();
+   $doc->save('/tmp/filled.pdf');
+
+Filling and flattening change the loaded document, never the file it came from. See :ref:`forms` for
+what PDFium does with read-only fields, scripts and long text.
 
 Free a document
 ~~~~~~~~~~~~~~~
