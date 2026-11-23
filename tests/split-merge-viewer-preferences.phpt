@@ -1,5 +1,5 @@
 --TEST--
-extractPages() keeps its document's viewer preferences and merge() the first document's
+extractPages() keeps its document's viewer preferences and merge() the first document's; nUp() keeps none
 --EXTENSIONS--
 pdfium
 --FILE--
@@ -22,9 +22,11 @@ $plain = Pdfium\Document::fromFile(__DIR__ . '/fixtures/tiny.pdf');
 echo 'extractPages: ', viewer_keys($doc->extractPages([0])), "\n";
 echo 'merge, first has them: ', viewer_keys(Pdfium\Document::merge([$doc, $plain])), "\n";
 echo 'merge, first has none: ', viewer_keys(Pdfium\Document::merge([$plain, $doc])), "\n";
+echo 'nUp: ', viewer_keys($doc->nUp(200, 100, 2, 1)), ', ', viewer_keys($doc->nUp(200, 100, 1, 1)), "\n";
 ?>
 --EXPECT--
 source: Direction HideToolbar PageLayout PageMode ViewerPreferences
 extractPages: Direction HideToolbar ViewerPreferences
 merge, first has them: Direction HideToolbar ViewerPreferences
 merge, first has none: none
+nUp: none, none

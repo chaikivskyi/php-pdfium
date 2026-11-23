@@ -14,7 +14,15 @@ What it does
 - Render pages, or part of a page, to PNG or JPEG at any DPI, in colour or gray, on white or
   transparent.
 - List, extract, add and delete embedded files (attachments).
-- Split, merge and save documents, incrementally if you want to keep the original file.
+- List digital signatures and read their details.
+- Read whether a document is tagged, and read and set its language.
+- List, read, add, change and remove annotations, such as highlights, notes and links. Form
+  fields can also be changed and removed as Widget annotations, but not added.
+- Read and fill in form fields (text fields, checkboxes, radio buttons, combo and list boxes), and
+  flatten a page's annotations and fields into page content.
+- Edit pages: delete, add, copy in from another document, move, rotate and set their boxes.
+- Split and merge documents, put several pages on one sheet, start an empty document, and save,
+  incrementally if you want to keep the original file.
 - Open large local files without loading them whole into memory.
 
 It needs PHP 8.2 to 8.5, NTS or ZTS, and no FFI. The only ini setting, ``pdfium.font_paths``, is
@@ -175,8 +183,8 @@ Render pages
 
 See :ref:`rendering` for the options, sizes and limits.
 
-Split, merge and save
-~~~~~~~~~~~~~~~~~~~~~
+Create, split, merge, put pages on a sheet and save
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: php
 
@@ -185,6 +193,13 @@ Split, merge and save
 
    // All pages of A, then all pages of B:
    Document::merge([$docA, $docB])->save('/tmp/all.pdf');
+
+   // Two pages side by side on each landscape A4 sheet:
+   $doc->nUp(842, 595, 2, 1)->save('/tmp/2-up.pdf');
+
+   // A new document with one blank A4 page:
+   $blank = Document::create();
+   $blank->addPage(595, 842);
 
    // An encrypted source must opt in, because the result cannot be encrypted:
    $doc->extractPages([0], removeSecurity: true);
@@ -200,10 +215,27 @@ Split, merge and save
 
    // Write a PDF 1.4 header:
    $doc->save('/tmp/old.pdf', version: 14);
+The new documents keep only the pages: no encryption, bookmarks, viewer preferences or metadata
+beyond what PDFium writes, and no ``/AcroForm``, so ``formType()`` is ``None``. See
+:ref:`pdfium-defaults`.
 
-Documents from ``extractPages()`` and ``merge()`` keep only the pages and the viewer preferences: no
-encryption, bookmarks or metadata beyond what PDFium writes, and form fields can no longer be filled
-in. See :ref:`pdfium-defaults`.
+Edit pages
+~~~~~~~~~~
+
+.. code-block:: php
+
+   $doc = Document::fromFile('/path/report.pdf');
+   $cover = $doc->page(1);
+
+   $doc->deletePage(0);                     // $cover->index() is now 0
+   $cover->setRotation(90);
+   $appendix = Document::fromFile('/path/appendix.pdf');
+   $doc->insertPages($appendix);            // its pages, after the last page
+
+   $doc->save('/tmp/edited.pdf');           // written out only here; report.pdf is not changed
+
+A ``Page`` you hold follows its page through the edits and throws once its page is deleted; see
+:ref:`page-editing`.
 
 Embedded files
 ~~~~~~~~~~~~~~
@@ -220,6 +252,87 @@ Embedded files
    $doc->save('/tmp/with-data.pdf');
 
 Adding a file can move the others, so fetch attachments again after it; see :ref:`attachments`.
+
+Signatures
+~~~~~~~~~~
+
+.. code-block:: php
+
+   foreach ($doc->signatures() as $s) {
+       if ($s->contents !== null) {
+           echo $s->subFilter, ' ', $s->time, ' ', $s->reason, "\n";
+       }
+   }
+
+See :ref:`signatures` for which fields are listed.
+
+Language and tagging
+~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: php
+
+   if ($doc->language() === null) {
+       $doc->setLanguage('en-US');
+       $doc->save('/tmp/with-language.pdf');
+   }
+   var_dump($doc->isTagged());
+
+``isTagged()`` is the document's own claim; see :ref:`accessibility`.
+
+Annotations
+~~~~~~~~~~~
+
+.. code-block:: php
+
+   use Pdfium\Quad;
+
+   $page = $doc->page(0);
+   foreach ($page->annotations() as $a) {
+       echo $a->type(), ': ', $a->stringValue('Contents') ?? '', "\n";   // Text: Check this
+   }
+
+   // Highlight a word; changes this document in place:
+   $r = $page->textPage()->search('total')[0]->rects[0];
+   $h = $page->addAnnotation('Highlight', $r);
+   $h->addQuadPoints(new Quad(
+       $r->left, $r->top, $r->right, $r->top, $r->left, $r->bottom, $r->right, $r->bottom,
+   ));
+   $h->setColor(255, 200, 0);
+   $h->setStringValue('Contents', 'Check the total');
+
+   $page->render();   // draws the highlight and stores its appearance, for other viewers
+   $doc->save('/tmp/highlighted.pdf');
+
+Other viewers draw an annotation from its appearance stream, which ``render()`` generates for most
+types, so render the page before saving; see :ref:`annotations`.
+
+Fill in a form
+~~~~~~~~~~~~~~
+
+.. code-block:: php
+
+   $doc = Document::fromFile('/path/form.pdf');
+   $page = $doc->page(0);
+
+   foreach ($page->formFields() as $field) {
+       echo $field->name(), ' (', $field->type()->name, '): ', $field->value(), "\n";
+   }
+
+   foreach ($page->formFields() as $field) {
+       match ($field->name()) {
+           'name' => $field->setValue('Jane Doe'),
+           'agree' => $field->setChecked(),
+           'country' => $field->select(2),
+           default => null,
+       };
+   }
+
+   // Turn the fields and every other annotation into page content, then write the document out:
+   $page->flatten();
+   $doc->save('/tmp/filled.pdf');
+
+Filling and flattening change the loaded document, never the file it came from. See :ref:`forms` for
+what PDFium does with read-only fields, scripts and long text.
 
 Free a document
 ~~~~~~~~~~~~~~~

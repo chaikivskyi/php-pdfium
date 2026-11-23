@@ -26,6 +26,35 @@ function with_retry(callable $fn): mixed
     }
 }
 
+/** @return array{parallel\Runtime, parallel\Future, string} */
+function renderer_start(): array
+{
+    $stop = sys_get_temp_dir() . '/pdfium-renderer-stop-' . getmypid();
+    @unlink($stop);
+    $runtime = new parallel\Runtime(__DIR__ . '/threads.inc');
+    $future = $runtime->run(static function (string $fixture, string $stop): int {
+        $page = with_retry(fn () => Pdfium\Document::fromFile($fixture)->page(0));
+        $renders = 0;
+        $end = microtime(true) + 10;
+        while (!file_exists($stop) && microtime(true) < $end) {
+            with_retry(fn () => $page->render(200));
+            $renders++;
+        }
+        return $renders;
+    }, [__DIR__ . '/fixtures/a4.pdf', $stop]);
+    return [$runtime, $future, $stop];
+}
+
+/** @param array{parallel\Runtime, parallel\Future, string} $renderer */
+function renderer_stop(array $renderer): int
+{
+    [, $future, $stop] = $renderer;
+    touch($stop);
+    $renders = $future->value();
+    unlink($stop);
+    return $renders;
+}
+
 function stress_workload(string $dir, int $seed): array
 {
     $busyBefore = $GLOBALS['busy'] ?? 0;

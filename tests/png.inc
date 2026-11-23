@@ -70,3 +70,8 @@ function png_render(string $pdf): array
 {
     return png_decode(Pdfium\Document::fromString($pdf)->page(0)->render(dpi: 72)->toPng());
 }
+
+function png_md5(Pdfium\Page $page, bool $annotations = true, int $dpi = 72): string
+{
+    return md5($page->render(dpi: $dpi, annotations: $annotations)->toPng());
+}
