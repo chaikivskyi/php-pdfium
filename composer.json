@@ -1,6 +1,7 @@
 {
   "name": "chaikivskyi/php-pdfium",
   "description": "Fast native PDF extension for PHP, built on PDFium",
+  "keywords": ["pdf", "pdfium", "extension"],
   "type": "php-ext",
   "license": "MIT",
   "require": { "php": ">=8.2 <8.6" },
