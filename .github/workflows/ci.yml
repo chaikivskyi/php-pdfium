@@ -169,7 +169,7 @@ jobs:
     runs-on: ubuntu-26.04
     needs: images
     container:
-      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:8.4-nts-${{ needs.images.outputs.tag }}
+      image: ghcr.io/${{ github.repository_owner }}/pdfium-ci:valgrind-nts-${{ needs.images.outputs.tag }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
