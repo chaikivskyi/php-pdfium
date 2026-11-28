@@ -7,7 +7,7 @@
 #include <fpdfview.h>
 #include <fpdf_formfill.h>
 
-#define PHP_PDFIUM_VERSION "0.3.0"
+#define PHP_PDFIUM_VERSION "0.4.0"
 #define PDFIUM_QUAD_BYTES 256
 
 extern zend_module_entry pdfium_module_entry;
